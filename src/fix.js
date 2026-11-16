@@ -1,22 +1,30 @@
 import * as g from './git.js';
 import * as P from './packets.js';
 import { DONT_REWRITE, UNFINISHED_PROOF } from './remedies.js';
+import { normalizeObligation, obligationDigest } from './obligations.js';
 
 const MAX_ROUNDS = 4;
 
-/** The check to use when no rule names one for these files: --test, then the repo's own. */
+/**
+ * The check to use when no rule names one for these files: --test, then the repo's own.
+ * A rule's check is borrowed whole (its cwd, timeout_ms and every other setting), never just
+ * its command: the command alone can't run outside its folder.
+ */
 export function fallbackCheck(engine, test) {
-  if (test) return { run: test, from: '--test' };
+  if (test) return { obligation: { kind: 'test', run: test }, from: '--test' };
   const cfg = engine.config();
   const ci = cfg.verify?.require_ci?.[0];
-  if (ci) return { run: ci, from: 'verify.require_ci in .proof/config.json' };
-  const counts = new Map();
+  if (ci) return { obligation: { kind: 'test', run: ci }, from: 'verify.require_ci in .proof/config.json' };
+  const counts = new Map(); // digest -> { obligation, n }: two rules are the same check only when every setting matches
   for (const r of engine.rules().requirements || []) {
-    const run = r.obligation?.kind === 'test' ? r.obligation.run : null;
-    if (run) counts.set(run, (counts.get(run) || 0) + 1);
+    if (r.obligation?.kind !== 'test' || !r.obligation.run) continue;
+    const { id, source, ...obligation } = r.obligation;
+    let d;
+    try { d = obligationDigest(normalizeObligation(obligation)); } catch { continue; } // an invalid rule can't lend its check
+    counts.set(d, { obligation, n: (counts.get(d)?.n || 0) + 1 });
   }
-  const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-  return best ? { run: best[0], from: 'the test command .proof/rules.json requires most often' } : null;
+  const best = [...counts.values()].sort((a, b) => b.n - a.n)[0];
+  return best ? { obligation: best.obligation, from: 'the test command .proof/rules.json requires most often' } : null;
 }
 
 function defaultIntent(files) {
@@ -60,10 +68,10 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
         if (!sug.obligations.length) {
           fallback = fallbackCheck(engine, test);
           if (!fallback) break; // nothing to prove it with: reported below
-          obligations.push({ kind: 'test', run: fallback.run });
+          obligations.push(fallback.obligation);
         }
         const r = await engine.open({ intent: intent || defaultIntent(gate.unpacketed), touches: gate.unpacketed, obligations });
-        actions.push({ action: 'open', packet: r.packet.id, files: gate.unpacketed, checks: r.packet.obligations.map((o) => (o.source && o.source !== 'author' ? `${o.id} (${o.source})` : o.id)), ...(fallback ? { check_from: fallback.from, check: fallback.run } : {}), ...(intent ? {} : { intent: r.packet.intent }) });
+        actions.push({ action: 'open', packet: r.packet.id, files: gate.unpacketed, checks: r.packet.obligations.map((o) => (o.source && o.source !== 'author' ? `${o.id} (${o.source})` : o.id)), ...(fallback ? { check_from: fallback.from, check: fallback.obligation.run, ...(fallback.obligation.cwd ? { check_cwd: fallback.obligation.cwd } : {}) } : {}), ...(intent ? {} : { intent: r.packet.intent }) });
       }
       progressed = true;
       gate = await engine.gate({ source: 'fix' });
@@ -213,7 +221,7 @@ export function formatFix(r) {
     : r.needs_person.length && !r.needs_agent.length ? 'pocp fix: needs a person' : 'pocp fix: needs you';
   lines.push(head);
   for (const a of r.actions) {
-    if (a.action === 'open') lines.push(`  did: opened ${a.packet} for ${a.files.length} file(s) with checks ${a.checks.join(', ') || 'none'}${a.check_from ? ` (check "${a.check}" from ${a.check_from})` : ''}${a.intent ? `; intent "${a.intent}" (pass --intent to say what the change does)` : ''}`);
+    if (a.action === 'open') lines.push(`  did: opened ${a.packet} for ${a.files.length} file(s) with checks ${a.checks.join(', ') || 'none'}${a.check_from ? ` (check "${a.check}"${a.check_cwd ? ` in ${a.check_cwd}` : ''} from ${a.check_from})` : ''}${a.intent ? `; intent "${a.intent}" (pass --intent to say what the change does)` : ''}`);
     else if (a.action === 'widen') lines.push(`  did: widened ${a.packet} to cover ${a.files.join(', ')}${a.checks_added.length ? `; required checks added: ${a.checks_added.join(', ')}` : ''}`);
     else if (a.action === 'sync') lines.push(`  did: added the checks the rules now require to ${a.packets.join(', ')}`);
     else if (a.action === 'prove') {
