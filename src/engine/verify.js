@@ -35,8 +35,9 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
 
   function reportPolicy(finding, out, { baseRev, policyProblems, weakened, accepted }) {
     for (const p of policyProblems) finding('invalid_policy', `invalid policy: ${p}`);
-    if (accepted) out.notes.push(`policy loosened and accepted: ${weakened.join('; ')}`);
-    else if (baseRev && weakened.length) finding('policy_loosened', `policy loosened without approval: ${weakened.join('; ')} (re-run with --accept-policy-change once a maintainer approves)`, { files: POLICY_FILES });
+    if (accepted) {
+      if (weakened.length) out.notes.push(`policy loosened and accepted: ${weakened.join('; ')}`);
+    } else if (baseRev && weakened.length) finding('policy_loosened', `policy loosened without approval: ${weakened.join('; ')} (re-run with --accept-policy-change once a maintainer approves)`, { files: POLICY_FILES });
   }
 
   /**
@@ -44,7 +45,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
    * obligation again in a clean checkout of that commit. With `requireCoverage`,
    * also require that files the commit changed are covered when the rules say so.
    */
-  async function verify(rev = 'HEAD', { rerun = false, guardRerun, requireCoverage = false, useHost = Boolean(opts.policy), ciResults, policyFrom, acceptPolicyChange = false, acceptTestChange = false, acceptInconclusive = false, acceptUncovered = false, uncoveredExceptions, testGuardOnNet = false, rulesGuardFallback = false, allowedSignersFile, checkRequiredCiHere = true, guardSeed, jobs, memo = createRunMemo({ jobs }), alongside = null } = {}) {
+  async function verify(rev = 'HEAD', { rerun = false, guardRerun, requireCoverage = false, useHost = Boolean(opts.policy), ciResults, policyFrom, acceptPolicyChange = false, acceptTestChange = false, acceptInconclusive = false, acceptUncovered = false, uncoveredExceptions, testGuardOnNet = false, rulesGuardFallback = false, allowedSignersFile, checkRequiredCiHere = true, ownLoosenings = false, guardSeed, jobs, memo = createRunMemo({ jobs }), alongside = null } = {}) {
     if (rerun === true) rerun = 'all';
     // The test guard's check compares a commit with its parent, so in a range it re-runs per
     // commit (verifyRange passes guardRerun) rather than once at the head.
@@ -61,7 +62,12 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     const baseRev = policyFrom === undefined ? g.parentOf(root, commit) : policyFrom ? g.resolveRev(root, policyFrom) : null;
     const { policyProblems, weakened, accepted, rulesAt, cfgAt, allowedSigners, failOn, blocks, keyWarnings } = policyInForce(commit, baseRev, { acceptPolicyChange, allowedSignersFile });
     const commitFinding = findingSink(out, blocks);
-    reportPolicy(commitFinding, out, { baseRev, policyProblems, weakened, accepted });
+    // In a range, a commit answers only for the loosenings it made. One its parent already had
+    // (the base tightened after the branch began, or an earlier commit loosened and answers for
+    // it) isn't counted again. The range's head always answers for all it loosens (verifyRange).
+    const parent = ownLoosenings ? g.parentOf(root, commit) : null;
+    const inherited = parent && parent !== baseRev ? new Set(policyInForce(parent, baseRev).weakened) : null;
+    reportPolicy(commitFinding, out, { baseRev, policyProblems, weakened: inherited ? weakened.filter((w) => !inherited.has(w)) : weakened, accepted });
     if (!baseRev && policyFrom === undefined) out.notes.push('root commit: rules and signers come from the commit itself');
 
     const commitChangeList = g.commitChanges(root, commit);

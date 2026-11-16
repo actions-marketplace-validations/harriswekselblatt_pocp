@@ -111,7 +111,7 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
         // again on each commit only multiplied the cost (the slowest part of verify).
         // A one-commit range's tip is that commit: its re-run starts alongside the commit's guard.
         const alongside = single && rerun ? ({ packets, signed }) => startTipRerun(tipPackets([{ packetData: packets }], null), signed) : null;
-        results.push(await verify(c, { ...options, uncoveredExceptions, policyFrom, rerun: false, guardRerun: synth ? false : (options.rerun || false), testGuardOnNet: Boolean(synth), rulesGuardFallback: single, checkRequiredCiHere: false, guardSeed: single ? seed : undefined, memo, alongside }));
+        results.push(await verify(c, { ...options, uncoveredExceptions, policyFrom, rerun: false, guardRerun: synth ? false : (options.rerun || false), testGuardOnNet: Boolean(synth), rulesGuardFallback: single, checkRequiredCiHere: false, ownLoosenings: c !== tip, guardSeed: single ? seed : undefined, memo, alongside }));
       }
     } catch (err) {
       if (tipRerun) await tipRerun.done; // never leave a re-run running in folders being removed

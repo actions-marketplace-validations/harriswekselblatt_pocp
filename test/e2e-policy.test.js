@@ -109,3 +109,72 @@ test('verify says who acts first; a maintainer\'s label step names the pull requ
   // Outside a pull request, no number is guessed.
   assert.match(pocp(dir, ['verify', `${base}..HEAD`, '--rerun-unsigned']).stdout, /to the pull request \(or runs: pocp approve owner\/repo#<number>\)/);
 });
+
+// Every policy_loosened finding in a range verify: per commit, the net change, the range.
+const loosenedAt = (j) => [
+  ...j.commits.map((c, i) => (c.findings.some((f) => f.code === 'policy_loosened') ? `commit ${i}` : null)),
+  j.net?.findings?.some((f) => f.code === 'policy_loosened') ? 'net' : null,
+  j.findings.some((f) => f.code === 'policy_loosened') ? 'range' : null,
+].filter(Boolean);
+const quiet = (dir, ...args) => git(dir, '-c', 'core.hooksPath=/dev/null', ...args);
+const commitDoc = (dir, name) => {
+  write(dir, `docs/${name}.md`, `${name}\n`);
+  git(dir, 'add', '-A');
+  quiet(dir, 'commit', '-q', '-m', `docs: ${name}`);
+};
+const setConfig = (dir, edit) => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(dir, '.proof/config.json'), 'utf8'));
+  edit(cfg);
+  write(dir, '.proof/config.json', `${JSON.stringify(cfg, null, 2)}\n`);
+  git(dir, 'add', '-A');
+};
+
+test('the base tightening its policy while a pull request is open is not the pull request loosening it', () => {
+  // PR #87's shape: its first commits predate the base adding ci.reporter_app_id and never
+  // touch the config; it then merges the base, so its net change loosens nothing.
+  const dir = sampleRepo({ hooks: true });
+  quiet(dir, 'checkout', '-q', '-b', 'feature');
+  commitDoc(dir, 'one');
+  commitDoc(dir, 'two');
+  quiet(dir, 'checkout', '-q', 'main');
+  setConfig(dir, (c) => { c.ci = { ...c.ci, reporter_app_id: 12345 }; });
+  quiet(dir, 'commit', '-q', '-m', 'name the reporter app');
+  quiet(dir, 'checkout', '-q', 'feature');
+  quiet(dir, 'merge', '-q', '--no-edit', 'main');
+  commitDoc(dir, 'three');
+  const v = pocp(dir, ['verify', 'main..HEAD', '--json']);
+  assert.equal(v.json.commits.length, 3);
+  assert.deepEqual(loosenedAt(v.json), [], JSON.stringify(v.json.commits.map((c) => c.policy.weakened)));
+  // The earlier commits are still judged under the base's rules.
+  assert.equal(v.json.commits[0].policy.from, git(dir, 'rev-parse', 'main'));
+});
+
+test('a loosening kept to the head still needs approval, even when later commits don\'t touch policy', () => {
+  const dir = sampleRepo({ hooks: true });
+  setConfig(dir, (c) => { c.guard = { ...c.guard, tests: 'block' }; });
+  quiet(dir, 'commit', '-q', '-m', 'block mode');
+  quiet(dir, 'checkout', '-q', '-b', 'feature');
+  setConfig(dir, (c) => { c.guard.tests = 'warn'; });
+  quiet(dir, 'commit', '-q', '-m', 'lower the guard');
+  commitDoc(dir, 'after');
+  const v = pocp(dir, ['verify', 'main..HEAD', '--json']);
+  assert.equal(v.code, 1);
+  assert.deepEqual(loosenedAt(v.json), ['commit 0', 'commit 1'], 'the loosening commit and the head both answer for it');
+  assert.match(v.json.commits[1].policy.weakened.join(' '), /guard\.tests lowered from "block" to "warn"/);
+  const ok = pocp(dir, ['verify', 'main..HEAD', '--accept-policy-change', '--json']);
+  assert.deepEqual(loosenedAt(ok.json), []);
+  assert.deepEqual(ok.json.commits.map((c) => c.policy.accepted), [true, true], 'once approved, the head\'s policy judges every commit');
+});
+
+test('a loosening reverted later in the pull request is still flagged at the commit that made it', () => {
+  const dir = sampleRepo({ hooks: true });
+  setConfig(dir, (c) => { c.guard = { ...c.guard, tests: 'block' }; });
+  quiet(dir, 'commit', '-q', '-m', 'block mode');
+  quiet(dir, 'checkout', '-q', '-b', 'feature');
+  setConfig(dir, (c) => { c.guard.tests = 'warn'; });
+  quiet(dir, 'commit', '-q', '-m', 'lower the guard');
+  setConfig(dir, (c) => { c.guard.tests = 'block'; });
+  quiet(dir, 'commit', '-q', '-m', 'restore the guard');
+  const v = pocp(dir, ['verify', 'main..HEAD', '--json']);
+  assert.deepEqual(loosenedAt(v.json), ['commit 0']);
+});
