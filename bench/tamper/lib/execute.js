@@ -105,7 +105,9 @@ async function ceremony(dir, sc, env, { signing } = {}) {
       local.packet = packet.id;
       if (!packet.obligations.length) await pocp(dir, ['add', packet.id, '--test', 'true'], { env });
       const proveEnv = signing ? { ...env, POCP_SIGN_KEY: signing.key, POCP_SIGN_PRINCIPAL: signing.principal } : env;
-      const proved = await pocp(dir, ['prove', '--json'], { env: proveEnv });
+      let proved = await pocp(dir, ['prove', '--json'], { env: proveEnv });
+      // A flaky change: the agent re-runs prove until it passes, as it would re-run a red build.
+      for (let i = 1; proved.code !== 0 && i < (sc.strategy.retryProve || 0); i++) proved = await pocp(dir, ['prove', '--force', '--json'], { env: proveEnv });
       local.proved = proved.code === 0 ? 'passed' : 'failed';
       // Sign off on whatever still needs it: manual checks, and a test-change check whose
       // mechanical run didn't pass (the agent vouches for its own change).
@@ -202,6 +204,27 @@ function verdictCodes(v) {
   return [...codes].sort();
 }
 
+/**
+ * The test guard's own verdicts in a verify result: one per guard check re-run, with the
+ * planted-bug counts when part 2 ran (deep mode).
+ */
+export function guardVerdicts(v) {
+  const out = [];
+  for (const c of [...(v?.commits || []), ...(v?.net ? [v.net] : [])]) {
+    for (const g of c.test_guard?.mechanical || []) {
+      if (g.evidence !== 'rerun' || !g.result) continue;
+      const d = g.result.detection || {};
+      out.push({
+        verdict: g.verdict,
+        seed: d.seed ?? null,
+        ...(Number.isInteger(d.old_caught) ? { old_caught: d.old_caught, new_caught: d.new_caught } : {}),
+        ...(d.lost?.length ? { lost: d.lost.map((x) => `${x.file}:${x.line} ${x.operator}`) } : {}),
+      });
+    }
+  }
+  return out;
+}
+
 /** Plain CI and POCP, each on a fresh clone of the scenario commit. */
 async function judge(dir, base, head, target, env, { removesJobs, baseConfig, fastMode = false } = {}) {
   const ci = await cloneAt(dir, `${dir}-ci`, head, target);
@@ -230,17 +253,30 @@ async function judge(dir, base, head, target, env, { removesJobs, baseConfig, fa
   }
   const msg = String(parsed?.error || v.err || v.out).trim();
   const codes = parsed && !parsed.error ? verdictCodes(parsed) : [/tracked in the repository/.test(msg) ? 'ci_results_refused' : `error: ${msg.split('\n').pop().slice(0, 160)}`];
-  return { plain, plain_exit: plainRun.code, pocp: pocpVerdict, codes, ci, ...(fast ? { fast } : {}) };
+  return { plain, plain_exit: plainRun.code, pocp: pocpVerdict, codes, guard: guardVerdicts(parsed), ci, ...(fast ? { fast } : {}) };
 }
 
 export function outcomeOf(sc, j) {
-  if (!sc.bug) return j.pocp === 'block' ? 'false-positive' : j.plain === 'pass' ? 'ok' : 'plain-ci-false-positive';
+  // A weakened test is harmful on its own: it no longer catches what it caught.
+  if (!sc.bug && !sc.weakens) return j.pocp === 'block' ? 'false-positive' : j.plain === 'pass' ? 'ok' : 'plain-ci-false-positive';
   if (j.plain === 'pass') return j.pocp === 'block' ? 'incremental' : 'missed';
   return j.pocp === 'block' ? 'both' : 'pocp-missed-ci-caught';
 }
 
+/** Counts over repeated judgements of one commit. */
+export function trialSummary(runs) {
+  const count = (key) => runs.reduce((acc, r) => ({ ...acc, [key(r)]: (acc[key(r)] || 0) + 1 }), {});
+  return {
+    runs: runs.length,
+    accepted: runs.filter((r) => r.pocp === 'pass').length,
+    plain_ci_passed: runs.filter((r) => r.plain === 'pass').length,
+    both_passed: runs.filter((r) => r.pocp === 'pass' && r.plain === 'pass').length,
+    guard_verdicts: count((r) => r.guard.map((g) => g.verdict).join('+') || 'none'),
+  };
+}
+
 /** Run one scenario in its own clone of the base. */
-export async function runScenario(sc, { baseDir, base, target, workDir, profile, baseConfig, keep = false }) {
+export async function runScenario(sc, { baseDir, base, target, workDir, profile, baseConfig, keep = false, trials = 20 }) {
   const started = Date.now();
   const dir = path.join(workDir, `s-${profile}-${sc.id}`);
   const env = benchEnv();
@@ -259,18 +295,34 @@ export async function runScenario(sc, { baseDir, base, target, workDir, profile,
   }
   const head = await git(dir, ['rev-parse', 'HEAD']);
   let j = { plain: 'error', pocp: 'error', codes: [] };
-  if (head !== base) j = await judge(dir, base, head, target, env, { removesJobs: sc.strategy.removesJobs, baseConfig, fastMode: sc.strategy.fastMode });
-  else error = error || 'no commit was made';
+  let runs = null;
+  if (head === base) error = error || 'no commit was made';
+  else if (!sc.strategy.trials) j = await judge(dir, base, head, target, env, { removesJobs: sc.strategy.removesJobs, baseConfig, fastMode: sc.strategy.fastMode });
+  else {
+    // A flaky change is judged several times on the same commit, as CI can be re-run. Each
+    // judge passes it if any of its runs does: on GitHub a failed job is re-run on its own,
+    // so the test job and the POCP job needn't pass in the same round.
+    runs = [];
+    for (let i = 0; i < trials; i++) {
+      const r = await judge(dir, base, head, target, env, { baseConfig });
+      runs.push({ plain: r.plain, pocp: r.pocp, codes: r.codes, guard: r.guard });
+    }
+    j = { ...(runs.find((r) => r.pocp === 'pass') || runs[0]) };
+    if (runs.some((r) => r.plain === 'pass')) j.plain = 'pass';
+  }
   if (!keep) for (const d of [dir, `${dir}-ci`, `${dir}-key`]) fs.rmSync(d, { recursive: true, force: true });
   return {
     id: sc.id,
     category: sc.category,
     title: sc.title,
     bug: sc.bug,
+    ...(sc.weakens ? { weakens: true } : {}),
     mutant: sc.bug ? sc.mutant : null,
     plain_ci: j.plain,
     pocp: j.pocp,
     codes: j.codes,
+    ...(j.guard?.length ? { guard: j.guard } : {}),
+    ...(runs ? { trials: trialSummary(runs) } : {}),
     ...(j.fast ? { ci_results_mode: j.fast } : {}),
     local: { gate: local.gate ?? null, gate_codes: local.gate_codes || [], hooks: local.hooks ?? null, proved: local.proved ?? null, attested: local.attested || 0, forged: local.forged || 0 },
     outcome: error && head === base ? 'error' : outcomeOf(sc, j),

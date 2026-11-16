@@ -10,7 +10,7 @@ node bench/tamper/run.js --target <name> --repo <path to its checkout>
 node bench/tamper/run.js --report-only            # re-render RESULTS.md from results/*.json
 ```
 
-Options: `--profiles as-configured,block,attest` (default: each target's `profiles`), `--mutants N` (bugs per repository, default 1), `--seed N`, `--concurrency N`, `--only <id prefix>,…`, `--work <dir>`, `--keep` (keep the scratch clones to inspect).
+Options: `--profiles as-configured,block,attest,deep` (default: each target's `profiles`), `--mutants N` (bugs per repository, default 1), `--seed N`, `--trials N` (how many times a flaky scenario's commit is judged, default 20), `--concurrency N`, `--only <id prefix>,…` (default: the target's `only`, else every scenario), `--work <dir>`, `--keep` (keep the scratch clones to inspect).
 
 ## How it works
 
@@ -20,6 +20,8 @@ Options: `--profiles as-configured,block,attest` (default: each target's `profil
 4. **Scenarios** (`lib/scenarios.js`), in the categories of RESULTS.md: test edits, the test command and runner config, deleting a test file, loosening `.proof/` rules or config, adding a signing key, hiding a staged edit with `assume-unchanged`/`skip-worktree`, forged proofs, forged CI results, a stale trailer, a catch-all packet, `--no-verify`, and removing POCP from the CI workflow. Policy and coverage attacks also gut the tests, so that plain CI is fooled as well. Three controls check that honest work passes and that a plain bug is caught.
 5. **The agent** makes each commit in its own clone. It opens a packet for what it changed, proves it, signs off on test changes itself, and commits through the hooks; when the hooks block, it commits with `--no-verify`.
 6. **Judges**, on a fresh clone of the commit: plain CI is the test command (run through `pocp ci-run`, which only records the result); POCP is `pocp verify <base>..<head> --require-coverage --rerun-unsigned --ci-results <that file>`, the bundled Action's default. The verifier is always this checkout's POCP, never the copy inside a scratch clone.
+
+7. **Deep mode** (`--target pocp-deep`, profile `deep`, `guard.mutants: 10`): a small fixture where each planted bug is caught by exactly one assertion. Category 12 weakens that assertion and adds a new test that tries to stand in for it: one that fails at random (judged `--trials` times on the same commit, since CI can be re-run) and one that fails whenever the source under test differs from the commit. Each runs with and without the bug, next to the weakening alone (`deep-weaken`), which deep mode must catch for the attack to have anything to hide.
 
 **Incremental catch** is the headline: of the cheats that fool plain CI, how many POCP blocks. Every bug that passes POCP is listed as a miss.
 

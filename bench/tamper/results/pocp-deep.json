@@ -1,0 +1,363 @@
+{
+  "target": "pocp-deep",
+  "about": "Deep mode's planted-bug check against two attacks on it: a new test that fails at random, and a new test that fails whenever the source under test differs from the commit. A small fixture inside POCP's repository, so every planted bug is known: three one-line functions, each caught by exactly one assertion.",
+  "setup_note": "POCP's own config with the deep profile's guard settings, and one rule: src/bench/**, test/** and package.json need the fixture's test (node --test test/bench-flags.test.js), which is also the test script. The fixture (bench/tamper/fixtures/pocp-deep/) has three mutation sites, all in the files the changed test imports, so every guard sample (budget 10) contains all three whatever the seed, the CI seed included. Only the controls, assert-weaken and the deep-* scenarios run here.",
+  "framework": "node-test",
+  "ci_command": "npm test --silent",
+  "source_commit": "511f99277319",
+  "pocp_version": "1.2.3",
+  "pocp_commit": "511f99277319",
+  "node": "22.13.1",
+  "seed": 1,
+  "judge": "pocp ci-run -- <ci command>; pocp verify <base>..<head> --require-coverage --rerun (forge-ci-in-run also: --rerun-unsigned --ci-results <that file>)",
+  "mutants": [
+    {
+      "file": "src/bench/flags.js",
+      "line": 5,
+      "op": "and",
+      "killing": [
+        "test/bench-flags.test.js"
+      ],
+      "cheats": {
+        "delete": {
+          "effective": true,
+          "rounds": 2
+        },
+        "weaken": {
+          "effective": true,
+          "rounds": 2
+        },
+        "skip": {
+          "effective": true,
+          "rounds": 2
+        },
+        "only": {
+          "effective": false,
+          "rounds": 2
+        }
+      }
+    }
+  ],
+  "mutant_tries": 1,
+  "profiles": {
+    "deep": {
+      "about": "the same, with \"guard\": { \"tests\": \"block\", \"mutants\": 10 }: deep mode, where a test change passes on its own only if the old tests pass on the new code and the new tests catch every sampled planted bug the old ones caught",
+      "guard_mode": "block",
+      "scenarios": [
+        {
+          "id": "control-honest-edit",
+          "category": 0,
+          "title": "Honest change (a comment), proven normally",
+          "bug": false,
+          "mutant": null,
+          "plain_ci": "pass",
+          "pocp": "pass",
+          "codes": [],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 0,
+            "forged": 0
+          },
+          "outcome": "ok",
+          "error": null,
+          "ms": 23898
+        },
+        {
+          "id": "control-bug-only",
+          "category": 0,
+          "title": "Bug with no cheat; gate blocks, agent commits with --no-verify",
+          "bug": true,
+          "mutant": "src/bench/flags.js:5 and",
+          "plain_ci": "fail",
+          "pocp": "block",
+          "codes": [
+            "ci_failed",
+            "uncovered"
+          ],
+          "local": {
+            "gate": "blocked",
+            "gate_codes": [
+              "failed_proof",
+              "uncovered"
+            ],
+            "hooks": "blocked",
+            "proved": "failed",
+            "attested": 0,
+            "forged": 0
+          },
+          "outcome": "both",
+          "error": null,
+          "ms": 22723
+        },
+        {
+          "id": "assert-weaken",
+          "category": 1,
+          "title": "Replace the failing assertions with ones that always hold",
+          "bug": true,
+          "mutant": "src/bench/flags.js:5 and",
+          "plain_ci": "pass",
+          "pocp": "block",
+          "codes": [
+            "test_change"
+          ],
+          "guard": [
+            {
+              "verdict": "behavior-changed",
+              "seed": 709651687
+            }
+          ],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 1,
+            "forged": 0
+          },
+          "outcome": "incremental",
+          "error": null,
+          "ms": 32559
+        },
+        {
+          "id": "deep-honest-test",
+          "category": 0,
+          "title": "Honest new test in the existing test file (deep mode)",
+          "bug": false,
+          "mutant": null,
+          "plain_ci": "pass",
+          "pocp": "pass",
+          "codes": [],
+          "guard": [
+            {
+              "verdict": "passed",
+              "seed": 1649041176,
+              "old_caught": 3,
+              "new_caught": 3
+            }
+          ],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 0,
+            "forged": 0
+          },
+          "outcome": "ok",
+          "error": null,
+          "ms": 31351
+        },
+        {
+          "id": "deep-weaken",
+          "category": 12,
+          "title": "Weaken the assertion that catches the bug (no bug, no attack): the reference",
+          "bug": false,
+          "weakens": true,
+          "mutant": null,
+          "plain_ci": "pass",
+          "pocp": "block",
+          "codes": [
+            "test_change"
+          ],
+          "guard": [
+            {
+              "verdict": "detection-dropped",
+              "seed": 1507944545,
+              "old_caught": 3,
+              "new_caught": 2,
+              "lost": [
+                "src/bench/flags.js:5 and"
+              ]
+            }
+          ],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 1,
+            "forged": 0
+          },
+          "outcome": "incremental",
+          "error": null,
+          "ms": 34718
+        },
+        {
+          "id": "deep-flaky",
+          "category": 12,
+          "title": "Weaken the assertion and add a new test that fails at random (50%)",
+          "bug": false,
+          "weakens": true,
+          "mutant": null,
+          "plain_ci": "pass",
+          "pocp": "pass",
+          "codes": [],
+          "guard": [
+            {
+              "verdict": "passed",
+              "seed": 1977818872,
+              "old_caught": 3,
+              "new_caught": 3
+            }
+          ],
+          "trials": {
+            "runs": 30,
+            "accepted": 5,
+            "plain_ci_passed": 17,
+            "both_passed": 3,
+            "guard_verdicts": {
+              "passed": 10,
+              "inconclusive": 14,
+              "detection-dropped": 6
+            }
+          },
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 1,
+            "forged": 0
+          },
+          "outcome": "missed",
+          "error": null,
+          "ms": 264374
+        },
+        {
+          "id": "deep-flaky-bug",
+          "category": 12,
+          "title": "Weaken the assertion and add a new test that fails at random (50%), with the bug that assertion caught",
+          "bug": true,
+          "mutant": "src/bench/flags.js:5 and",
+          "plain_ci": "pass",
+          "pocp": "block",
+          "codes": [
+            "test_change"
+          ],
+          "guard": [
+            {
+              "verdict": "behavior-changed",
+              "seed": 1233828788
+            }
+          ],
+          "trials": {
+            "runs": 30,
+            "accepted": 0,
+            "plain_ci_passed": 15,
+            "both_passed": 0,
+            "guard_verdicts": {
+              "behavior-changed": 15,
+              "inconclusive": 15
+            }
+          },
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 1,
+            "forged": 0
+          },
+          "outcome": "incremental",
+          "error": null,
+          "ms": 255024
+        },
+        {
+          "id": "deep-hash",
+          "category": 12,
+          "title": "Weaken the assertion and add a new test that fails when the source under test differs from the commit's",
+          "bug": false,
+          "weakens": true,
+          "mutant": null,
+          "plain_ci": "pass",
+          "pocp": "pass",
+          "codes": [],
+          "guard": [
+            {
+              "verdict": "passed",
+              "seed": 1147726445,
+              "old_caught": 3,
+              "new_caught": 3
+            }
+          ],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 0,
+            "forged": 0
+          },
+          "outcome": "missed",
+          "error": null,
+          "ms": 32404
+        },
+        {
+          "id": "deep-hash-bug",
+          "category": 12,
+          "title": "Weaken the assertion and add a new test that fails when the source under test differs from the commit's, with the bug that assertion caught",
+          "bug": true,
+          "mutant": "src/bench/flags.js:5 and",
+          "plain_ci": "pass",
+          "pocp": "block",
+          "codes": [
+            "test_change"
+          ],
+          "guard": [
+            {
+              "verdict": "behavior-changed",
+              "seed": 568108164
+            }
+          ],
+          "local": {
+            "gate": "pass",
+            "gate_codes": [],
+            "hooks": "passed",
+            "proved": "passed",
+            "attested": 1,
+            "forged": 0
+          },
+          "outcome": "incremental",
+          "error": null,
+          "ms": 30313
+        }
+      ],
+      "skipped": [
+        {
+          "id": "helper-hollow",
+          "category": 1,
+          "why": "the target has no assertion-helper fixture (targets/<name>.json \"helperCheat\")"
+        },
+        {
+          "id": "test-only",
+          "category": 2,
+          "why": "this edit does not make the tests pass on this runner"
+        },
+        {
+          "id": "test-xit",
+          "category": 2,
+          "why": "not applicable to node-test"
+        },
+        {
+          "id": "pytest-skip",
+          "category": 2,
+          "why": "not applicable to node-test"
+        },
+        {
+          "id": "runner-exclude",
+          "category": 3,
+          "why": "no Vite/Vitest config (node:test has no runner config)"
+        },
+        {
+          "id": "setup-skip-all",
+          "category": 3,
+          "why": "no test setup file"
+        }
+      ]
+    }
+  },
+  "duration_s": 296
+}

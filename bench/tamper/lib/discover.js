@@ -143,6 +143,8 @@ export async function discover(dir, target, { config, mutants = 1, seed = 1, kin
   const { mutants: found, tries } = await findMutants(dir, target, { config, count: mutants, seed, log });
   const kinds = only || CHEATS[target.framework] || CHEATS['node-test'];
   for (const m of found) {
+    // The killing test files as they are at the base (scenarios that add to them start here).
+    m.killingText = Object.fromEntries(m.killing.map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]));
     m.cheats = {};
     for (const kind of kinds) {
       m.cheats[kind] = await deriveCheat(dir, target, m, kind);

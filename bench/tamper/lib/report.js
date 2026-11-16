@@ -3,14 +3,16 @@ import { CATEGORIES } from './scenarios.js';
 
 const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : 'n/a');
 const esc = (s) => String(s).replace(/\|/g, '\\|');
+// Harmful: a bug, or a weakened test (it no longer catches what it caught, bug or not).
+const harmful = (s) => s.bug || s.weakens;
 
 /** Headline numbers for one profile's scenarios. */
 export function summarize(scenarios) {
-  const bugs = scenarios.filter((s) => s.bug && s.outcome !== 'error');
+  const bugs = scenarios.filter((s) => harmful(s) && s.outcome !== 'error');
   const fooled = bugs.filter((s) => s.plain_ci === 'pass');
   const incremental = fooled.filter((s) => s.pocp === 'block');
   const missed = bugs.filter((s) => s.pocp === 'pass');
-  const controls = scenarios.filter((s) => !s.bug);
+  const controls = scenarios.filter((s) => !harmful(s));
   const falsePos = controls.filter((s) => s.pocp === 'block' || s.plain_ci !== 'pass');
   return {
     scenarios: scenarios.length,
@@ -26,7 +28,13 @@ export function summarize(scenarios) {
   };
 }
 
-const verdict = (s) => (s ? (s.pocp === 'block' ? `**blocks** ${s.codes.map((c) => `\`${c}\``).join(' ')}` : s.pocp === 'pass' ? 'passes' : 'error') : '');
+const guardWords = (s) => (s.guard?.length ? `; guard ${s.guard.map((g) => `${g.verdict}${Number.isInteger(g.old_caught) ? ` (${g.new_caught} of ${g.old_caught} caught)` : ''}`).join(', ')}` : '');
+const trialWords = (t) => `accepted in ${t.accepted} of ${t.runs} runs, plain CI passed ${t.plain_ci_passed}${Number.isInteger(t.both_passed) ? `, both in the same run ${t.both_passed}` : ''}; guard ${Object.entries(t.guard_verdicts).map(([k, n]) => `${k} ×${n}`).join(', ')}`;
+const verdict = (s) => {
+  if (!s) return '';
+  if (s.trials) return `${s.pocp === 'block' ? '**blocks**' : 'passes'} (${trialWords(s.trials)})`;
+  return s.pocp === 'block' ? `**blocks** ${s.codes.map((c) => `\`${c}\``).join(' ')}${guardWords(s)}` : s.pocp === 'pass' ? `passes${guardWords(s)}` : 'error';
+};
 const gateCell = (s) => {
   if (!s?.local) return '';
   const l = s.local;
@@ -64,13 +72,13 @@ function targetSection(r) {
   const cats = [...new Set(r.profiles[names[0]].scenarios.map((s) => s.category))].sort((a, b) => a - b);
   for (const c of cats) {
     const first = r.profiles[names[0]].scenarios.filter((s) => s.category === c);
-    const withBug = first.filter((s) => s.bug);
+    const withBug = first.filter(harmful);
     const fooled = withBug.filter((s) => s.plain_ci === 'pass').length;
     const cells = names.map((n) => {
       const ss = r.profiles[n].scenarios.filter((s) => s.category === c);
-      const bugs = ss.filter((s) => s.bug);
+      const bugs = ss.filter(harmful);
       const blocked = bugs.filter((s) => s.pocp === 'block').length;
-      const fp = ss.filter((s) => !s.bug && s.pocp === 'block').length;
+      const fp = ss.filter((s) => !harmful(s) && s.pocp === 'block').length;
       return bugs.length ? `${blocked}/${bugs.length}` : fp ? `${fp} false positive(s)` : 'passes honest work';
     });
     lines.push(`| ${c}. ${CATEGORIES[c]} | ${first.length} | ${withBug.length ? `${fooled}/${withBug.length}` : '—'} | ${cells.join(' | ')} |`);
@@ -82,7 +90,7 @@ function targetSection(r) {
   lines.push('|---|---|' + names.map(() => '---|').join('') + '---|---|');
   for (const s of r.profiles[names[0]].scenarios) {
     const per = names.map((n) => r.profiles[n].scenarios.find((x) => x.id === s.id));
-    lines.push(`| \`${s.id}\`: ${esc(s.title)}${s.bug ? '' : ' (no bug)'} | ${s.plain_ci === 'pass' ? 'passes' : s.plain_ci === 'fail' ? '**fails**' : s.plain_ci} | ${per.map(verdict).join(' | ')} | ${esc(gateCell(s))} | ${per.map(outcomeWord).join(' / ')} |`);
+    lines.push(`| \`${s.id}\`: ${esc(s.title)}${s.bug ? '' : s.weakens ? ' (weakened test, no bug)' : ' (no bug)'} | ${s.plain_ci === 'pass' ? 'passes' : s.plain_ci === 'fail' ? '**fails**' : s.plain_ci} | ${per.map(verdict).join(' | ')} | ${esc(gateCell(s))} | ${per.map(outcomeWord).join(' / ')} |`);
   }
   lines.push('', '</details>', '');
   const skipped = r.profiles[names[0]].skipped;
@@ -125,7 +133,7 @@ export function renderReport(results, { analysis = '' } = {}) {
     for (const [name, p] of Object.entries(r.profiles)) {
       // One line per cheat, naming the bugs it got through (ids are "<cheat>@<file>" with several bugs).
       const groups = new Map();
-      for (const s of p.scenarios.filter((x) => x.bug && x.pocp === 'pass')) {
+      for (const s of p.scenarios.filter((x) => harmful(x) && x.pocp === 'pass')) {
         const key = s.id.split('@')[0];
         if (!groups.has(key)) groups.set(key, { s, ids: [], ships: 0 });
         const g = groups.get(key);
@@ -135,10 +143,12 @@ export function renderReport(results, { analysis = '' } = {}) {
       for (const [key, g] of groups) {
         any = true;
         const total = p.scenarios.filter((x) => x.id.split('@')[0] === key).length;
-        const ships = g.ships === g.ids.length ? 'plain CI also passes, so the bug ships' : `plain CI also passes for ${g.ships} of them`;
-        lines.push(`- **${r.target} / ${name} / \`${key}\`** (${g.ids.length} of ${total} bug${total === 1 ? '' : 's'}): ${g.s.title}; ${ships}.`);
+        const what = g.s.bug ? 'the bug' : 'the weakened test';
+        const ships = g.ships === g.ids.length ? `plain CI also passes, so ${what} ships` : `plain CI also passes for ${g.ships} of them`;
+        const runs = g.s.trials ? ` (${trialWords(g.s.trials)})` : '';
+        lines.push(`- **${r.target} / ${name} / \`${key}\`** (${g.ids.length} of ${total} ${g.s.bug ? 'bug' : 'weakened test'}${total === 1 ? '' : 's'}): ${g.s.title}; ${ships}${runs}.`);
       }
-      for (const s of p.scenarios.filter((x) => !x.bug && (x.pocp === 'block' || x.plain_ci !== 'pass'))) {
+      for (const s of p.scenarios.filter((x) => !harmful(x) && (x.pocp === 'block' || x.plain_ci !== 'pass'))) {
         any = true;
         lines.push(`- **${r.target} / ${name} / \`${s.id}\`** (false positive): honest work blocked (${s.codes.join(', ') || s.plain_ci}).`);
       }
