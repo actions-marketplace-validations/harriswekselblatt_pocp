@@ -41,7 +41,10 @@
 - **`pocp approve` no longer says "nothing to approve" while the `pocp` status waits for an
   approval.** When verify passed with a label the reporter won't count for this head, `pocp
   approve` (and `pocp approvals`) now read the `pocp` status, list the label, and on your
-  confirmation remove it and add it back.
+  confirmation remove it and add it back. They also skip a verify run that was skipped (an
+  ignored event, such as editing the description) instead of letting it hide the run that
+  asked for approval, as the reporter already did; and when the `pocp` status waits for a
+  maintainer but no run says what for, `pocp approve` says so. Seen on harriswekselblatt/pocp#86.
 
 ## 1.2.3 (2026-11-10)
 

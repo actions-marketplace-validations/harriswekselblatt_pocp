@@ -255,6 +255,40 @@ test('--approve re-applies a label the pocp status is waiting on, even when veri
   }
 });
 
+// harriswekselblatt/pocp#86: editing the description started a pocp workflow run whose verify
+// job was skipped. As the newest verify run it hid the real one (passing, live mode, with the
+// approval marker), and --approve said "nothing to approve" while the pocp status waited.
+test('--approve reads past a skipped verify run, and never says "nothing to approve" while pocp waits', async () => {
+  const table = siteTable();
+  const pr6 = { number: 6, title: 'Edited description', url: 'https://github.com/me/site/pull/6', author: { login: 'bot' }, headRefOid: SHA('f'), labels: [], files: [{ path: 'test/math.test.js', additions: 1, deletions: 2 }], isDraft: false };
+  table[`pr view 6 --repo me/site --json ${PR_FIELDS},state`] = { body: { ...pr6, state: 'OPEN' } };
+  table[`api repos/me/site/commits/${SHA('f')}/check-runs?per_page=100`] = { body: { check_runs: [
+    { id: 60, name: 'verify', status: 'completed', conclusion: 'success' },
+    { id: 61, name: 'verify', status: 'completed', conclusion: 'skipped' },
+  ] } };
+  table['api repos/me/site/check-runs/60/annotations?per_page=100'] = { body: [marker([{ label: 'pocp-approve-tests', kind: 'tests', reasons: [TEST_CHANGE], files: ['test/math.test.js'] }])] };
+  table['pr diff 6 --repo me/site'] = { body: DIFF };
+  table['pr edit 6 --repo me/site --add-label pocp-approve-tests'] = { body: '' };
+  // Only a skipped run on the head, while the pocp status waits for a maintainer.
+  const pr7 = { ...pr6, number: 7, headRefOid: SHA('9') };
+  table[`pr view 7 --repo me/site --json ${PR_FIELDS},state`] = { body: { ...pr7, state: 'OPEN' } };
+  table[`api repos/me/site/commits/${SHA('9')}/check-runs?per_page=100`] = { body: { check_runs: [{ id: 71, name: 'verify', status: 'completed', conclusion: 'skipped' }] } };
+  table[`api repos/me/site/commits/${SHA('9')}/status`] = { body: { statuses: [{ context: 'pocp', state: 'pending', description: TEXT.waiting, target_url: 'https://github.com/me/site/runs/70' }] } };
+  const gh = fakeGh(table);
+  const saved = process.env.POCP_GH;
+  process.env.POCP_GH = gh.bin;
+  try {
+    assert.deepEqual(prStatus('me/site', pr6).needs.map((n) => n.label), ['pocp-approve-tests']);
+    const r = await approvePr({ ref: 'me/site#6', interactive: true, ask: async () => '6', say: () => {} });
+    assert.deepEqual(r.approved, ['pocp-approve-tests']);
+    await assert.rejects(approvePr({ ref: 'me/site#7', interactive: true, ask: async () => '7', say: () => {} }), (e) => /waits for a maintainer's approval/.test(e.message) && !/nothing to approve/.test(e.message));
+    assert.deepEqual(gh.calls().filter((c) => c.startsWith('pr edit')), ['pr edit 6 --repo me/site --add-label pocp-approve-tests']);
+  } finally {
+    if (saved === undefined) delete process.env.POCP_GH;
+    else process.env.POCP_GH = saved;
+  }
+});
+
 test('--approve adds nothing if the PR got new commits while it was being read', async () => {
   const table = siteTable();
   const view = table[`pr view 1 --repo me/site --json ${PR_FIELDS},state`].body;
