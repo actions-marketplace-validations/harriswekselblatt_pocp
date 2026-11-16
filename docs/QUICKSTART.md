@@ -87,7 +87,7 @@ What you give up:
 | | CI | Local mode |
 |---|---|---|
 | Commits checked | hooks, then verify in CI | hooks only |
-| Re-run on another machine | every pull request | none; `verify --rerun` on yours before merging |
+| Re-run on another machine | every pull request | none; `verify --require-coverage --rerun` on yours before merging |
 | Unverified merges blocked | with branch protection | never |
 | `git commit --no-verify` | caught by verify | caught only if you verify before merging |
 | Test and policy approvals | a maintainer's label | you, through `--accept-*` |
@@ -96,13 +96,14 @@ What you give up:
 Before merging, run what CI would have run:
 
 ```bash
-pocp verify --rerun origin/main..HEAD && gh pr merge --merge
+pocp verify --require-coverage --rerun origin/main..HEAD && gh pr merge --merge
 ```
 
-It re-runs each commit's checks from a clean checkout, by the base branch's rules. When it
+It re-runs each commit's checks from a clean checkout, by the base branch's rules, and
+`--require-coverage` fails a commit made without its proof (`git commit --no-verify`). When it
 waits for a person (a test change the check couldn't pass, a policy loosening), read the change,
 then approve it for that exact head:
-`pocp verify --rerun origin/main..HEAD --accept-test-change $(git rev-parse HEAD)` (or
+`pocp verify --require-coverage --rerun origin/main..HEAD --accept-test-change $(git rev-parse HEAD)` (or
 `--accept-policy-change`). `pocp doctor` reports local mode, POCP workflows still running in
 it, and Actions jobs that GitHub doesn't start for billing reasons.
 

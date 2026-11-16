@@ -240,7 +240,7 @@ export function goLive(root, plan, { protect = false } = {}) {
 // Local mode (ci.mode "local"): what it gives up, said wherever it is chosen (init --local,
 // ci off, doctor), and the command that recovers most of CI before a merge.
 export const LOCAL_MODE_TRADE = 'the git hooks on this machine are the only gate: nothing re-runs the checks on another machine, nothing blocks a merge, and "git commit --no-verify" skips the gate unless you verify before merging. You trust your own machine.';
-export const localVerifyCommand = (branch) => `pocp verify --rerun origin/${branch}..HEAD`;
+export const localVerifyCommand = (branch) => `pocp verify --require-coverage --rerun origin/${branch}..HEAD`;
 const requiredContexts = (ex) => new Set([...(ex?.required_status_checks?.contexts || []), ...((ex?.required_status_checks?.checks || []).map((c) => c.context))]);
 
 /**

@@ -50,7 +50,7 @@ export function formatGate(r) {
     lines.push(r.required_files.length ? `pocp: gate passed (${proven} packet(s) proven for ${shortDigest(r.subject)})` : `pocp: gate passed (no packet needed for ${r.files.length} file(s))`);
     for (const w of (r.warnings || []).filter((x) => !x.code?.startsWith('awaiting_'))) lines.push(`  note: ${w.detail}`);
     if (r.pending_approvals?.length) {
-      lines.push('  CI requires human approval for this commit:');
+      lines.push(r.local_mode ? '  needs your approval before you merge (local mode):' : '  CI requires human approval for this commit:');
       lines.push(...remedyLines(r.pending_approvals, '    '));
     }
     return lines.join('\n');

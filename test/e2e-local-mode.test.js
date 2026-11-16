@@ -3,10 +3,12 @@
 // naming you, not CI, as the approver.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { git, pocp, read, sampleRepo, tmpRepo, write, writeConfig } from './helpers.js';
 
+const execGit = (cwd, args) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 const check = (r, id) => r.json.checks.filter((c) => c.id === id);
 const config = (dir) => JSON.parse(read(dir, '.proof/config.json'));
 
@@ -57,7 +59,7 @@ test('init --local writes ci.mode "local", installs the hooks and says what it g
   assert.equal(config(dir).ci.mode, 'local');
   assert.match(r.stdout, /hooks installed in/);
   assert.match(r.stdout, /local mode \(ci\.mode "local"\): .*nothing blocks a merge.*--no-verify/);
-  assert.match(r.stdout, /before merging: pocp verify --rerun origin\/main\.\.HEAD/);
+  assert.match(r.stdout, /before merging: pocp verify --require-coverage --rerun origin\/main\.\.HEAD/);
   assert.ok(!fs.existsSync(path.join(dir, '.github')), 'local mode writes no workflows');
   // Re-run on an existing .proof/: the mode is still set.
   const again = tmpRepo();
@@ -143,7 +145,7 @@ test('doctor in local mode: no CI problems, and the trade stated once', () => {
   const note = check(r, 'local-mode')[0];
   assert.equal(note.status, 'warning');
   assert.match(note.why, /nothing blocks a merge.*--no-verify/);
-  assert.match(note.fix, /pocp verify --rerun origin\/main\.\.HEAD/);
+  assert.match(note.fix, /pocp verify --require-coverage --rerun origin\/main\.\.HEAD/);
 });
 
 test('doctor flags POCP workflows that disagree with the mode', () => {
@@ -196,7 +198,7 @@ test('in local mode the gate names you, through verify, as the approver, not CI'
   const r = pocp(dir, ['gate', '--json']);
   const w = r.json.warnings.find((x) => x.code === 'awaiting_policy_approval');
   assert.ok(w, JSON.stringify(r.json.warnings));
-  assert.match(w.detail, /in local mode you approve it before merging, after reading it: pocp verify --rerun <base>\.\.HEAD --accept-policy-change <head sha>/);
+  assert.match(w.detail, /in local mode you approve it before merging, after reading it: pocp verify --require-coverage --rerun <base>\.\.HEAD --accept-policy-change <head sha>/);
   assert.doesNotMatch(w.detail, /CI will ask/);
 });
 
@@ -208,4 +210,37 @@ test('in local mode verify tells you how to approve what it waits on', () => {
   const r = pocp(dir, ['verify', 'HEAD']);
   assert.equal(r.code, 1);
   assert.match(r.stdout, /local mode: you approve here\. After reading the change, run this again with --accept-test-change <head sha> \(or --accept-policy-change/);
+});
+
+test('local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught', () => {
+  const dir = sampleRepo({ hooks: true, deep: false });
+  writeConfig(dir, { guard: { tests: 'block', mutants: 0 }, ci: { mode: 'local' } });
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'local mode');
+  git(dir, 'checkout', '-q', '-b', 'work');
+  // A test edit: fast mode always sends it to a person.
+  write(dir, 'test/math.check.mjs', `${read(dir, 'test/math.check.mjs')}if (add(0, 0) !== 0) process.exit(1);\n`);
+  git(dir, 'add', '-A');
+  const fix = pocp(dir, ['fix', '--intent', 'one more test case']);
+  assert.equal(fix.code, 0, fix.stdout + fix.stderr);
+  assert.match(fix.stdout, /committable now; the test change needs your approval before you merge \(local mode\)/);
+  const commit = execGit(dir, ['commit', '-q', '-m', 'more tests']);
+  assert.equal(commit.status, 0, commit.stderr);
+  assert.match(commit.stderr + commit.stdout, /needs your approval before you merge \(local mode\)/);
+  for (const out of [fix.stdout, commit.stderr + commit.stdout]) assert.doesNotMatch(out, /\bCI\b|label/, out);
+
+  const range = 'main..HEAD';
+  const waiting = pocp(dir, ['verify', '--require-coverage', '--rerun', range]);
+  assert.equal(waiting.code, 1, waiting.stdout);
+  assert.match(waiting.stdout, /local mode: you approve here/);
+  const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
+  assert.equal(approved.code, 0, approved.stdout + approved.stderr);
+
+  // Skipping the gate: the recipe's --require-coverage catches the commit made without proof.
+  write(dir, 'src/math.js', `${read(dir, 'src/math.js')}export const zero = 0;\n`);
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '--no-verify', '-m', 'skipped the gate');
+  const caught = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
+  assert.equal(caught.code, 1, caught.stdout);
+  assert.match(caught.stdout, /not covered: src\/math\.js/);
 });

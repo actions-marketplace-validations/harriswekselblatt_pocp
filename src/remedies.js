@@ -132,7 +132,7 @@ export function gateRemedies(r) {
  */
 export function laterApproval(r, flag) {
   return r?.local_mode
-    ? `in local mode you approve it before merging, after reading it: pocp verify --rerun <base>..HEAD --${flag} <head sha>`
+    ? `in local mode you approve it before merging, after reading it: pocp verify --require-coverage --rerun <base>..HEAD --${flag} <head sha>`
     : 'CI will ask a maintainer to approve it';
 }
 

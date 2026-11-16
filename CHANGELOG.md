@@ -21,8 +21,9 @@
   to commit under `.github/`. In local mode `pocp doctor` skips the CI checks and states the
   trade: no independent re-run, no merge blocking, `--no-verify` skips the gate, and you trust
   your own machine. It also flags POCP workflows that disagree with the mode. Run
-  `pocp verify --rerun origin/main..HEAD` before merging to recover most of what CI checked; the
-  gate and verify then name you, through `--accept-*`, as the approver instead of a label.
+  `pocp verify --require-coverage --rerun origin/main..HEAD` before merging to recover most of
+  what CI checked, including commits made with `--no-verify`. The gate, `pocp fix` and verify
+  then name you, through `--accept-*`, as the approver instead of CI and a label.
 - **`pocp doctor` recognises Actions jobs GitHub doesn't start for billing reasons** ("recent
   account payments have failed or your spending limit needs to be increased"). It names the
   workflows that fail on every push and suggests `pocp ci off`, plus `gh workflow disable` for the

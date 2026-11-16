@@ -37,7 +37,7 @@ npx pocp verify origin/main..HEAD --require-coverage --rerun
 
 **Private repositories pay for CI in GitHub Actions minutes.** POCP's `verify` re-runs your tests, so each pull request costs about one extra test run, plus about a minute for each push or approval. On a free plan, check you have minutes to spare.
 
-**No CI (local mode).** `npx pocp init --local` instead of `--github`, or `npx pocp ci off` on a repository that already has the workflows (it disables them on GitHub; `pocp ci on` turns them back on). The git hooks are then the gate and CI costs nothing. In exchange nothing re-runs the checks on another machine, nothing blocks a merge, and `git commit --no-verify` skips the gate unless you run `npx pocp verify --rerun origin/main..HEAD` before you merge. `pocp doctor` tells you when Actions jobs aren't starting for billing reasons and suggests it. [docs/QUICKSTART.md](docs/QUICKSTART.md#no-ci-local-mode) has the details.
+**No CI (local mode).** `npx pocp init --local` instead of `--github`, or `npx pocp ci off` on a repository that already has the workflows (it disables them on GitHub; `pocp ci on` turns them back on). The git hooks are then the gate and CI costs nothing. In exchange nothing re-runs the checks on another machine, nothing blocks a merge, and `git commit --no-verify` skips the gate unless you run `npx pocp verify --require-coverage --rerun origin/main..HEAD` before you merge. `pocp doctor` tells you when Actions jobs aren't starting for billing reasons and suggests it. [docs/QUICKSTART.md](docs/QUICKSTART.md#no-ci-local-mode) has the details.
 
 [docs/QUICKSTART.md](docs/QUICKSTART.md) walks through all of this on a non-JavaScript project.
 

@@ -334,7 +334,7 @@ use a token without the *Administration* permission.
 **Local mode has neither.** With `ci.mode: "local"` (`pocp init --local`, `pocp ci off`) the git
 hooks on the author's machine are the only gate. Nothing re-runs the checks independently,
 nothing blocks a merge, and `git commit --no-verify` or a deleted hook skips the gate. Running
-`pocp verify --rerun <base>..HEAD` before merging recovers the re-run, the proof and coverage
+`pocp verify --require-coverage --rerun <base>..HEAD` before merging recovers the re-run, the proof and coverage
 checks and the test guard, all on the same machine, so it trusts that machine and whoever runs
 it. Approvals are the author's own `--accept-*` flags. Use local mode where the author is
 the only one merging and CI isn't available or worth its cost, not to keep out an agent that can
