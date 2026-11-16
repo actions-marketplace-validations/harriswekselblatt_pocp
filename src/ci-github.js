@@ -258,6 +258,16 @@ export const LOCAL_MODE_TRADE = 'the git hooks on this machine are the only gate
 export const localVerifyCommand = (branch) => `pocp verify --require-coverage --rerun origin/${branch}..HEAD`;
 const requiredContexts = (ex) => new Set([...(ex?.required_status_checks?.contexts || []), ...((ex?.required_status_checks?.checks || []).map((c) => c.context))]);
 
+/** The repository's workflows on GitHub ({ id, path, state }), or { error }. Shared by ci off / on and doctor. */
+export function listWorkflows(repo) {
+  const r = gh(['api', `repos/${repo}/actions/workflows?per_page=100`]);
+  let workflows = null;
+  try {
+    workflows = JSON.parse(r.stdout).workflows;
+  } catch { /* reported below */ }
+  return r.ok && Array.isArray(workflows) ? { workflows } : { error: `could not list the workflows: ${ghMessage(r)}` };
+}
+
 /**
  * pocp ci off / on: disable or enable POCP's workflows (the ones pocp init --github writes) on
  * GitHub. Server-side and exactly reversible: no workflow file changes, so there is nothing to
@@ -270,12 +280,8 @@ export function setPocpWorkflows(root, plan, { enable }) {
   const repoR = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']);
   if (!repoR.ok) return { ok: false, error: repoR.error || `gh repo view failed: ${repoR.stderr}` };
   const repo = repoR.stdout.trim();
-  const listed = gh(['api', `repos/${repo}/actions/workflows?per_page=100`]);
-  let workflows = null;
-  try {
-    workflows = JSON.parse(listed.stdout).workflows;
-  } catch { /* reported below */ }
-  if (!listed.ok || !Array.isArray(workflows)) return { ok: false, repo, error: `could not list the workflows: ${ghMessage(listed)}` };
+  const { workflows, error } = listWorkflows(repo);
+  if (error) return { ok: false, repo, error };
   const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
   const changed = [];
   const unchanged = [];

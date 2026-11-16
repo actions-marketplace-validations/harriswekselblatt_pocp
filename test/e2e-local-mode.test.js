@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { git, pocp, read, sampleRepo, tmpRepo, write, writeConfig } from './helpers.js';
+import { configWeakening, withDefaults } from '../src/store.js';
 
 const execGit = (cwd, args) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 const check = (r, id) => r.json.checks.filter((c) => c.id === id);
@@ -209,7 +210,8 @@ test('in local mode verify tells you how to approve what it waits on', () => {
   git(dir, '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'a workflow');
   const r = pocp(dir, ['verify', 'HEAD']);
   assert.equal(r.code, 1);
-  assert.match(r.stdout, /local mode: you approve here\. After reading the change, run this again with --accept-test-change <head sha> \(or --accept-policy-change/);
+  assert.match(r.stdout, /\[you, before merging \(local mode\)\] ci_config_changed: .*next: in local mode you approve it before merging, after reading it: pocp verify --require-coverage --rerun <base>\.\.HEAD --accept-policy-change <head sha>/);
+  assert.doesNotMatch(r.stdout, /label|pocp approve/);
 });
 
 test('local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught', () => {
@@ -232,7 +234,8 @@ test('local mode end to end: a test edit commits without CI, you approve it in v
   const range = 'main..HEAD';
   const waiting = pocp(dir, ['verify', '--require-coverage', '--rerun', range]);
   assert.equal(waiting.code, 1, waiting.stdout);
-  assert.match(waiting.stdout, /local mode: you approve here/);
+  assert.match(waiting.stdout, /\[you, before merging \(local mode\)\] test_change: .*--accept-test-change <head sha>/);
+  assert.doesNotMatch(waiting.stdout, /label|pocp approve/);
   const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
   assert.equal(approved.code, 0, approved.stdout + approved.stderr);
 
@@ -243,4 +246,23 @@ test('local mode end to end: a test edit commits without CI, you approve it in v
   const caught = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
   assert.equal(caught.code, 1, caught.stdout);
   assert.match(caught.stdout, /not covered: src\/math\.js/);
+});
+
+test('switching a CI repository to local mode is a policy loosening; switching back is not', () => {
+  const ci = withDefaults({ pocp: 1 });
+  const local = withDefaults({ pocp: 1, ci: { mode: 'local' } });
+  assert.deepEqual(configWeakening(ci, local), ['ci.mode switched to "local" (no CI)']);
+  assert.deepEqual(configWeakening(withDefaults({ pocp: 1, ci: { mode: 'github' } }), local), ['ci.mode switched to "local" (no CI)']);
+  assert.deepEqual(configWeakening(local, ci), []);
+  assert.deepEqual(configWeakening(local, local), []);
+
+  // End to end: a pull request that flips the mode needs the policy approval.
+  const dir = githubRepo();
+  writeConfig(dir, { ...config(dir), ci: { ...config(dir).ci, mode: 'local' } });
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'go local');
+  const r = pocp(dir, ['verify', 'HEAD', '--json']);
+  assert.equal(r.code, 1);
+  assert.match(JSON.stringify(r.json), /ci\.mode switched to \\"local\\"/);
+  assert.equal(pocp(dir, ['verify', 'HEAD', '--accept-policy-change']).code, 0);
 });

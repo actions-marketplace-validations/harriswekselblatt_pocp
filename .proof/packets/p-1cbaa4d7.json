@@ -1,0 +1,412 @@
+{
+  "pocp": 1,
+  "id": "p-1cbaa4d7",
+  "intent": "Local mode: approvals through #86's helpers; switching to local is a policy loosening; local approval trust stated",
+  "touches": [
+    "src/ci-github.js",
+    "src/cli/shared.js",
+    "src/commands/ci.js",
+    "src/commands/verify.js",
+    "src/doctor.js",
+    "src/engine/gate.js",
+    "src/remedies.js",
+    "src/store.js",
+    "test/e2e-local-mode.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/e2e-local-mode.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/e2e-local-mode.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-16T05:56:28.329Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T05:56:28.816Z",
+      "duration_ms": 2825,
+      "stdout_sha256": "cafaed4fac41aac70708e6780105022dd4b03047b7aeaf3af803a54d5bfcc383",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-d4480ffa",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T05:56:31.729Z",
+      "duration_ms": 46972,
+      "stdout_sha256": "f0b7b1583ef8a69833d3d59dab9098be95a743c2d47581460bab1b826029eaf1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-17bbcc5e",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-16T05:57:18.793Z",
+      "duration_ms": 603567,
+      "stdout_sha256": "21b7b421032343a5894c1cc9226f1105090b50c64c126b96724dc4fda26bf121",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-4e0f8a4c",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:14c9b904c845f86b172afa97db855d0038a8ee77ae54055f248ae4e9bef6c272",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T06:07:22.616Z",
+      "duration_ms": 390259,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (the old versions of test/e2e-local-mode.test.js, run alone, fail on the new code and pass on the base); failing: in local mode verify tells you how to approve what it waits on; local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught: behavior changed, so a person must approve it",
+        "base": "3fd00bf7d1c1a02c93e8078e4567fc90c47440d9",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/e2e-local-mode.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": false,
+              "exit": 1,
+              "scope": "changed-tests",
+              "duration_ms": 17505,
+              "failed_tests": [
+                "in local mode verify tells you how to approve what it waits on",
+                "local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught"
+              ]
+            }
+          ],
+          "changed_tests": {
+            "result": "escalated",
+            "files": [
+              "test/e2e-local-mode.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/e2e-local-mode.test.js"
+                ],
+                "outcome": "fail",
+                "exit": 1,
+                "duration_ms": 17505,
+                "tests": {
+                  "passed": 10,
+                  "failed": 2,
+                  "skipped": 0
+                },
+                "failed_tests": [
+                  "in local mode verify tells you how to approve what it waits on",
+                  "local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught"
+                ]
+              },
+              {
+                "side": "base",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/e2e-local-mode.test.js"
+                ],
+                "outcome": "pass",
+                "exit": 0,
+                "duration_ms": 13564,
+                "tests": {
+                  "passed": 12,
+                  "failed": 0,
+                  "skipped": 0
+                }
+              }
+            ]
+          },
+          "scope": "changed-tests"
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 357395
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [],
+          "scope": "changed-tests"
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 390259,
+        "timings": {
+          "setup_ms": 618,
+          "new_baseline": {
+            "wall_ms": 357727,
+            "run_ms": 357395,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 31912,
+            "run_ms": 31069,
+            "runs": 2
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 770,
+            "count": 2
+          },
+          "copy": {
+            "ms": 587,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 495,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T06:29:03.480Z",
+      "duration_ms": 382279,
+      "stdout_sha256": "685d569eb1e0c9783836258b06f1a71a15dae5b59671d9a2d66f2e9d91742326",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-04dc75bd",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-16T05:56:28.329Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-16T05:56:28.329Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-16T06:07:22.507Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646"
+    },
+    {
+      "at": "2026-11-16T06:13:53.087Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646"
+    },
+    {
+      "at": "2026-11-16T06:13:53.134Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646"
+    },
+    {
+      "at": "2026-11-16T06:13:53.470Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646"
+    },
+    {
+      "at": "2026-11-16T06:35:25.878Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:14c9b904c845f86b172afa97db855d0038a8ee77ae54055f248ae4e9bef6c272",
+      "subject": "sha256:a07d3c3fcd33e64479d622b6684056f2227f1bd213d28a2c7ff082fccc076646",
+      "by": "harriswekselblatt",
+      "at": "2026-11-16T06:13:53.470Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (the old versions of test/e2e-local-mode.test.js, run alone, fail on the new code and pass on the base); failing: in local mode verify tells you how to approve what it waits on; local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught: behavior changed, so a person must approve it"
+    }
+  ]
+}

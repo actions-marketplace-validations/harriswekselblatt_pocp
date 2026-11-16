@@ -420,6 +420,8 @@ export function configWeakening(base, head) {
   // A smaller sample catches less; a different seed lets a change pick a sample it passes.
   if (Number.isInteger(base.guard?.mutants) && !(head.guard?.mutants >= base.guard.mutants)) out.push(`guard.mutants lowered from ${base.guard.mutants}`);
   if (Number.isInteger(base.guard?.seed) && head.guard?.seed !== base.guard.seed) out.push(`guard.seed changed from ${base.guard.seed}`);
+  // Local mode turns off what doctor checks of CI and makes you the approver: a change can't choose it for itself.
+  if ((base.ci?.mode ?? 'github') !== 'local' && head.ci?.mode === 'local') out.push('ci.mode switched to "local" (no CI)');
   for (const gl of base.ci?.files || []) if (!(head.ci?.files || []).includes(gl)) out.push(`ci.files no longer protects "${gl}"`);
   for (const check of base.ci?.required_checks || []) {
     if (!(head.ci?.required_checks || []).includes(check)) out.push(`ci.required_checks no longer requires "${check}"`);

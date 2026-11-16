@@ -75,7 +75,7 @@ function switchCi(engine, enable, json) {
   const human = [
     r.changed.length ? `${done} on ${r.repo}: ${r.changed.join(', ')}` : `POCP's workflows on ${r.repo} were already ${done}${found.length ? '' : ' (none found)'}`,
     ...r.missing.map((f) => `  ${f}: not on GitHub's default branch yet, so nothing to switch`),
-    configChanged ? `${enable ? 'removed ci.mode "local" from' : 'set ci.mode "local" in'} .proof/config.json: commit it (pocp fix, then git commit)` : `.proof/config.json already says ${enable ? 'CI' : 'local mode'}`,
+    configChanged ? `${enable ? 'removed ci.mode "local" from' : 'set ci.mode "local" in'} .proof/config.json: commit it (pocp fix, then git commit)${enable ? '' : '. Verify counts the switch as a policy loosening: approve it with --accept-policy-change'}` : `.proof/config.json already says ${enable ? 'CI' : 'local mode'}`,
     ...(enable ? [] : [
       `local mode: ${LOCAL_MODE_TRADE}`,
       `  before merging: ${localVerifyCommand(plan.branch)}`,

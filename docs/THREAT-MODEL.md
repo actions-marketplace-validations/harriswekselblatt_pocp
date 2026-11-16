@@ -336,7 +336,11 @@ hooks on the author's machine are the only gate. Nothing re-runs the checks inde
 nothing blocks a merge, and `git commit --no-verify` or a deleted hook skips the gate. Running
 `pocp verify --require-coverage --rerun <base>..HEAD` before merging recovers the re-run, the proof and coverage
 checks and the test guard, all on the same machine, so it trusts that machine and whoever runs
-it. Approvals are the author's own `--accept-*` flags. Use local mode where the author is
+it. Approvals are `--accept-*` flags on that verify, so anything that can run commands on the
+machine, an agent included, can approve its own test change or policy loosening: a local
+approval is not a person-only gate. Switching a repository to local mode is itself a policy
+loosening (`ci.mode switched to "local"`), so a pull request in a CI repository can't choose it
+for itself without `pocp-approve-policy`. Use local mode where the author is
 the only one merging and CI isn't available or worth its cost, not to keep out an agent that can
 run git itself.
 

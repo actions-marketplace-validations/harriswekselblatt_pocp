@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as g from './git.js';
 import { matchGlob } from './glob.js';
 import { GITHUB_WORKFLOWS, hooksHealth, INSTALL_HINT, recordedBin } from './init.js';
-import { LOCAL_MODE_TRADE, localVerifyCommand, protectionGaps, requiredChecksPlan } from './ci-github.js';
+import { LOCAL_MODE_TRADE, listWorkflows, localVerifyCommand, protectionGaps, requiredChecksPlan } from './ci-github.js';
 import { validateRules } from './rules.js';
 import { policyKeyWarnings } from './schema.js';
 import { validateConfig } from './store.js';
@@ -238,16 +238,16 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
     } else {
       const repo = repoInfo.json.nameWithOwner;
       // POCP's workflows on GitHub (what pocp ci off / on switch), and whether Actions starts at all.
-      const listed = gh(root, ['api', `repos/${repo}/actions/workflows?per_page=100`]);
-      if (Array.isArray(listed.json?.workflows)) {
+      const listed = listWorkflows(repo);
+      if (listed.workflows) {
         const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
-        const mine = listed.json.workflows.filter((w) => ours.includes(w.path));
+        const mine = listed.workflows.filter((w) => ours.includes(w.path));
         const active = mine.filter((w) => w.state === 'active').map((w) => w.path);
         const disabled = mine.filter((w) => w.state !== 'active').map((w) => w.path);
         if (local && active.length) add({ id: 'ci-mode', status: 'warning', what: `local mode, but POCP's workflows still run on ${repo}: ${active.join(', ')}`, why: 'each push spends Actions minutes on checks nothing requires', fix: 'pocp ci off' });
         else if (local && disabled.length) add({ id: 'ci-mode', status: 'ok', what: `POCP's workflows are off on ${repo}, as local mode expects` });
         else if (!local && disabled.length) add({ id: 'ci-mode', status: 'problem', what: `POCP's workflows are disabled on ${repo}: ${disabled.join(', ')}`, why: 'nothing checks pull requests, and .proof/config.json does not say local mode', fix: 'pocp ci on; or, for no CI, pocp ci off and commit .proof/config.json' });
-        const blocked = actionsBlocked(root, repo, listed.json.workflows);
+        const blocked = actionsBlocked(root, repo, listed.workflows);
         if (blocked) {
           const others = blocked.active.filter((f) => !ours.includes(f));
           const steps = [...(blocked.active.some((f) => ours.includes(f)) ? ['pocp ci off (local mode)'] : []), ...others.map((f) => `gh workflow disable ${path.basename(f)}`)];

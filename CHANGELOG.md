@@ -57,7 +57,10 @@
   your own machine. It also flags POCP workflows that disagree with the mode. Run
   `pocp verify --require-coverage --rerun origin/main..HEAD` before merging to recover most of
   what CI checked, including commits made with `--no-verify`. The gate, `pocp fix` and verify
-  then name you, through `--accept-*`, as the approver instead of CI and a label.
+  then name you, through `--accept-*`, as the approver instead of CI and a label. That approval
+  is a flag anything on your machine can pass, an agent included; the docs say so next to it.
+  Switching to local mode (`ci.mode` "github" → "local") is a policy loosening that needs
+  `pocp-approve-policy` in CI.
 - **`pocp doctor` recognises Actions jobs GitHub doesn't start for billing reasons** ("recent
   account payments have failed or your spending limit needs to be increased"). It names the
   workflows that fail on every push and suggests `pocp ci off`, plus `gh workflow disable` for the

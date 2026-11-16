@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { COOPERATIVE } from '../runner.js';
-import { DONT_REWRITE, WHO, verifyRemedy } from '../remedies.js';
+import { DONT_REWRITE, verifyRemedy, whoOf } from '../remedies.js';
 import { EXIT } from '../errors.js';
 import { VERIFY_EXIT } from '../approvals.js';
 import { createRevCheckout } from '../workspace.js';
@@ -70,20 +70,19 @@ export async function run({ engine, flags, isolated, json, rest }) {
   // What to do, who acts first: { by, code, why, next } per blocking finding code.
   const nextSteps = (rows2) => {
     const seen = new Map();
-    const add = (code, x) => seen.set(code, { by: x.by, code, why: x.why, next: x.next });
-    for (const c of rows2) for (const f of (c.findings || []).filter((x) => x.blocking)) if (!seen.has(f.code)) add(f.code, verifyRemedy(f.code, f.detail, f));
+    const local = engine.config().ci?.mode === 'local';
+    const add = (code, x) => seen.set(code, { by: x.by, ...(x.who ? { who: x.who } : {}), code, why: x.why, next: x.next });
+    for (const c of rows2) for (const f of (c.findings || []).filter((x) => x.blocking)) if (!seen.has(f.code)) add(f.code, verifyRemedy(f.code, f.detail, f, { local }));
     // A re-run that ran and failed outranks one that only timed out, for what to do next.
     const reruns = (result?.rerun_failures || []).filter((x) => x.blocking !== false);
     const worst = reruns.find((x) => !x.unfinished) || reruns[0];
-    if (worst && !seen.has('rerun_failed')) add('rerun_failed', verifyRemedy('rerun_failed', worst.detail || worst.problem, worst));
+    if (worst && !seen.has('rerun_failed')) add('rerun_failed', verifyRemedy('rerun_failed', worst.detail || worst.problem, worst, { local }));
     return [...seen.values()];
   };
   const stepLines = (list2) => {
     if (!list2.length) return [];
-    const out2 = ['  what to do:', ...list2.map((x) => `    [${WHO[x.by]}] ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}`)];
+    const out2 = ['  what to do:', ...list2.map((x) => `    [${whoOf(x)}] ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}`)];
     if (list2.some((x) => x.by === 'person')) out2.push(`    ${DONT_REWRITE}`);
-    // Local mode: no labels and no CI, so the person is you, through verify's own approvals.
-    if (list2.some((x) => x.by === 'person') && engine.config().ci?.mode === 'local') out2.push('    local mode: you approve here. After reading the change, run this again with --accept-test-change <head sha> (or --accept-policy-change / --accept-inconclusive / --accept-uncovered, as named above)');
     return out2;
   };
   let steps = [];
