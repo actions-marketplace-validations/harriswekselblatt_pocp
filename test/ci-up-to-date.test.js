@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GITHUB_ACTIONS_APP_ID, protectionGaps, protectionPayload } from '../src/ci-github.js';
+import { GITHUB_ACTIONS_APP_ID, protectionGaps, protectionPayload, reporterIdentityNote } from '../src/ci-github.js';
 import { configWeakening, validateConfig, withDefaults } from '../src/store.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,12 +20,18 @@ test('a plan that requires up-to-date branches reports protection without strict
 
 // A required pocp check any app can post (or GitHub Actions can) is passed by a branch that
 // edits a workflow to post its own "pocp: success" (docs/STATUS.md).
-test('a required pocp check not pinned to the reporter\'s app is a gap', () => {
+// Without ci.reporter_app_id the App is optional setup --apply can't do: a note, never a gap, so
+// --check and doctor don't loop on "fix: pocp ci required --apply" (walkthrough C1).
+test('a required pocp check not pinned to the reporter\'s app: a gap with ci.reporter_app_id, a note without', () => {
   const gap = (p, pl = plan()) => protectionGaps(p, pl).filter((x) => /not pinned/.test(x));
-  assert.equal(gap(protection(true, null)).length, 1, 'any source');
-  assert.equal(gap(protection(true, -1)).length, 1, 'explicitly any app');
-  assert.equal(gap(protection(true, GITHUB_ACTIONS_APP_ID)).length, 1, 'GitHub Actions');
-  assert.equal(gap({ ...protection(true), required_status_checks: { strict: true, contexts: ['pocp'] } }).length, 1, 'contexts only: no app known');
+  for (const [p, what] of [[protection(true, null), 'any source'], [protection(true, -1), 'explicitly any app'], [protection(true, GITHUB_ACTIONS_APP_ID), 'GitHub Actions'], [{ ...protection(true), required_status_checks: { strict: true, contexts: ['pocp'] } }, 'contexts only']]) {
+    assert.deepEqual(gap(p), [], what);
+    assert.match(reporterIdentityNote(p, plan()), /ci\.reporter_app_id is not set.*STATUS\.md/, what);
+  }
+  assert.deepEqual(protectionGaps(protection(true, null), plan()), [], 'nothing else to fix: --check passes');
+  assert.equal(reporterIdentityNote(protection(true, 42), plan()), null, 'another app');
+  assert.equal(reporterIdentityNote(protection(true, null), plan({ reporter_app_id: 7 })), null, 'configured: a gap instead');
+  assert.equal(gap(protection(true, null), plan({ reporter_app_id: 7 })).length, 1);
   assert.deepEqual(gap(protection(true, 42)), [], 'another app, with no ci.reporter_app_id');
   assert.match(gap(protection(true, 42), plan({ reporter_app_id: 7 }))[0], /ci\.reporter_app_id 7/);
   assert.deepEqual(gap(protection(true, 7), plan({ reporter_app_id: 7 })), []);

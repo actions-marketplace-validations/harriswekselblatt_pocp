@@ -104,7 +104,9 @@ export function writeGithubSummary(result, rows, commitProblems, ms, { annotatio
   if (!file) return;
   const esc = (s) => String(s).replace(/\|/g, '\\|');
   const lines = [
-    `### POCP ${result.ok ? '✅ verified' : '❌ not verified'}`,
+    // A wait for a label is said in the heading: before the reporter is on the default branch
+    // (the adoption pull request), this summary is the only place that names it.
+    `### POCP ${result.ok ? '✅ verified' : result.approval?.only ? `⏳ waiting for a maintainer's approval: add ${result.approval.needs.map((n) => `\`${n.label}\``).join(' and ')}` : '❌ not verified'}`,
     '',
     `${rows.length} commit(s) · ${ms}ms`,
     '',

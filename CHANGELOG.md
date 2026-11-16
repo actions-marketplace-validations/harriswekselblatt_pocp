@@ -75,8 +75,38 @@ App needs it; without the App it posts as before).
   request's older commits counted as removing it. In a range, a commit now answers only for
   loosenings its parent didn't already have. The head still answers for everything it loosens
   against the base, and a loosening made in one commit and reverted later is still flagged.
+- **An approval label no longer counts for a head brought back by a force-push.** The reporter
+  counted a label applied after the head's first run. If the author force-pushed another head,
+  a maintainer labelled that one, and the author force-pushed back, the label counted for code
+  nobody approved. `pocp-labels.yml` removed it on that push, but nothing else did. Now a label
+  counts only if it was also applied after the pull request's latest force-push, and the same
+  holds for "Update branch" carry-over.
+- **Fixes from the new-user walkthrough on GitHub and with no remote:**
+  - In a repository with no remote, `init --local`, `ci off` and `doctor` printed
+    `pocp verify … origin/main..HEAD`, which fails there. They now print a base that exists:
+    `origin/<branch>` when there is an origin, else the local default branch.
+  - Without `--base`, `doctor` judged an adoption branch against itself when `origin/HEAD` wasn't
+    set (a repository pushed rather than cloned). It now asks GitHub for the default branch, then
+    tries `main` and `master`.
+  - With no `ci.reporter_app_id`, `ci required --check` and `doctor` reported an unpinned `pocp`
+    check as a gap to fix with `ci required --apply`, which can't fix it. It is now a note that
+    points to the optional App setup in docs/STATUS.md.
+  - When verify waits only for a label, the job summary's heading names it. Before the
+    adoption pull request merges, this summary is the only place that says so.
+  - After approving, `pocp approve` says a new push needs a new approval (it said the label
+    stays on through later pushes).
+  - The `pocp` status for an approval label added before the head commit says so, instead of
+    blaming write access.
 
 ### Known limit
+
+- **GitHub's `pull_request_target` block.** From December 2, 2026, GitHub blocks
+  `pull_request_target` workflows by default in public repositories with no Actions event
+  policy. `pocp-labels.yml` runs on it, so approval labels then stay on after a push. With the
+  `pocp` status live, the reporter still refuses them, and this is only untidy. With `verify` as
+  the required check, allow `pull_request_target` in the repository's Actions settings, or turn
+  the status live. `pocp doctor` reports the block, and docs/STATUS.md explains it. 1.3.1
+  removes the dependence on `pull_request_target`.
 
 - **Deep mode doesn't defend against deception planned across pull requests.** An agent can
   first weaken an assertion and add a test that "catches" every planted bug by reading the

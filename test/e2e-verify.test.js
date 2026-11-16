@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { git, packetId, pocp, read, sampleRepo, sh, write, writeConfig, writeRules } from './helpers.js';
 import { BREAK_ADD, TWEAK_ADD, NO_SSH_KEYGEN, commit, makeKey } from './fixtures.js';
 
@@ -195,6 +196,25 @@ test('CI results bound to the commit replace re-runs; ranges re-run once at the 
   assert.equal(pocp(dir, ['ci-run', '--results', results, '--', 'sh', '-c', 'exit 3']).code, 3);
   write(dir, 'README.md', 'dirty\n');
   assert.match(pocp(dir, ['ci-run', '--results', results, '--', 'true']).stderr, /clean checkout/);
+});
+
+// Walkthrough C4: on the adoption pull request only verify's summary shows, so a wait for a
+// label must say which label, at the top.
+test('a job summary that waits only for a label names it in the heading', async () => {
+  const { writeGithubSummary } = await import('../src/cli/shared.js');
+  const summary = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-summary-')), 'summary.md');
+  const env = { GITHUB_STEP_SUMMARY: process.env.GITHUB_STEP_SUMMARY, GITHUB_ACTIONS: process.env.GITHUB_ACTIONS };
+  process.env.GITHUB_STEP_SUMMARY = summary;
+  delete process.env.GITHUB_ACTIONS;
+  try {
+    writeGithubSummary({ ok: false, approval: { only: true, needs: [{ label: 'pocp-approve-policy' }] } }, [], () => [], 1);
+    writeGithubSummary({ ok: false, approval: { only: false, needs: [{ label: 'pocp-approve-tests' }] } }, [], () => [], 1);
+  } finally {
+    for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  }
+  const md = fs.readFileSync(summary, 'utf8');
+  assert.match(md, /### POCP ⏳ waiting for a maintainer's approval: add `pocp-approve-policy`/);
+  assert.match(md, /### POCP ❌ not verified/, 'a failure that also needs a label is still a failure');
 });
 
 test('verify writes a GitHub job summary and error annotations', () => {

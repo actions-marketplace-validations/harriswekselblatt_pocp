@@ -76,6 +76,29 @@ test('the first adoption PR should carry only .proof/ and CI files', () => {
   assert.match(c.fix, /only \.proof\/ and CI files/);
 });
 
+// Walkthrough C5: a repository pushed to GitHub (not cloned) has no origin/HEAD. Doctor without
+// --base took the branch checked out for the base and skipped the adoption check. It asks GitHub.
+test('without --base or origin/HEAD, doctor judges the adoption branch against GitHub\'s default branch', () => {
+  const dir = tmpRepo();
+  write(dir, 'src/a.js', 'export const a = 1;\n');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'before POCP');
+  git(dir, 'remote', 'add', 'origin', 'https://github.com/me/site.git');
+  git(dir, 'update-ref', 'refs/remotes/origin/trunk', 'HEAD');
+  git(dir, 'checkout', '-q', '-b', 'adopt-pocp');
+  pocp(dir, ['init', '--hooks']);
+  write(dir, '.github/workflows/pocp.yml', WORKFLOW);
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'adopt');
+  const gh = fakeGh(dir, { 'repo view': { body: { nameWithOwner: 'me/site', isPrivate: false, defaultBranchRef: { name: 'trunk' } } } });
+  const scope = check(pocp(dir, ['doctor', '--json'], { env: { POCP_GH: gh } }), 'adoption-scope')[0];
+  assert.equal(scope.status, 'ok', JSON.stringify(scope));
+  assert.match(scope.what, /adoption branch carries only/);
+  // Offline it can't ask; it falls back to main, master or the branch checked out, never guesses origin/adopt-pocp.
+  const offline = check(pocp(dir, ['doctor', '--offline', '--json']), 'adoption-scope')[0];
+  assert.doesNotMatch(JSON.stringify(offline), /adopt-pocp/);
+});
+
 test('doctor checks Action access, labels and branch protection on GitHub (read-only)', () => {
   const dir = sampleRepo({ hooks: true });
   write(dir, '.github/workflows/pocp.yml', WORKFLOW);

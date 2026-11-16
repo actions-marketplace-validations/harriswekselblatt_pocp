@@ -30,10 +30,29 @@ function ghMessage(r) {
   }
 }
 
+const hasRef = (root, ref) => git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { allowFail: true }) != null;
+const hasOrigin = (root) => git(root, ['remote', 'get-url', 'origin'], { allowFail: true }) != null;
+
+/**
+ * The repository's default branch: origin's HEAD when known, else main or master if one exists
+ * (on origin first, then locally), else the branch checked out, else "main". Checking main and
+ * master before HEAD keeps a feature branch from being taken for the base when there is no remote.
+ */
 export function defaultBranch(root) {
   const ref = git(root, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'], { allowFail: true });
   if (ref) return ref.replace(/^origin\//, '');
+  for (const name of ['main', 'master']) if (hasRef(root, `refs/remotes/origin/${name}`) || hasRef(root, `refs/heads/${name}`)) return name;
   return git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFail: true }) || 'main';
+}
+
+/**
+ * The base to verify a branch against, as a rev that exists: origin/<branch> when the repository
+ * has an origin remote (fetched or not), else the local <branch>. The one place init, ci off and
+ * doctor get the base they print, so a repository with no remote is never told origin/main.
+ */
+export function verifyBase(root, branch = defaultBranch(root)) {
+  if (hasRef(root, `refs/remotes/origin/${branch}`) || hasOrigin(root)) return `origin/${branch}`;
+  return branch;
 }
 
 /** What the repo's `ci` config asks for. */
@@ -150,12 +169,29 @@ export function protectionGaps(existing, plan) {
   if (plan.require_up_to_date && !ex?.strict) gaps.push('pull requests can merge without being up to date with the base, so the merged code is not the code that was verified');
   // GitHub matches a required check by name and by the app that posts it. Unpinned, or pinned to
   // GitHub Actions, a branch that edits a workflow can post its own "pocp: success".
-  if (plan.required_checks.includes(STATUS_CHECK) && have.has(STATUS_CHECK)) {
+  // With ci.reporter_app_id set, pocp ci required --apply pins it, so a mismatch is a gap. Without
+  // it, the reporter's own App is optional setup that --apply can't do: reporterIdentityNote.
+  if (plan.reporter_app_id && plan.required_checks.includes(STATUS_CHECK) && have.has(STATUS_CHECK)) {
     const app = (ex?.checks || []).find((c) => c.context === STATUS_CHECK)?.app_id;
-    const pinned = plan.reporter_app_id ? app === plan.reporter_app_id : app > 0 && app !== GITHUB_ACTIONS_APP_ID;
-    if (!pinned) gaps.push(`the required "${STATUS_CHECK}" check is not pinned to ${plan.reporter_app_id ? `the reporter's app (ci.reporter_app_id ${plan.reporter_app_id})` : "an app of the reporter's own (set ci.reporter_app_id)"}, so a workflow a branch edits can post its own "${STATUS_CHECK}: success" (docs/STATUS.md)`);
+    if (app !== plan.reporter_app_id) gaps.push(`the required "${STATUS_CHECK}" check is not pinned to the reporter's app (ci.reporter_app_id ${plan.reporter_app_id}), so a workflow a branch edits can post its own "${STATUS_CHECK}: success" (docs/STATUS.md)`);
   }
   return gaps;
+}
+
+/**
+ * The optional hardening, said as a note and never as a gap: with no ci.reporter_app_id, a
+ * required "pocp" status posted by GitHub Actions (or by any app) can be posted by a workflow a
+ * branch edits. Only the reporter's own App closes that, and --apply can't create one. Null when
+ * there is nothing to say.
+ */
+export function reporterIdentityNote(existing, plan) {
+  if (plan.reporter_app_id || !plan.required_checks.includes(STATUS_CHECK)) return null;
+  const ex = existing?.required_status_checks;
+  const have = new Set([...(ex?.contexts || []), ...((ex?.checks || []).map((c) => c.context))]);
+  if (!have.has(STATUS_CHECK)) return null;
+  const app = (ex?.checks || []).find((c) => c.context === STATUS_CHECK)?.app_id;
+  if (app > 0 && app !== GITHUB_ACTIONS_APP_ID) return null;
+  return `the "${STATUS_CHECK}" status is posted as GitHub Actions (ci.reporter_app_id is not set), so a workflow on a branch pushed to this repository can post its own "${STATUS_CHECK}: success". Optional: give the reporter its own GitHub App (docs/STATUS.md, "Give the reporter its own identity")`;
 }
 
 /** Read-only: does GitHub enforce the plan on the branch? Never changes anything. */
@@ -166,7 +202,8 @@ export function checkGithubProtection(root, plan) {
   const read = readGithubProtection(plan);
   if (read.error) return { ok: false, error: read.error, repo: read.repo, branch: plan.branch };
   const gaps = protectionGaps(read.existing, plan);
-  return { ok: gaps.length === 0, repo: read.repo, branch: plan.branch, protected: Boolean(read.existing), gaps };
+  const note = reporterIdentityNote(read.existing, plan);
+  return { ok: gaps.length === 0, repo: read.repo, branch: plan.branch, protected: Boolean(read.existing), gaps, notes: note ? [note] : [] };
 }
 
 /** Apply the plan to GitHub through the gh CLI, preserving existing protection. */
@@ -255,7 +292,7 @@ export function goLive(root, plan, { protect = false } = {}) {
 // Local mode (ci.mode "local"): what it gives up, said wherever it is chosen (init --local,
 // ci off, doctor), and the command that recovers most of CI before a merge.
 export const LOCAL_MODE_TRADE = 'the git hooks on this machine are the only gate: nothing re-runs the checks on another machine, nothing blocks a merge, and "git commit --no-verify" skips the gate unless you verify before merging. You trust your own machine.';
-export const localVerifyCommand = (branch) => `pocp verify --require-coverage --rerun origin/${branch}..HEAD`;
+export const localVerifyCommand = (root, branch) => `pocp verify --require-coverage --rerun ${verifyBase(root, branch)}..HEAD`;
 const requiredContexts = (ex) => new Set([...(ex?.required_status_checks?.contexts || []), ...((ex?.required_status_checks?.checks || []).map((c) => c.context))]);
 
 /** The repository's workflows on GitHub ({ id, path, state }), or { error }. Shared by ci off / on and doctor. */

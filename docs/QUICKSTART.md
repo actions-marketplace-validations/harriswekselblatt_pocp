@@ -62,20 +62,23 @@ file as `init` wrote it:
 Any command works as a check: `cargo test`, `pytest -q`, `go test ./...`, `make check`,
 `./gradlew test`. Use `cwd` when it must run in a subfolder.
 
+With `--github`, the adoption goes in through a pull request (step 1 of "On GitHub" below), so
+first make a branch for it: `git checkout -b adopt-pocp`. In local mode, commit on `main`.
+
 ```bash
 pocp rules check
 git add -A && git commit -m "Adopt POCP"
 ```
 
-If the hook blocks the adoption commit (with `--github` it adds CI files, which need a
-packet), run `pocp fix --intent "Adopt POCP"` and commit again.
+If the hook blocks the adoption commit (with `--github` it adds CI files, which need a packet),
+run `pocp fix --intent "Adopt POCP"` and commit again.
 
 ## 4. Make a change
 
 Change `bin/greet` to default the name: `echo "Hello, ${1:-world}"`.
 
 ```bash
-git checkout -b default-name
+git checkout -b default-name      # on GitHub: from main, once the adoption pull request has merged and you've pulled it
 git add bin/greet
 git commit -m "Default the name"          # blocked: says what is wrong, why, and what to run
 pocp fix --intent "Default the name"      # opens the packet, runs "sh run.sh" in tests/ on the staged code
@@ -158,13 +161,19 @@ yellow, with no red ✗ and no failure email (`--no-live` leaves it off). Withou
 do neither and says so: `pocp doctor` then lists the labels to create, and step 3 below turns
 the status on.
 
-1. **Open the adoption pull request** with `.proof/` and the workflows. It changes CI files, so its verify waits for `pocp-approve-policy`: read the diff and add the label. Nothing is required yet, and the reporter only runs once it is on the default branch, so no other label is needed. Keep this pull request to `.proof/` and CI files (`pocp doctor` checks): until it merges, CI judges with the base branch's rules.
+1. **Push `adopt-pocp` and open the adoption pull request** with `.proof/` and the workflows. It changes CI files, so its verify waits for `pocp-approve-policy`: read the diff and add the label (`pocp approve owner/repo#<number>`). The reporter only runs once it is on the default branch, so this pull request shows no yellow `pocp` status: its `verify` check is green, and its job summary's heading names the label it waits for. Nothing is required yet, and no other label is needed. Keep this pull request to `.proof/` and CI files (`pocp doctor` checks): until it merges, CI judges with the base branch's rules.
 2. **A maintainer approves a change by adding its label:** `pocp-approve-tests`, `pocp-approve-policy`, `pocp-approve-inconclusive`, `pocp-approve-coverage` or `pocp-approve-workflow`. [STATUS.md](STATUS.md) says what each covers.
 3. **Once the adoption pull request merges, require the status:** `pocp ci required --apply`. It sets branch protection from `.proof/config.json`: the `pocp` status (in place of the `verify` job, if that was required), pull requests only, admins included, and branches up to date before merging (so the merged code is the code that was verified; when `main` moves, a pull request needs "Update branch" before it merges). Each can be turned off in `ci`. It also turns the `pocp` status on if `init` couldn't. On a free plan's private repository GitHub has no branch protection: the status is then a signal only, and the command says so. Merge queues aren't supported yet ([REFERENCE.md](REFERENCE.md)).
 
    Do the two together: once the status is on, `verify` passes on a wait, so requiring `verify` alone would let an unapproved pull request merge. To roll back, unset `POCP_STATUS_LIVE` and require `verify` again.
 
 If your repository has a second maintainer, keep the default `"ci": { "workflow_approver": "independent" }`: then the author of a CI change can't approve it themselves. See [STATUS.md](STATUS.md) for that, and for the limits of the `pocp` status.
+
+**Public repositories, from December 2, 2026:** GitHub blocks `pull_request_target` workflows by
+default, and then approval labels are no longer removed on push. With the `pocp` status live
+this is only untidy; without it, allow `pull_request_target` in the repository's Actions settings
+([STATUS.md](STATUS.md#githubs-pull_request_target-block-public-repositories-from-december-2-2026)).
+`pocp doctor` says when it is blocked.
 
 **If agents push branches with your token,** a workflow on such a branch can post its own
 `pocp: success`. Give the reporter its own GitHub App and require `pocp` from it:

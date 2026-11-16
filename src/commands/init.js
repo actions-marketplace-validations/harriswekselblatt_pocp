@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { EXIT } from '../errors.js';
-import { LIVE_VARIABLE, LOCAL_MODE_TRADE, STATUS_CHECK, createApprovalLabels, defaultBranch, goLive, localVerifyCommand, requiredChecksPlan } from '../ci-github.js';
+import { LIVE_VARIABLE, LOCAL_MODE_TRADE, STATUS_CHECK, createApprovalLabels, goLive, localVerifyCommand, requiredChecksPlan } from '../ci-github.js';
 import { UsageError } from '../cli-args.js';
 import { APPROVAL_LABELS } from '../doctor.js';
 import { formatLayout, hooksHealth, initProofDir, installHooks, writeGithubWorkflows } from '../init.js';
@@ -39,7 +39,7 @@ export async function run({ flags, json }) {
     ...(hooks?.warnings || []).map((w) => `warning: ${w}`),
     ...(flags.local ? [
       `local mode (ci.mode "local"): ${LOCAL_MODE_TRADE}`,
-      `  before merging: ${localVerifyCommand(defaultBranch(process.cwd()))}   (pocp init --github adds CI later)`,
+      `  before merging: ${localVerifyCommand(process.cwd())}   (pocp init --github adds CI later)`,
     ] : !github && r.config_created ? ['CI: not set up. Choose: pocp init --github (CI re-checks every pull request) or pocp init --local (no CI: the hooks are the gate)'] : []),
     ...(github ? [
       github.written.length ? `wrote ${github.written.join(', ')} (POCP actions pinned to ${github.ref})` : 'GitHub workflows already present',
