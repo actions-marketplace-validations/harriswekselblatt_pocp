@@ -1,6 +1,6 @@
 import * as g from './git.js';
 import * as P from './packets.js';
-import { DONT_REWRITE, UNFINISHED_PROOF } from './remedies.js';
+import { dontRewrite, UNFINISHED_PROOF } from './remedies.js';
 import { normalizeObligation, obligationDigest } from './obligations.js';
 
 const MAX_ROUNDS = 4;
@@ -181,7 +181,7 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
     actions,
     needs_agent: dedupe(needsAgent),
     needs_person: dedupe(needsPerson),
-    advice: needsPerson.length ? DONT_REWRITE : null,
+    advice: needsPerson.length ? dontRewrite(needsPerson) : null,
     gate,
   };
 }

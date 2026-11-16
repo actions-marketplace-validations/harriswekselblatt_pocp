@@ -230,12 +230,18 @@ test('local mode end to end: a test edit commits without CI, you approve it in v
   assert.equal(commit.status, 0, commit.stderr);
   assert.match(commit.stderr + commit.stdout, /needs your approval before you merge \(local mode\)/);
   for (const out of [fix.stdout, commit.stderr + commit.stdout]) assert.doesNotMatch(out, /\bCI\b|label/, out);
+  // Nothing is pushed for approval and no maintainer approves in local mode: the advice says so.
+  for (const out of [fix.stdout, commit.stderr + commit.stdout]) {
+    assert.match(out, /keep the commit as it is and approve it before merging/, out);
+    assert.doesNotMatch(out, /push the commit|only a maintainer/, out);
+  }
 
   const range = 'main..HEAD';
   const waiting = pocp(dir, ['verify', '--require-coverage', '--rerun', range]);
   assert.equal(waiting.code, 1, waiting.stdout);
   assert.match(waiting.stdout, /\[you, before merging \(local mode\)\] test_change: .*--accept-test-change <head sha>/);
-  assert.doesNotMatch(waiting.stdout, /label|pocp approve/);
+  assert.doesNotMatch(waiting.stdout, /label|pocp approve|push the commit/);
+  assert.match(waiting.stdout, /keep the commit as it is and approve it before merging/);
   const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
   assert.equal(approved.code, 0, approved.stdout + approved.stderr);
 
