@@ -1,0 +1,671 @@
+{
+  "pocp": 1,
+  "id": "p-c7a818c3",
+  "intent": "Deep mode: before a pass, run the new tests on a copy of the new code with one blank line added to each file a mutant was planted in; a failure there is inconclusive. Closes the source-hashing test attack and cuts the flaky-test attack (tamper bench pocp-deep re-run)",
+  "touches": [
+    "src/guard-check.js",
+    "test/e2e-guard-control.test.js",
+    "test/e2e-guard-equivalence.test.js",
+    "test/e2e-speed.test.js",
+    "test/golden/test-added.json",
+    "test/golden/test-edit-fast.json",
+    "test/golden/test-edit-old-tests-fail-deep.json"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/e2e-guard-control.test.js",
+        "test/e2e-guard-equivalence.test.js",
+        "test/e2e-speed.test.js",
+        "test/golden/test-added.json",
+        "test/golden/test-edit-fast.json",
+        "test/golden/test-edit-old-tests-fail-deep.json"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/e2e-guard-control.test.js, test/e2e-guard-equivalence.test.js, test/e2e-speed.test.js, test/golden/test-added.json, test/golden/test-edit-fast.json, test/golden/test-edit-old-tests-fail-deep.json): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-16T01:12:55.352Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T01:12:56.155Z",
+      "duration_ms": 3930,
+      "stdout_sha256": "7f0f00815d5c232430246374474843fca8592c91b8652b8ab0d7b2bd51b356b6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9842494f",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T01:13:00.215Z",
+      "duration_ms": 71793,
+      "stdout_sha256": "f83e500b41ee449038eac8c36f37b06f63d2c70227037843cfd5af6af651deb9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-117412b0",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-16T01:14:12.159Z",
+      "duration_ms": 499530,
+      "stdout_sha256": "bb9c69165b359607736637bedf82e22d549864d187244839453efe312c446918",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-398d52f8",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:14d5e84c8c1f026224f89b07e56ee6d3ea8d5bba1fddd09866855e78cea6264c",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T01:22:31.835Z",
+      "duration_ms": 725351,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"npm test --silent\" exit 1), so there is nothing to compare",
+        "base": "e184ed88a0379f334120a6a0f479c73215d20258",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/e2e-guard-control.test.js",
+            "test/e2e-guard-equivalence.test.js",
+            "test/golden/test-added.json",
+            "test/golden/test-edit-fast.json",
+            "test/golden/test-edit-old-tests-fail-deep.json"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2586
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 42266
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 342133,
+              "failed_tests": [
+                "guard results identical before and after the speedups: kept",
+                "guard results identical before and after the speedups: dropped",
+                "the per-phase timings are the only addition, and they account for every run, copy and snapshot",
+                "the guard reuses the packet's own passing run as its new-code baseline",
+                "golden: test-edit-old-tests-fail-deep",
+                "golden: test-edit-fast",
+                "golden: test-added"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/e2e-guard-control.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/e2e-guard-control.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 336675,
+              "failed_tests": [
+                "the guard reuses the packet's own passing run as its new-code baseline"
+              ]
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 725351,
+        "timings": {
+          "setup_ms": 741,
+          "new_baseline": {
+            "wall_ms": 336897,
+            "run_ms": 336675,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 387713,
+            "run_ms": 386985,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "control": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 380,
+            "count": 1
+          },
+          "copy": {
+            "ms": 826,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 473,
+            "count": 6
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T01:35:51.889Z",
+      "duration_ms": 2777,
+      "stdout_sha256": "05b5279b816d675d6112e2cdd92b44ffde1883c53e25422d64a65881645f155c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-8cb12d53",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T01:35:54.769Z",
+      "duration_ms": 44895,
+      "stdout_sha256": "2dcfe606f396ad9f6aba18004ca0865c7d0ac091f1f1fe04c931455edcd1ef48",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-dc5d1baa",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T01:36:39.747Z",
+      "duration_ms": 394376,
+      "stdout_sha256": "7c5cacb9462072a4410d82e70fafa708fcc802c29c902cdaeb72e915d5ed41ff",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-7187d7f2",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:5e81ff7796f075e30cd30f55ffeda22cdd96119ef7c1e1e982813f99cfda66dc",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T01:43:14.267Z",
+      "duration_ms": 659148,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: guard results identical before and after the speedups: kept; guard results identical before and after the speedups: dropped; the per-phase timings are the only addition, and they account for every run, copy and snapshot; the guard reuses the packet's own passing run as its new-code baseline; golden: test-edit-old-tests-fail-deep; golden: test-edit-fast; golden: test-added: behavior changed, so a person must approve it",
+        "base": "e184ed88a0379f334120a6a0f479c73215d20258",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/e2e-guard-control.test.js",
+            "test/e2e-guard-equivalence.test.js",
+            "test/e2e-speed.test.js",
+            "test/golden/test-added.json",
+            "test/golden/test-edit-fast.json",
+            "test/golden/test-edit-old-tests-fail-deep.json"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2634
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 39652
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 292467,
+              "failed_tests": [
+                "guard results identical before and after the speedups: kept",
+                "guard results identical before and after the speedups: dropped",
+                "the per-phase timings are the only addition, and they account for every run, copy and snapshot",
+                "the guard reuses the packet's own passing run as its new-code baseline",
+                "golden: test-edit-old-tests-fail-deep",
+                "golden: test-edit-fast",
+                "golden: test-added"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/e2e-guard-control.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/e2e-guard-control.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 322325
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 659148,
+        "timings": {
+          "setup_ms": 662,
+          "new_baseline": {
+            "wall_ms": 1,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 335489,
+            "run_ms": 334753,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 322912,
+            "run_ms": 322325,
+            "runs": 1
+          },
+          "control": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 659,
+            "count": 2
+          },
+          "copy": {
+            "ms": 782,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 614,
+            "count": 7
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-16T01:12:55.352Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-16T01:12:55.352Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-16T01:22:31.764Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1"
+    },
+    {
+      "at": "2026-11-16T01:34:37.389Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1"
+    },
+    {
+      "at": "2026-11-16T01:34:37.439Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1"
+    },
+    {
+      "at": "2026-11-16T01:34:37.779Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1"
+    },
+    {
+      "at": "2026-11-16T01:35:51.432Z",
+      "event": "touches_widened",
+      "added": [
+        "test/e2e-speed.test.js"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-16T01:35:51.432Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
+    },
+    {
+      "at": "2026-11-16T01:35:51.432Z",
+      "event": "requirements_synced",
+      "added": [
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-16T01:54:13.627Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10"
+    },
+    {
+      "at": "2026-11-16T01:54:13.677Z",
+      "event": "state",
+      "from": "failed",
+      "to": "open",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10"
+    },
+    {
+      "at": "2026-11-16T01:54:14.017Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:14d5e84c8c1f026224f89b07e56ee6d3ea8d5bba1fddd09866855e78cea6264c",
+      "subject": "sha256:84a46b3020f349b509c06db79186f26add113083677d97f2d23751b6fb241ad1",
+      "by": "harriswekselblatt",
+      "at": "2026-11-16T01:34:37.779Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"npm test --silent\" exit 1), so there is nothing to compare"
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:5e81ff7796f075e30cd30f55ffeda22cdd96119ef7c1e1e982813f99cfda66dc",
+      "subject": "sha256:4643f61eceaf01b75ee9fa749c0193bf1ee01764057cc5bce3884a488b571c10",
+      "by": "harriswekselblatt",
+      "at": "2026-11-16T01:54:14.017Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: guard results identical before and after the speedups: kept; guard results identical before and after the speedups: dropped; the per-phase timings are the only addition, and they account for every run, copy and snapshot; the guard reuses the packet's own passing run as its new-code baseline; golden: test-edit-old-tests-fail-deep; golden: test-edit-fast; golden: test-added: behavior changed, so a person must approve it"
+    }
+  ]
+}

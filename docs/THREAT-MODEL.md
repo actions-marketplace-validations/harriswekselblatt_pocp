@@ -383,6 +383,24 @@ use a token without the *Administration* permission.
   the result is `inconclusive`, not `behavior-changed`: a run that didn't finish says
   nothing about behavior. It still blocks; a re-run with `--force` on a quiet machine, or a
   person, decides.
+- **Tests written to fool the planted-bug check (deep mode).** A new test that fails on any
+  edit to the source catches every mutant without checking behavior, so it can stand in for a
+  weakened assertion. The tamper benchmark (`pocp-deep`) measured two: a test that hashes the
+  file under test was accepted on every run, and a test that fails at random half the time was
+  accepted in 11 of 60 CI runs of the same commit. Both were still caught when the same change
+  also added the bug the weakened assertion caught (part 1). The usual risk is two steps:
+  weaken a test now, add the bug in a later change. A pass now needs the new tests to pass on a
+  copy that differs only by a blank line in the files mutants were planted in; that copy fails
+  the hashing test every time and the random one half the time, and the result is
+  `inconclusive` (after the change: the hashing test blocked, the random one accepted in 1 of
+  30 runs). Two limits remain. A test that ignores whitespace before it compares the
+  source isn't fooled by a blank line: a test can read the code it tests, and comparing planted
+  bugs can't tell checking behavior from checking text. And a test that fails rarely still
+  passes some runs, with a lower chance for each extra run, but never zero, since CI can be
+  re-run. A deep-mode pass shows that the new tests still fail on what the old tests failed on;
+  it doesn't show that they weren't written to. Where a test change must never pass unseen, use
+  fast mode. A suite that is honestly flaky also gets more `inconclusive` results: one more run
+  must pass.
 - **Processes that leave the check's process group.** POCP kills every process that stays
   in the check's group, including when POCP itself is killed. A check that starts a new
   session (`setsid`), detaches a daemon, or starts a service elsewhere can leave it running.

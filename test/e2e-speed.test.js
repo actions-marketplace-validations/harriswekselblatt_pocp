@@ -44,9 +44,10 @@ test('the guard reuses the packet\'s own passing run as its new-code baseline', 
   const guardProof = p.proofs.find((x) => x.kind === 'guard');
   assert.equal(guardProof.guard.verdict, 'passed');
   assert.equal(guardProof.guard.new_tests.runs[0].reused, true, 'the new-code baseline is the plain proof, not a second run');
-  // 1 plain run + 1 old-tests run + mutants (old side, then new side only when caught): never a second baseline.
+  // 1 plain run + 1 old-tests run + mutants (old side, then new side only when caught) + the
+  // control on the blank-line copy, which a pass needs: never a second baseline.
   const n = runs();
-  assert.ok(n <= 2 + 2 * 2, `ran ${n} times`);
+  assert.ok(n <= 2 + 2 * 2 + 1, `ran ${n} times`);
 });
 
 test('a guard result is cached by what decides it: a new packet on the same code does not re-run it', () => {

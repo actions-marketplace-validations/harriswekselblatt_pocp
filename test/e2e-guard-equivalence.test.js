@@ -83,13 +83,16 @@ function runObligation(ob, dir) {
 
 /**
  * The result with every timing removed (timings are the only thing allowed to differ): each
- * run's `duration_ms`, and the per-phase `timings` the guard adds for profiling.
+ * run's `duration_ms`, and the per-phase `timings` the guard adds for profiling. Also the
+ * `control` record, added after the frozen guard: a pass now also needs the new tests to pass on
+ * a behavior-neutral copy of the new code. On these honest fixtures it passes, so every verdict
+ * and summary must still match.
  */
 function normalize(x) {
   if (Array.isArray(x)) return x.map(normalize);
   if (x && typeof x === 'object') {
     const out = {};
-    for (const k of Object.keys(x).sort()) if (k !== 'duration_ms' && k !== 'timings') out[k] = normalize(x[k]);
+    for (const k of Object.keys(x).sort()) if (k !== 'duration_ms' && k !== 'timings' && k !== 'control') out[k] = normalize(x[k]);
     return out;
   }
   return x;
@@ -212,6 +215,7 @@ test('the per-phase timings are the only addition, and they account for every ru
     if (/-m\d+-old-/.test(log)) return 'mutants.old';
     if (/-m\d+-new-/.test(log)) return 'mutants.new';
     if (/-base-/.test(log)) return 'base_check';
+    if (/-control-/.test(log)) return 'control';
     if (/-old-/.test(log)) return 'old_baseline';
     if (/-new-/.test(log)) return 'new_baseline';
     return `unknown: ${log}`;
@@ -248,7 +252,7 @@ test('the per-phase timings are the only addition, and they account for every ru
     // only deep, prove-mode results can be compared with it key by key.
     if (opts.mutants > 0 && !opts.share) {
       const a = await runV0({ ...args, runObligation });
-      assert.deepEqual(Object.keys(b).filter((k) => !(k in a)), ['timings'], `${name}: timings is the one new key`);
+      assert.deepEqual(Object.keys(b).filter((k) => !(k in a)).sort(), b.verdict === 'passed' ? ['control', 'timings'] : ['timings'], `${name}: timings, and on a pass the control, are the only new keys`);
     }
     const t = b.timings;
     for (const [k, v] of Object.entries(seen)) {
@@ -256,13 +260,15 @@ test('the per-phase timings are the only addition, and they account for every ru
       assert.equal(get(t, k).runs, v.runs, `${name}: ${k} runs`);
       assert.equal(get(t, k).run_ms, v.run_ms, `${name}: ${k} run_ms`);
     }
-    for (const k of ['new_baseline', 'old_baseline', 'base_check', 'mutants.old', 'mutants.new']) {
+    for (const k of ['new_baseline', 'old_baseline', 'base_check', 'mutants.old', 'mutants.new', 'control']) {
       if (!seen[k]) assert.equal(get(t, k).runs, 0, `${name}: ${k} has no runs`);
     }
     const baselineRuns = ['new_baseline', 'old_baseline', 'base_check'].reduce((s, k) => s + (seen[k]?.runs || 0), 0);
     // A fresh copy for every baseline run, one per mutant and side (its checks share it), and the
-    // old-tests template copied from the new snapshot. (No retries here, so no retry copies.)
-    assert.equal(t.copy.count, baselineRuns + sides.size + 1, `${name}: copies`);
+    // old-tests template copied from the new snapshot, and one for the control on a pass. (No
+    // retries here, so no retry copies.)
+    assert.equal(t.copy.count, baselineRuns + sides.size + 1 + (seen.control ? 1 : 0), `${name}: copies`);
+    assert.equal(Boolean(seen.control), b.verdict === 'passed' && opts.mutants > 0, `${name}: the control runs exactly on a deep-mode pass`);
     assert.equal(t.snapshot.count, 1 + (seen.base_check ? 1 : 0), `${name}: snapshots`);
     assert.equal(t.cleanup.count, t.copy.count + t.snapshot.count, `${name}: everything made is removed`);
     assert.ok(t.new_baseline.wall_ms > 0 && t.old_baseline.wall_ms > 0, `${name}: baselines timed`);

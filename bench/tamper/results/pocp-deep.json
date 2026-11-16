@@ -4,9 +4,9 @@
   "setup_note": "POCP's own config with the deep profile's guard settings, and one rule: src/bench/**, test/** and package.json need the fixture's test (node --test test/bench-flags.test.js), which is also the test script. The fixture (bench/tamper/fixtures/pocp-deep/) has three mutation sites, all in the files the changed test imports, so every guard sample (budget 10) contains all three whatever the seed, the CI seed included. Only the controls, assert-weaken and the deep-* scenarios run here.",
   "framework": "node-test",
   "ci_command": "npm test --silent",
-  "source_commit": "7c6ca4a99e83",
+  "source_commit": "e184ed88a037",
   "pocp_version": "1.2.3",
-  "pocp_commit": "7c6ca4a99e83",
+  "pocp_commit": "e184ed88a037",
   "node": "22.13.1",
   "seed": 1,
   "judge": "pocp ci-run -- <ci command>; pocp verify <base>..<head> --require-coverage --rerun (forge-ci-in-run also: --rerun-unsigned --ci-results <that file>)",
@@ -63,7 +63,7 @@
           },
           "outcome": "ok",
           "error": null,
-          "ms": 64396
+          "ms": 28456
         },
         {
           "id": "control-bug-only",
@@ -90,7 +90,7 @@
           },
           "outcome": "both",
           "error": null,
-          "ms": 60101
+          "ms": 27194
         },
         {
           "id": "assert-weaken",
@@ -106,7 +106,7 @@
           "guard": [
             {
               "verdict": "behavior-changed",
-              "seed": 1031928711
+              "seed": 1163761668
             }
           ],
           "local": {
@@ -119,7 +119,7 @@
           },
           "outcome": "incremental",
           "error": null,
-          "ms": 106904
+          "ms": 39298
         },
         {
           "id": "deep-honest-test",
@@ -133,7 +133,7 @@
           "guard": [
             {
               "verdict": "passed",
-              "seed": 505012851,
+              "seed": 1170404798,
               "old_caught": 3,
               "new_caught": 3
             }
@@ -148,7 +148,7 @@
           },
           "outcome": "ok",
           "error": null,
-          "ms": 101272
+          "ms": 41918
         },
         {
           "id": "deep-weaken",
@@ -165,7 +165,7 @@
           "guard": [
             {
               "verdict": "detection-dropped",
-              "seed": 374324691,
+              "seed": 1633063752,
               "old_caught": 3,
               "new_caught": 2,
               "lost": [
@@ -183,7 +183,7 @@
           },
           "outcome": "incremental",
           "error": null,
-          "ms": 114610
+          "ms": 44839
         },
         {
           "id": "deep-flaky",
@@ -198,20 +198,20 @@
           "guard": [
             {
               "verdict": "passed",
-              "seed": 380263774,
+              "seed": 447041555,
               "old_caught": 3,
               "new_caught": 3
             }
           ],
           "trials": {
             "runs": 30,
-            "accepted": 7,
+            "accepted": 1,
             "plain_ci_passed": 18,
-            "both_passed": 5,
+            "both_passed": 0,
             "guard_verdicts": {
-              "inconclusive": 14,
-              "passed": 9,
-              "detection-dropped": 7
+              "inconclusive": 20,
+              "detection-dropped": 9,
+              "passed": 1
             }
           },
           "local": {
@@ -219,12 +219,12 @@
             "gate_codes": [],
             "hooks": "passed",
             "proved": "passed",
-            "attested": 0,
+            "attested": 1,
             "forged": 0
           },
           "outcome": "missed",
           "error": null,
-          "ms": 915597
+          "ms": 386588
         },
         {
           "id": "deep-flaky-bug",
@@ -236,23 +236,22 @@
           "pocp": "block",
           "codes": [
             "ci_failed",
-            "rerun_failed",
             "test_change"
           ],
           "guard": [
             {
               "verdict": "inconclusive",
-              "seed": 563378600
+              "seed": 354037508
             }
           ],
           "trials": {
             "runs": 30,
             "accepted": 0,
-            "plain_ci_passed": 14,
+            "plain_ci_passed": 15,
             "both_passed": 0,
             "guard_verdicts": {
-              "inconclusive": 16,
-              "behavior-changed": 14
+              "inconclusive": 15,
+              "behavior-changed": 15
             }
           },
           "local": {
@@ -265,7 +264,7 @@
           },
           "outcome": "incremental",
           "error": null,
-          "ms": 882414
+          "ms": 321762
         },
         {
           "id": "deep-hash",
@@ -275,12 +274,14 @@
           "weakens": true,
           "mutant": null,
           "plain_ci": "pass",
-          "pocp": "pass",
-          "codes": [],
+          "pocp": "block",
+          "codes": [
+            "test_change"
+          ],
           "guard": [
             {
-              "verdict": "passed",
-              "seed": 202690028,
+              "verdict": "inconclusive",
+              "seed": 1315423115,
               "old_caught": 3,
               "new_caught": 3
             }
@@ -290,12 +291,12 @@
             "gate_codes": [],
             "hooks": "passed",
             "proved": "passed",
-            "attested": 0,
+            "attested": 1,
             "forged": 0
           },
-          "outcome": "missed",
+          "outcome": "incremental",
           "error": null,
-          "ms": 89298
+          "ms": 46670
         },
         {
           "id": "deep-hash-bug",
@@ -311,7 +312,7 @@
           "guard": [
             {
               "verdict": "behavior-changed",
-              "seed": 743511818
+              "seed": 1334949251
             }
           ],
           "local": {
@@ -324,7 +325,7 @@
           },
           "outcome": "incremental",
           "error": null,
-          "ms": 75555
+          "ms": 41309
         }
       ],
       "skipped": [
@@ -361,5 +362,5 @@
       ]
     }
   },
-  "duration_s": 997
+  "duration_s": 425
 }

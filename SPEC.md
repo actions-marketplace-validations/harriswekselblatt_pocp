@@ -456,11 +456,21 @@ runnable obligations. Every run below is in its own fresh copy of the code.
    This only turns a timed-out "catch" into no evidence, and no evidence never passes, so no
    former block becomes a pass.
 
+   **The control run.** A pass also needs the new tests to pass, once more, on a copy of the
+   new code that differs only by one blank line at the end of each file a mutant was planted in
+   (in PHP that ends with `?>`, just before it). The bytes change and the behavior doesn't. A
+   test that fails there reacts to the source's text (it hashes the file) or fails at random,
+   and either kind "catches" every planted mutant without checking behavior, so it could stand in
+   for a weakened assertion. If a check fails on the copy, the result is `inconclusive`; if it
+   doesn't finish, the same, marked unfinished. The result records `control: { result: "pass" |
+   "fail" | "unfinished", files, check?, reason? }`. It runs only when the result would
+   otherwise be `passed`, so it never changes another verdict.
+
 The result is `passed`, `behavior-changed`, `baseline-red`, `detection-dropped`, `needs-review` (fast
 mode only: the edit does more than add non-risky lines) or `inconclusive` (the checks
 fail on the new code, the old tests didn't finish on the new code, no check covers the tests, no guarded source to mutate, the old tests
-caught none of the measured sample, so a drop can't be measured, or a sampled mutant couldn't
-be measured on either side, even on a retry). It is recorded as a proof
+caught none of the measured sample, so a drop can't be measured, a sampled mutant couldn't
+be measured on either side, even on a retry, or the new tests failed on the control copy). It is recorded as a proof
 (`kind: "guard"`) for the subject, with both parts: the checks run, each run's exit, the files
 restored, the sample (file, line, operator, line before and after) and each mutant's outcome
 on both sides. It is signed like any proof when signing is on. A recorded result stands for

@@ -65,6 +65,7 @@ export async function runGuardCheck({
     plan_ms: 0,
     mutants: { wall_ms: 0, old: { run_ms: 0, runs: 0, retries: 0 }, new: { run_ms: 0, runs: 0, retries: 0 } },
     base_check: { wall_ms: 0, run_ms: 0, runs: 0 },
+    control: { wall_ms: 0, run_ms: 0, runs: 0 },
     snapshot: { ms: 0, count: 0 },
     copy: { ms: 0, count: 0 },
     cleanup: { ms: 0, count: 0 },
@@ -572,6 +573,33 @@ export async function runGuardCheck({
       result.detection.result = 'inconclusive';
       return finishUnfinished(`${gaps()}: a person must decide, or prove again with --force once the checks can finish`);
     }
+    // The control, run only when the verdict would be a pass: the checks on a copy of the new
+    // code that differs from it only by a blank line in each file a mutant was planted in. No
+    // behavior changed, so the new tests must pass there. A test that fails anyway reacts to the
+    // source's text (one that hashes the file) or fails at random, and either kind "catches"
+    // planted mutants without checking behavior, so it could stand in for a weakened assertion
+    // (bench/tamper, target pocp-deep). Then the catches can't be trusted: `inconclusive`.
+    const files = [...new Set(plan.picked.map((m) => m.file))];
+    const control = await span(timings.control, async () => {
+      const copy = copyOf(newTpl.dir);
+      try {
+        for (const f of files) fs.writeFileSync(path.join(copy.dir, f), neutralEdit(fs.readFileSync(path.join(copy.dir, f), 'utf8')));
+        for (const ob of ordered) {
+          const r = await run(timings.control, ob, copy.dir, { logName: `${logPrefix}-control-${ob.id}` });
+          if (!r.passed) return { result: ranAndFailed(r) ? 'fail' : 'unfinished', files, check: ob.id, ...(ranAndFailed(r) ? {} : { reason: unfinishedReason(r) }) };
+        }
+        return { result: 'pass', files };
+      } finally {
+        copy.cleanup();
+      }
+    });
+    result.control = control;
+    if (control.result !== 'pass') {
+      result.detection.result = 'inconclusive';
+      const where = `a copy of the new code that differs only by a blank line at the end of ${files.join(', ')}`;
+      if (control.result === 'unfinished') return finishUnfinished(`the new tests catch all ${baseKilled} of the ${outcomes.length} sampled mutants the old tests caught, but "${checks.find((x) => x.id === control.check)?.run || control.check}" didn't finish on ${where} (${control.reason}), so the catches can't be confirmed: a person must decide, or prove again with --force`);
+      return finish('inconclusive', `the new tests catch all ${baseKilled} of the ${outcomes.length} sampled mutants the old tests caught, but they also fail on ${where} ("${checks.find((x) => x.id === control.check)?.run || control.check}"): tests that fail with no change in behavior (one that reads the source text, or one that fails at random) catch any mutant, so these catches can't be trusted: a person must decide`);
+    }
     result.detection.result = 'kept';
     return finish('passed', `the old tests pass on the new code, and the new tests catch all ${baseKilled} of the ${outcomes.length} sampled mutants the old tests caught (seed ${seed})`);
   } finally {
@@ -782,6 +810,14 @@ export function mutationPlan({ root, base, rev, dir, changes, sourceGlobs, exclu
     };
   });
   return { files, sites: focus.length + rest.length, focusSites: focus.length, picked };
+}
+
+/**
+ * `text` with one more blank line: different bytes, the same behavior. In a PHP file that ends
+ * its code with `?>`, text after the tag is output, so the line goes just before the tag.
+ */
+export function neutralEdit(text) {
+  return /\?>\s*$/.test(text) ? text.replace(/\?>(\s*)$/, '\n?>$1') : `${text}\n`;
 }
 
 /** One argument for `sh -c`: safe characters as they are, anything else single-quoted. */
