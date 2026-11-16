@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 (2026-11-16)
 
 Upgrading: re-run `pocp init --github --force`, which rewrites `pocp.yml` and `pocp-status.yml`
 and removes `pocp-labels.yml`, then commit `.github/workflows`. Until then your workflows work
@@ -26,6 +26,13 @@ as in 1.3.0, and the verify action warns on each run that passes an approval.
   (a problem while `verify` is the required check, a warning with the status live), in place of
   1.3.0's check for blocked `pull_request_target` runs. `init --github --force` removes
   `pocp-labels.yml`; `ci off` / `on` still switch it while it's there.
+
+### Not yet checked
+
+- A pull request from a fork. Its token is read-only; the label rule reads the pull request's
+  events, its runs and each labeller's permission. Tested on GitHub with same-repository pull
+  requests only. If GitHub refuses a read, verify refuses the approval (it never passes one it
+  couldn't check), so the risk is a fork's approvals waiting, not passing.
 
 ## 1.3.0 (2026-11-16)
 
