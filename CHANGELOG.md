@@ -33,6 +33,14 @@
 
 ### Fixed
 
+- **A pull request no longer needs `pocp-approve-policy` because the base tightened its policy.**
+  `verify base..head` compared every commit's policy with the base's current one, so when the
+  base added a setting (say `ci.reporter_app_id`) while a pull request was open, the pull
+  request's older commits, which never touched policy, counted as removing it. In a range, a
+  commit now answers only for loosenings its parent didn't already have. The head still answers
+  for everything it loosens against the base, every commit is still judged under the base's
+  rules, and a loosening made in one commit and reverted later is still flagged at that commit.
+
 - **"Update branch" no longer drops an approval because the base gained a proof record.** The
   reporter's carry-over rule treated every file under `.proof/` as policy, so a base that had
   merged any other pull request (which adds a `.proof/packets/` record) voided every carried
