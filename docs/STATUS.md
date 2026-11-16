@@ -25,12 +25,12 @@ Each label covers one thing, only on the head it was added to. Every push remove
 
 - the new head's parents are the approved head and the pull request's current base;
 - the label was last added by someone with write access, after the approved head's first run for this pull request;
-- the merge changed no file the pull request changes, and no file under `.proof/`;
+- the merge changed no file the pull request changes, and no policy file under `.proof/` (proof records in `.proof/packets/`, which nearly every merged pull request adds, don't count; the pull request's own packets are covered by the rule before);
 - after the merge, the pull request changes only files the approved head already changed (so a merge that keeps an old version of a file the base changed doesn't carry);
-- since the approved head branched off, the base branch changed nothing under `.proof/` and none of the files the approval covers;
+- since the approved head branched off, the base branch changed no policy file under `.proof/` (again, proof records don't count) and none of the files the approval covers;
 - GitHub's file lists for the merge are complete.
 
-Otherwise the status says to approve again: remove the label and add it back. The approval is kept, never the result: the merged head is verified again on the new base and turns green only from its own run. It carries over one merge only: a second update before the label is added again needs a new approval. Inconclusive and workflow approvals never carry over, and any other push still removes every label.
+Otherwise the status says to approve again: remove the label and add it back. `pocp approve owner/repo#N` reads that status and does it for you (after you confirm), even when verify itself passed with the label on. The approval is kept, never the result: the merged head is verified again on the new base and turns green only from its own run. It carries over one merge only: a second update before the label is added again needs a new approval. Inconclusive and workflow approvals never carry over, and any other push still removes every label.
 
 | Label | Covers |
 |---|---|

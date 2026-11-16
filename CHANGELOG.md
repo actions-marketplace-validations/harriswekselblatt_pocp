@@ -31,6 +31,18 @@
   gets at most 5× the check's measured time on the new code, or 30 s if that's more. A retry
   that hits the cap is not measured, so the result is inconclusive, never a pass.
 
+### Fixed
+
+- **"Update branch" no longer drops an approval because the base gained a proof record.** The
+  reporter's carry-over rule treated every file under `.proof/` as policy, so a base that had
+  merged any other pull request (which adds a `.proof/packets/` record) voided every carried
+  approval. Proof records no longer count; config, rules and the pull request's own packets
+  still void it. Seen on harriswekselblatt/pocp#82.
+- **`pocp approve` no longer says "nothing to approve" while the `pocp` status waits for an
+  approval.** When verify passed with a label the reporter won't count for this head, `pocp
+  approve` (and `pocp approvals`) now read the `pocp` status, list the label, and on your
+  confirmation remove it and add it back.
+
 ## 1.2.3 (2026-11-10)
 
 ### Fixed

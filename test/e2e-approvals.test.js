@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { git, pocp, sampleRepo, write } from './helpers.js';
-import { approvalAnnotation, approvalSummary, approvePr, readAnnotations } from '../src/approvals.js';
+import { approvalAnnotation, approvalSummary, approvePr, prStatus, readAnnotations } from '../src/approvals.js';
+import { TEXT } from '../src/status-report.js';
 import { withFacts } from '../src/finding.js';
 
 // Findings as verify makes them: the decision reads their typed facts, never their text.
@@ -215,6 +216,39 @@ test('--approve shows the change being approved and adds the label only when the
     await assert.rejects(approvePr({ ref: 'me/site#2', interactive: true, ask: async () => '2', say }), /fails for more than an approval/);
     assert.equal(gh.calls().filter((c) => c.startsWith('pr edit')).length, 1);
     await assert.rejects(approvePr({ ref: 'me/site#1', interactive: false, ask: async () => '1', say }), /person at a terminal/);
+  } finally {
+    if (saved === undefined) delete process.env.POCP_GH;
+    else process.env.POCP_GH = saved;
+  }
+});
+
+// harriswekselblatt/pocp#82: after "Update branch", verify passed with pocp-approve-tests on
+// (no approval marker), but the reporter wouldn't carry the label over and its pocp status
+// waited for it again. --approve said "nothing to approve" while the PR sat blocked.
+test('--approve re-applies a label the pocp status is waiting on, even when verify passed', async () => {
+  const table = siteTable();
+  const pr5 = { number: 5, title: 'Updated branch', url: 'https://github.com/me/site/pull/5', author: { login: 'bot' }, headRefOid: SHA('e'), labels: [{ name: 'pocp-approve-tests' }], files: [], isDraft: false };
+  table[`pr view 5 --repo me/site --json ${PR_FIELDS},state`] = { body: { ...pr5, state: 'OPEN' } };
+  table[`api repos/me/site/commits/${SHA('e')}/check-runs?per_page=100`] = { body: { check_runs: [{ id: 50, name: 'verify', status: 'completed', conclusion: 'success' }] } };
+  table['api repos/me/site/check-runs/50/annotations?per_page=100'] = { body: [] };
+  table[`api repos/me/site/commits/${SHA('e')}/status`] = { body: { state: 'pending', statuses: [{ context: 'pocp', state: 'pending', description: TEXT.approvalUnverified, target_url: 'https://github.com/me/site/runs/51' }] } };
+  table['pr diff 5 --repo me/site'] = { body: DIFF };
+  table['pr edit 5 --repo me/site --remove-label pocp-approve-tests'] = { body: '' };
+  table['pr edit 5 --repo me/site --add-label pocp-approve-tests'] = { body: '' };
+  const gh = fakeGh(table);
+  const saved = process.env.POCP_GH;
+  process.env.POCP_GH = gh.bin;
+  try {
+    const st = prStatus('me/site', pr5);
+    assert.equal(st.state, 'pending');
+    assert.deepEqual(st.needs.map((n) => [n.label, n.given]), [['pocp-approve-tests', false]]);
+    const said = [];
+    const r = await approvePr({ ref: 'me/site#5', interactive: true, ask: async () => '5', say: (l) => said.push(l) });
+    assert.deepEqual(r.approved, ['pocp-approve-tests']);
+    assert.doesNotMatch(said.join('\n'), /nothing to approve/);
+    assert.deepEqual(gh.calls().filter((c) => c.startsWith('pr edit')), ['pr edit 5 --repo me/site --remove-label pocp-approve-tests', 'pr edit 5 --repo me/site --add-label pocp-approve-tests']);
+    // A passing PR whose pocp status isn't waiting (or can't be read) still has nothing to approve.
+    assert.equal(prStatus('me/site', { ...pr5, number: 4, headRefOid: SHA('d') }), null);
   } finally {
     if (saved === undefined) delete process.env.POCP_GH;
     else process.env.POCP_GH = saved;
