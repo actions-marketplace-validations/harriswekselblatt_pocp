@@ -78,6 +78,8 @@ export async function run({ engine, flags, isolated, json, rest }) {
     if (!list2.length) return [];
     const out2 = ['  what to do:', ...list2.map((x) => `    ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}${x.by === 'person' ? '   (needs a person)' : ''}`)];
     if (list2.some((x) => x.by === 'person')) out2.push(`    ${DONT_REWRITE}`);
+    // Local mode: no labels and no CI, so the person is you, through verify's own approvals.
+    if (list2.some((x) => x.by === 'person') && engine.config().ci?.mode === 'local') out2.push('    local mode: you approve here. After reading the change, run this again with --accept-test-change <head sha> (or --accept-policy-change / --accept-inconclusive / --accept-uncovered, as named above)');
     return out2;
   };
   // A range's own findings, apart from re-run failures (rerun_failures lists those).

@@ -4,7 +4,7 @@ import * as g from '../git.js';
 import * as P from '../packets.js';
 import { POLICY_FILES, policyChange, policyLoosenings } from '../policy.js';
 import { evaluateTriggers, requirementsFor, ruleWarnings, validateRules } from '../rules.js';
-import { gateRemedies, pendingApprovals } from '../remedies.js';
+import { gateRemedies, laterApproval, pendingApprovals } from '../remedies.js';
 import { policyKeyWarnings } from '../schema.js';
 import { protectedChangeText } from './shared.js';
 import { validateConfig } from '../store.js';
@@ -21,6 +21,8 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
     const rulesObj = rules();
     const cfg = config();
     const result = { decision: 'pass', subject, files, required_files: [], reasons: [], uncovered: [], unpacketed: [], packets: [], problems: [], warnings: [] };
+    // Local mode: no CI will ask anyone, so the approvals below are yours, before a merge.
+    if (cfg.ci?.mode === 'local') result.local_mode = true;
 
     const rawRules = store.readRawRules();
     const rulesProblems = validateRules(rawRules || {});
@@ -61,11 +63,11 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
       trig.reasons.push(pc.reason);
       // What verify will call a loosening (base policy vs this one): CI needs a maintainer for it.
       const weakened = policyLoosenings({ rules: { base: basePolicy.hasRules ? basePolicy.rules : null, head: rulesObj }, config: { base: basePolicy.config, head: cfg } });
-      if (weakened.length) result.warnings.push({ code: 'awaiting_policy_approval', detail: `this loosens POCP policy (${weakened.slice(0, 3).join('; ')}${weakened.length > 3 ? '; …' : ''}); CI will ask a maintainer to approve it` });
+      if (weakened.length) result.warnings.push({ code: 'awaiting_policy_approval', detail: `this loosens POCP policy (${weakened.slice(0, 3).join('; ')}${weakened.length > 3 ? '; …' : ''}); ${laterApproval(result, 'accept-policy-change')}` });
     }
     const ciChanged = changedCiFiles(changes, cfg);
     if (ciChanged.length) {
-      result.warnings.push({ code: 'awaiting_policy_approval', detail: `${protectedChangeText(ciChanged)}; CI will ask a maintainer to approve it` });
+      result.warnings.push({ code: 'awaiting_policy_approval', detail: `${protectedChangeText(ciChanged)}; ${laterApproval(result, 'accept-policy-change')}` });
       trig.required_files = [...new Set([...trig.required_files, ...ciChanged])].sort();
       trig.reasons.push({ code: 'ci_config', detail: protectedChangeText(ciChanged), files: ciChanged });
     }
@@ -139,7 +141,7 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
         result.warnings.push({ code: 'open_packet', detail: `packet ${e.packet.id} also covers these files and isn't proven for this code`, packet: e.packet.id });
       }
       for (const a of e.ev.awaiting_approval || []) {
-        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and CI will ask a maintainer to approve it`, packet: e.packet.id });
+        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and ${laterApproval(result, 'accept-test-change')}`, packet: e.packet.id });
       }
     }
     const blocked = result.uncovered.length > 0 || result.problems.length > 0;

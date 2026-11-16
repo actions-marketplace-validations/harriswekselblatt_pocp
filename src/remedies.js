@@ -107,7 +107,7 @@ export function gateRemedies(r) {
         what: `${p.id}: the test-change check did not pass: ${g.detail || g.status}`,
         why: 'existing tests changed and POCP could not show they still catch what they caught before; changed tests can hide a bug instead of fixing it.',
         next: block
-          ? `pocp fix (hands it to CI, where a maintainer approves it with the \`${APPROVE_TESTS_LABEL}\` label; the author can't sign off on its own test change)`
+          ? (r.local_mode ? `pocp fix (lets the commit go ahead; ${laterApproval(r, 'accept-test-change')})` : `pocp fix (hands it to CI, where a maintainer approves it with the \`${APPROVE_TESTS_LABEL}\` label; the author can't sign off on its own test change)`)
           : `a person who reviewed the test change runs: pocp attest ${p.id} ${g.id} --by <their name>`,
         by: block ? 'pocp fix' : 'person',
       });
@@ -126,6 +126,16 @@ export function gateRemedies(r) {
   return out;
 }
 
+/**
+ * Who approves what the gate let through for a person later: a maintainer's label in CI, or, in
+ * local mode (gate result local_mode), you, by passing the approval to verify before you merge.
+ */
+export function laterApproval(r, flag) {
+  return r?.local_mode
+    ? `in local mode you approve it before merging, after reading it: pocp verify --rerun <base>..HEAD --${flag} <head sha>`
+    : 'CI will ask a maintainer to approve it';
+}
+
 /** Notes for a passing gate that CI will still need a person for (block mode). */
 export function pendingApprovals(r) {
   return (r.warnings || []).filter((w) => w.code === 'awaiting_test_approval' || w.code === 'awaiting_policy_approval').map((w) => (w.code === 'awaiting_test_approval'
@@ -133,14 +143,14 @@ export function pendingApprovals(r) {
         code: 'test_change',
         what: w.detail,
         why: 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
-        next: `a maintainer adds the \`${APPROVE_TESTS_LABEL}\` label to the pull request`,
+        next: r.local_mode ? laterApproval(r, 'accept-test-change') : `a maintainer adds the \`${APPROVE_TESTS_LABEL}\` label to the pull request`,
         by: 'person',
       }
     : {
         code: 'policy_change',
         what: w.detail,
         why: 'a change cannot approve a loosening of the rules that judge it.',
-        next: `a maintainer adds the \`${APPROVE_POLICY_LABEL}\` label to the pull request`,
+        next: r.local_mode ? laterApproval(r, 'accept-policy-change') : `a maintainer adds the \`${APPROVE_POLICY_LABEL}\` label to the pull request`,
         by: 'person',
       }));
 }

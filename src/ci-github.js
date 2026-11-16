@@ -1,5 +1,8 @@
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { git } from './git.js';
+import { GITHUB_WORKFLOWS } from './init.js';
 
 // Branch protection from versioned config: which CI checks must pass before merging,
 // whether changes must arrive through pull requests, and whether admins are held to it.
@@ -232,6 +235,56 @@ export function goLive(root, plan, { protect = false } = {}) {
   if (noProtection) notes.push('GitHub has no branch protection for this private repository on its current plan, so nothing blocks a merge: the pocp status is a signal only. A public repository or a paid plan can require it.');
   else if (!statusRequired) notes.push(`merges are not blocked yet: require the "${STATUS_CHECK}" status${reporter ? '' : ` once ${REPORTER_WORKFLOW} is on ${plan.branch}`} with: pocp ci required --apply`);
   return { ok: true, repo, live: true, reporter, protection, required_status: statusRequired, removed_verify: removedVerify, merges_blocked: statusRequired, notes };
+}
+
+// Local mode (ci.mode "local"): what it gives up, said wherever it is chosen (init --local,
+// ci off, doctor), and the command that recovers most of CI before a merge.
+export const LOCAL_MODE_TRADE = 'the git hooks on this machine are the only gate: nothing re-runs the checks on another machine, nothing blocks a merge, and "git commit --no-verify" skips the gate unless you verify before merging. You trust your own machine.';
+export const localVerifyCommand = (branch) => `pocp verify --rerun origin/${branch}..HEAD`;
+const requiredContexts = (ex) => new Set([...(ex?.required_status_checks?.contexts || []), ...((ex?.required_status_checks?.checks || []).map((c) => c.context))]);
+
+/**
+ * pocp ci off / on: disable or enable POCP's workflows (the ones pocp init --github writes) on
+ * GitHub. Server-side and exactly reversible: no workflow file changes, so there is nothing to
+ * commit or approve, and it works while Actions jobs can't start. Workflows POCP didn't write are
+ * listed (others_active), never touched. Turning off also reports the POCP checks branch
+ * protection still requires, since every pull request would then wait for them.
+ * Returns { ok, repo, changed, unchanged, missing, others_active, required, error }.
+ */
+export function setPocpWorkflows(root, plan, { enable }) {
+  const repoR = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']);
+  if (!repoR.ok) return { ok: false, error: repoR.error || `gh repo view failed: ${repoR.stderr}` };
+  const repo = repoR.stdout.trim();
+  const listed = gh(['api', `repos/${repo}/actions/workflows?per_page=100`]);
+  let workflows = null;
+  try {
+    workflows = JSON.parse(listed.stdout).workflows;
+  } catch { /* reported below */ }
+  if (!listed.ok || !Array.isArray(workflows)) return { ok: false, repo, error: `could not list the workflows: ${ghMessage(listed)}` };
+  const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
+  const changed = [];
+  const unchanged = [];
+  const missing = [];
+  for (const file of ours) {
+    const w = workflows.find((x) => x.path === file);
+    // In the checkout but not on GitHub's default branch yet: nothing there to switch.
+    if (!w) {
+      if (fs.existsSync(path.join(root, file))) missing.push(file);
+      continue;
+    }
+    if ((w.state === 'active') === enable) {
+      unchanged.push(file);
+      continue;
+    }
+    const r = gh(['api', '-X', 'PUT', `repos/${repo}/actions/workflows/${w.id}/${enable ? 'enable' : 'disable'}`]);
+    if (!r.ok) return { ok: false, repo, changed, error: `could not ${enable ? 'enable' : 'disable'} ${file}: ${ghMessage(r)}` };
+    changed.push(file);
+  }
+  const othersActive = workflows.filter((w) => w.state === 'active' && w.path.startsWith('.github/workflows/') && !ours.includes(w.path)).map((w) => w.path);
+  const prot = enable ? null : readGithubProtection(plan);
+  const have = requiredContexts(prot?.existing);
+  const required = [STATUS_CHECK, VERIFY_CHECK].filter((c) => have.has(c));
+  return { ok: true, repo, changed, unchanged, missing, others_active: othersActive, required };
 }
 
 /**

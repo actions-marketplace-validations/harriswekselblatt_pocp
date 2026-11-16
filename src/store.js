@@ -42,7 +42,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   sign: { key: null, principal: null },
   guard: { tests: DEFAULT_GUARD_MODE, test_globs: null, runner_globs: null, mutants: DEFAULT_GUARD_MUTANTS, seed: DEFAULT_GUARD_SEED },
   verify: { fail_on: [...FINDING_CODES], require_ci: [] },
-  ci: { files: [...DEFAULT_CI_FILES], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent' },
+  ci: { files: [...DEFAULT_CI_FILES], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent', mode: 'github' },
 });
 
 // Calibrated on real history: counting only code and config, these thresholds asked for
@@ -396,6 +396,7 @@ export function validateConfig(config) {
   for (const k of ['require_pull_request', 'enforce_admins']) if (typeof ci[k] !== 'boolean') problems.push(`ci.${k} must be true or false`);
   if (ci.require_up_to_date !== undefined && typeof ci.require_up_to_date !== 'boolean') problems.push('ci.require_up_to_date must be true or false');
   if (!['independent', 'any-writer'].includes(ci.workflow_approver)) problems.push('ci.workflow_approver must be "independent" or "any-writer"');
+  if (!['github', 'local'].includes(ci.mode)) problems.push('ci.mode must be "github" (CI checks every pull request) or "local" (the git hooks only)');
   const globLists = { 'guard.test_globs': guard.test_globs, 'guard.runner_globs': guard.runner_globs, 'guard.extra_test_globs': guard.extra_test_globs, 'guard.extra_runner_globs': guard.extra_runner_globs, 'ci.files': ci.files, 'eval.exclude': c.eval?.exclude };
   for (const [k, list] of Object.entries(globLists)) {
     if (!isStrArray(list)) continue;

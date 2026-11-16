@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as g from './git.js';
 import { matchGlob } from './glob.js';
-import { hooksHealth, INSTALL_HINT, recordedBin } from './init.js';
-import { protectionGaps, requiredChecksPlan } from './ci-github.js';
+import { GITHUB_WORKFLOWS, hooksHealth, INSTALL_HINT, recordedBin } from './init.js';
+import { LOCAL_MODE_TRADE, localVerifyCommand, protectionGaps, requiredChecksPlan } from './ci-github.js';
 import { validateRules } from './rules.js';
 import { policyKeyWarnings } from './schema.js';
 import { validateConfig } from './store.js';
@@ -97,11 +97,35 @@ export function adoptionScope(root, base, cfg) {
   return { base, known: true, adopted: false, files, extra: files.filter((f) => !isAdoptionFile(f)) };
 }
 
+// The annotation GitHub puts on a job it never started because of the account's billing.
+const ACTIONS_BILLING = /recent account payments have failed|spending limit/i;
+
+/**
+ * Whether GitHub Actions jobs are failing before they start, for billing: the latest finished
+ * run of a workflow that is still enabled failed, with a job that ran no steps, whose annotation
+ * is GitHub's billing message. Three gh calls; null when not (or when anything can't be read).
+ */
+function actionsBlocked(root, repo, workflows) {
+  const active = new Set(workflows.filter((w) => w.state === 'active').map((w) => w.path));
+  if (!active.size) return null;
+  const runs = gh(root, ['api', `repos/${repo}/actions/runs?per_page=20&status=completed`]);
+  const latest = (runs.json?.workflow_runs || []).find((r) => active.has(r.path));
+  if (!latest || latest.conclusion !== 'failure') return null;
+  const jobs = gh(root, ['api', `repos/${repo}/actions/runs/${latest.id}/jobs`]);
+  const job = (jobs.json?.jobs || []).find((j) => j.conclusion === 'failure' && !(j.steps || []).length);
+  if (!job) return null;
+  const notes = gh(root, ['api', `repos/${repo}/check-runs/${job.id}/annotations`]);
+  const hit = (Array.isArray(notes.json) ? notes.json : []).find((a) => ACTIONS_BILLING.test(a.message || ''));
+  return hit ? { message: hit.message, active: [...active].sort() } : null;
+}
+
 export async function runDoctor(engine, { base, offline = false } = {}) {
   const root = engine.root;
   const checks = [];
   const add = (c) => checks.push(c);
   const cfg = engine.config();
+  // Local mode (ci.mode "local"): no CI by choice, so the CI checks below don't apply.
+  const local = cfg.ci?.mode === 'local';
 
   // 1. POCP set up here, and the policy valid.
   const rulesFile = path.join(root, '.proof', 'rules.json');
@@ -119,7 +143,7 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   // 2. Hooks installed and able to find pocp.
   const h = hooksHealth(root);
   const broken = Object.entries(h.hooks).filter(([, st]) => st === 'broken' || st === 'never runs');
-  if (!h.installed) add({ id: 'hooks', status: 'problem', what: 'git hooks are not installed', why: 'without them nothing checks a commit until CI, where fixing it means rewriting pushed commits', fix: 'pocp hooks install' });
+  if (!h.installed) add({ id: 'hooks', status: 'problem', what: 'git hooks are not installed', why: local ? 'in local mode the hooks are the only check, so nothing checks a commit' : 'without them nothing checks a commit until CI, where fixing it means rewriting pushed commits', fix: 'pocp hooks install' });
   else if (broken.length) {
     // Hooks an older pocp appended to: a node/python hook (syntax error), or one that ends in exec.
     add({
@@ -161,7 +185,11 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   // 5. CI workflow.
   const workflows = scanWorkflows(root);
   const wf = workflows.find((w) => w.runs_verify);
-  if (!wf) {
+  const plan = requiredChecksPlan(root, cfg);
+  if (local) {
+    add({ id: 'workflow', status: 'skipped', what: 'local mode (ci.mode "local"): no CI workflow expected' });
+    add({ id: 'local-mode', status: 'warning', what: 'local mode: no CI', why: LOCAL_MODE_TRADE, fix: `before merging: ${localVerifyCommand(plan.branch)}; for CI: pocp ci on (or pocp init --github)` });
+  } else if (!wf) {
     add({ id: 'workflow', status: 'problem', what: 'no CI workflow runs pocp verify', why: 'the hooks are local and can be skipped; only CI checks every pull request', fix: 'copy examples/github/pocp.yml to .github/workflows/pocp.yml' });
   } else {
     const missing = [!wf.labels.tests && APPROVE_TESTS_LABEL, !wf.labels.policy && APPROVE_POLICY_LABEL].filter(Boolean);
@@ -177,7 +205,6 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   }
 
   // 6. What the adoption pull request carries.
-  const plan = requiredChecksPlan(root, cfg);
   const scope = adoptionScope(root, base || `origin/${plan.branch}`, cfg);
   if (!scope.known) add({ id: 'adoption-scope', status: 'skipped', what: `base ${scope.base} not found (pass --base <rev>)` });
   else if (scope.adopted) add({ id: 'adoption-scope', status: 'ok', what: `${scope.base} already has POCP` });
@@ -185,11 +212,12 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
     add({ id: 'adoption-scope', status: 'problem', what: `this adoption branch also changes ${scope.extra.length} other file(s): ${scope.extra.slice(0, 6).join(', ')}${scope.extra.length > 6 ? ' …' : ''}`, why: `until POCP is on ${scope.base}, CI judges with default rules while your hooks use this branch's, so these changes get two different verdicts`, fix: 'move them to a pull request opened after the adoption merges; the adoption PR should carry only .proof/ and CI files' });
   } else {
     add({ id: 'adoption-scope', status: 'ok', what: `adoption branch carries only .proof/ and CI files (${scope.files.length})` });
-    add({ id: 'adoption-approval', status: 'warning', what: 'the adoption PR adds CI configuration and rules', why: 'verify treats both as policy changes, so it fails until approved', fix: `a maintainer adds the \`${APPROVE_POLICY_LABEL}\` label to the adoption PR` });
+    if (!local) add({ id: 'adoption-approval', status: 'warning', what: 'the adoption PR adds CI configuration and rules', why: 'verify treats both as policy changes, so it fails until approved', fix: `a maintainer adds the \`${APPROVE_POLICY_LABEL}\` label to the adoption PR` });
   }
 
   // 7. Required checks: configured, and the verify job among them.
-  if (!plan.required_checks.length) {
+  if (local) add({ id: 'required-checks', status: 'skipped', what: 'local mode: nothing blocks a merge' });
+  else if (!plan.required_checks.length) {
     const live = workflows.some((w) => w.reporter);
     add({ id: 'required-checks', status: 'problem', what: 'ci.required_checks is empty', why: 'nothing makes a failed verify block a merge', fix: live
       ? 'list "pocp" (the status the reporter sets) and your test jobs in ci.required_checks in .proof/config.json; while you try it in report-only mode, list the verify job instead (docs/STATUS.md)'
@@ -209,6 +237,27 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
       add({ id: 'github', status: 'skipped', what: `could not ask GitHub (${repoInfo.missing ? 'gh is not installed' : repoInfo.message || 'gh failed'}); run "gh auth login" and try again` });
     } else {
       const repo = repoInfo.json.nameWithOwner;
+      // POCP's workflows on GitHub (what pocp ci off / on switch), and whether Actions starts at all.
+      const listed = gh(root, ['api', `repos/${repo}/actions/workflows?per_page=100`]);
+      if (Array.isArray(listed.json?.workflows)) {
+        const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
+        const mine = listed.json.workflows.filter((w) => ours.includes(w.path));
+        const active = mine.filter((w) => w.state === 'active').map((w) => w.path);
+        const disabled = mine.filter((w) => w.state !== 'active').map((w) => w.path);
+        if (local && active.length) add({ id: 'ci-mode', status: 'warning', what: `local mode, but POCP's workflows still run on ${repo}: ${active.join(', ')}`, why: 'each push spends Actions minutes on checks nothing requires', fix: 'pocp ci off' });
+        else if (local && disabled.length) add({ id: 'ci-mode', status: 'ok', what: `POCP's workflows are off on ${repo}, as local mode expects` });
+        else if (!local && disabled.length) add({ id: 'ci-mode', status: 'problem', what: `POCP's workflows are disabled on ${repo}: ${disabled.join(', ')}`, why: 'nothing checks pull requests, and .proof/config.json does not say local mode', fix: 'pocp ci on; or, for no CI, pocp ci off and commit .proof/config.json' });
+        const blocked = actionsBlocked(root, repo, listed.json.workflows);
+        if (blocked) {
+          const others = blocked.active.filter((f) => !ours.includes(f));
+          const steps = [...(blocked.active.some((f) => ours.includes(f)) ? ['pocp ci off (local mode)'] : []), ...others.map((f) => `gh workflow disable ${path.basename(f)}`)];
+          add({ id: 'actions-billing', status: 'problem', what: `GitHub Actions jobs on ${repo} are not starting: ${blocked.message.split(/\.\s/)[0]}`, why: `every push starts ${blocked.active.length} workflow(s) that fail at once and email you: ${blocked.active.join(', ')}`, fix: `${steps.join(', then ')}; or fix billing in Settings → Billing and plans` });
+        }
+      }
+      if (local) {
+        add({ id: 'github', status: 'skipped', what: 'local mode: Action access, labels and branch protection not checked' });
+        return { ok: !checks.some((c) => c.status === 'problem'), checks };
+      }
       for (const u of (wf?.uses || []).filter((x) => x.repo.toLowerCase() !== repo.toLowerCase())) {
         const a = gh(root, ['api', `repos/${u.repo}`]);
         if (!a.ok) {
@@ -247,7 +296,7 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
           : { id: 'branch-protection', status: 'ok', what: `${repo}@${plan.branch} enforces the plan: ${plan.required_checks.join(', ')} required, pull requests only, admins included${plan.require_up_to_date ? ', branches up to date' : ''}` });
         if (!plan.require_up_to_date) add({ id: 'up-to-date', status: 'warning', what: 'ci.require_up_to_date is false', why: 'a pull request can merge without the latest base, so the merged code is not the code that was verified', fix: 'remove ci.require_up_to_date from .proof/config.json (or set it to true), then pocp ci required --apply' });
       } else if (/upgrade to github pro|make this repository public/i.test(prot.message || '')) {
-        add({ id: 'branch-protection', status: 'warning', what: `${repo} is private on a free plan, which has no branch protection`, why: 'verify still runs and reports, but GitHub will not block a merge on it: POCP is advisory here, and anyone with write access can merge unverified code', fix: 'make the repository public, or move it to a plan with branch protection (GitHub Pro, Team or Enterprise)' });
+        add({ id: 'branch-protection', status: 'warning', what: `${repo} is private on a free plan, which has no branch protection`, why: 'verify still runs and reports, but GitHub will not block a merge on it: POCP is advisory here, and anyone with write access can merge unverified code', fix: 'make the repository public, or move it to a plan with branch protection (GitHub Pro, Team or Enterprise); or, if CI isn\'t worth its Actions minutes here, use local mode: pocp ci off' });
       } else if (/not protected/i.test(prot.message || '')) {
         add({ id: 'branch-protection', status: 'problem', what: `${repo}@${plan.branch} is not protected`, why: 'a failing verify would not block the merge', fix: 'pocp ci required --apply' });
       } else add({ id: 'branch-protection', status: 'skipped', what: `could not read branch protection (${prot.message})` });

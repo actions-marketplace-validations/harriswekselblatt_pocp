@@ -12,6 +12,27 @@
   the required `pocp` check to the app (docs/STATUS.md, "Give the reporter its own identity").
   Without the app it posts as before. Re-run `pocp init --github --force` to get the new workflow.
 
+### Added
+
+- **Local mode: POCP without CI.** For repositories where CI isn't available or wanted, such as
+  a free private repository whose Actions jobs fail for billing. `pocp init --local` sets
+  `ci.mode: "local"` and installs the hooks. `pocp ci off` disables POCP's workflows on GitHub
+  and sets the mode; `pocp ci on` reverses both. No workflow file changes, so there is nothing
+  to commit under `.github/`. In local mode `pocp doctor` skips the CI checks and states the
+  trade: no independent re-run, no merge blocking, `--no-verify` skips the gate, and you trust
+  your own machine. It also flags POCP workflows that disagree with the mode. Run
+  `pocp verify --rerun origin/main..HEAD` before merging to recover most of what CI checked; the
+  gate and verify then name you, through `--accept-*`, as the approver instead of a label.
+- **`pocp doctor` recognises Actions jobs GitHub doesn't start for billing reasons** ("recent
+  account payments have failed or your spending limit needs to be increased"). It names the
+  workflows that fail on every push and suggests `pocp ci off`, plus `gh workflow disable` for the
+  others.
+
+### Changed
+
+- The pre-commit hook's message when pocp can't be found no longer promises that CI checks a
+  `--no-verify` commit: "pocp verify still flags it", which holds in either mode.
+
 ## 1.2.3 (2026-11-10)
 
 ### Fixed
