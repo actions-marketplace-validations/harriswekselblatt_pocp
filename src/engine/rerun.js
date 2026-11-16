@@ -3,7 +3,7 @@
 // recorded proof (applyRerunEvidence), and recording a CI test step's result (ciRun).
 import * as g from '../git.js';
 import { createRevCheckout } from '../workspace.js';
-import { isRunnable, obligationDigest } from '../obligations.js';
+import { isRunnable, normalizeObligation, obligationDigest } from '../obligations.js';
 import { allSettled } from '../guard-check.js';
 import { ranAndFailed, runOutcome, unfinishedReason } from '../run-result.js';
 import { outputTail } from '../output-tail.js';
@@ -138,7 +138,10 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
    * return a result record bound to HEAD's subject hash and the exact command text.
    * The command's exit code is passed through, so this can replace a CI test step.
    */
-  async function ciRun(command, { env, cwd } = {}) {
+  async function ciRun(command, { cwd } = {}) {
+    // Built like a rule's check, so its folder is written the same way (`tests/` is `tests`)
+    // and its result matches the rule's check in verify; a folder outside the repo is refused.
+    const ob = normalizeObligation({ kind: 'test', run: command, cwd }, { id: 'ci' });
     const flags = flagProblem();
     if (flags) throw new PocpError('ci-run needs a clean checkout of the commit: some files are flagged so their edits are invisible to git', { problems: [flags] });
     const diffs = g.worktreeDiffs(root);
@@ -149,14 +152,14 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
     const commit = g.resolveRev(root, 'HEAD');
     const subject = g.subjectHashRev(root, commit);
     const started_at = new Date().toISOString();
-    const r = await runObligation({ id: 'ci', kind: 'test', run: command, ...(cwd ? { cwd } : {}) }, root, { env, keepCiFiles: true });
+    const r = await runObligation(ob, root, { keepCiFiles: true });
     return {
       pocp: 1,
       kind: 'ci-result',
       commit,
       subject,
       run: command,
-      cwd: cwd || null,
+      cwd: ob.cwd || null,
       exit: r.exit,
       timed_out: r.timed_out,
       passed: r.passed,

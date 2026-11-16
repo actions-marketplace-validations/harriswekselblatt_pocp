@@ -241,9 +241,9 @@ export async function runGuardCheck({
       // (it ran to the end and the runner reported failing tests), or 'unclear' (anything else).
       const runOne = async (c, dir, side) => {
         const args = c.argv.flatMap((a) => (a === TESTS_PLACEHOLDER ? c.files : [a]));
-        const ob = { id: c.ob.id, kind: 'test', run: args.map(shellQuote).join(' ') };
-        if (c.ob.cwd) ob.cwd = c.ob.cwd;
-        if (c.ob.timeout_ms) ob.timeout_ms = c.ob.timeout_ms;
+        // The check as the rule wrote it (cwd, timeout_ms, every setting), with only its command
+        // swapped: copying settings one by one is how a new one gets left behind.
+        const ob = { ...c.ob, run: args.map(shellQuote).join(' ') };
         const r = await slotted(() => run(timings.old_baseline, ob, dir, { logName: `${logPrefix}-${side}-changed-${c.ob.id}` }));
         const tests = countTests(r.output);
         // Node's runner reports a file that ran no test as one passing "test" named after the

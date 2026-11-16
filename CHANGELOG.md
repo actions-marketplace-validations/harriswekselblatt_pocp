@@ -33,6 +33,17 @@
 
 ### Fixed
 
+- **A commit that edits only a test keeps the rule's `cwd`.** With no rule covering the test
+  file, `pocp fix` borrowed the repo's most-required test command for the packet but left the
+  rule's settings behind, so a check that runs in a subfolder (QUICKSTART's own
+  `"cwd": "tests"`) ran at the root, couldn't start, and `fix` advised re-running forever. It
+  now borrows the rule's whole check (`cwd`, `timeout_ms`, `inputs`, ...), and two rules with
+  the same command in different folders are no longer counted as one (`fix --json` reports the
+  folder as `check_cwd`). The test guard's changed-tests run likewise carries the whole check
+  instead of copying `cwd` and `timeout_ms` by hand. `pocp ci-run --dir` writes its folder the
+  way a rule does, so `--dir tests/` now matches a rule's `"cwd": "tests"` in verify, and a
+  folder outside the repository is refused. Tests now cover every place a check is run or re-run
+  keeping its settings.
 - **A pull request no longer needs `pocp-approve-policy` because the base tightened its policy.**
   `verify base..head` compared every commit's policy with the base's current one, so when the
   base added a setting (say `ci.reporter_app_id`) while a pull request was open, the pull
