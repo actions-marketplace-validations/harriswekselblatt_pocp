@@ -65,7 +65,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     // In a range, a commit answers only for the loosenings it made. One its parent already had
     // (the base tightened after the branch began, or an earlier commit loosened and answers for
     // it) isn't counted again. The range's head always answers for all it loosens (verifyRange).
-    const parent = ownLoosenings ? g.parentOf(root, commit) : null;
+    const parent = ownLoosenings && weakened.length ? g.parentOf(root, commit) : null;
     const inherited = parent && parent !== baseRev ? new Set(policyInForce(parent, baseRev).weakened) : null;
     reportPolicy(commitFinding, out, { baseRev, policyProblems, weakened: inherited ? weakened.filter((w) => !inherited.has(w)) : weakened, accepted });
     if (!baseRev && policyFrom === undefined) out.notes.push('root commit: rules and signers come from the commit itself');

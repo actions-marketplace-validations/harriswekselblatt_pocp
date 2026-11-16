@@ -695,7 +695,10 @@ drops a glob from a requirement, raises a threshold, removes a protected path, a
 exemption, or adds a key to `allowed_signers`), verify fails and names each loosening, unless run with
 `--accept-policy-change`, which CI should pass only when a maintainer has approved
 (for example, a PR label). `--accept-policy-change=<commit>` (and likewise
-`--accept-test-change=<commit>`) approves only when the head being verified is that commit. Trusted signers also come from the base, or from
+`--accept-test-change=<commit>`) approves only when the head being verified is that commit. In a range, a commit
+before the head is named only for loosenings its parent didn't already have (a base that
+tightened while the branch was open isn't the branch loosening it); the head, or the net change
+when the head is a merge, is named for everything it loosens against the base. Trusted signers also come from the base, or from
 `--allowed-signers <file>`, never from the commit being judged.
 
 **Re-running.** With `--rerun`, every runnable obligation runs again, each in its own fresh
