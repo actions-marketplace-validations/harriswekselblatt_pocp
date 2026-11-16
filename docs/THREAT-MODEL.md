@@ -32,7 +32,7 @@ come from the rules in force, and its budget and seed from the base, so the chan
 an easier check or a friendlier sample. `verify base..head` also runs the guard on the pull
 request's net change (old tests from the merge base, new code from the head, merges included),
 computed by verify itself, so splitting "drop an assertion" and "add the bug it caught" into
-separate commits, or making either inside a merge commit, is judged as if it were one commit. *Partly covered:* when the mechanical check fails, a
+separate commits, or making either inside a merge commit, is judged as if it were one commit. A planned attack across pull requests (weaken now, add the bug in a later one) is out of scope: see below. *Partly covered:* when the mechanical check fails, a
 sign-off stands in. In `block` mode (the default) that isn't enough for CI: only an
 independent mechanical pass (`verify --rerun`, or a trusted signature) or a maintainer's
 `--accept-test-change` lets it through. In `attest` mode the sign-off is a free-text name, so
@@ -383,6 +383,19 @@ use a token without the *Administration* permission.
   the result is `inconclusive`, not `behavior-changed`: a run that didn't finish says
   nothing about behavior. It still blocks; a re-run with `--force` on a quiet machine, or a
   person, decides.
+- **Deliberate deception across pull requests.** POCP's threat model is an agent cutting
+  corners to get green within a task: breaking something, then weakening or deleting the test
+  that caught it. Deep mode catches that, because the old tests run on the new code (tamper
+  benchmark, target `pocp-deep`: `deep-hash-bug` and `deep-flaky-bug`, 0 of 30 accepted). What
+  gets through is a planned attack across pull requests. First, weaken an assertion without
+  breaking anything, and add a test that recognises planted bugs by reading the source (one that
+  fails whenever the file under test differs from the commit "catches" every planted bug). Then,
+  in a later pull request, add the bug. In the benchmark the first step was accepted on every run
+  (`deep-hash`), and a variant with a test that fails at random on some runs (`deep-flaky`). That
+  is an agent deliberately working against its owner over time: outside POCP's threat model,
+  like a CI job that lies or a stolen key. POCP has no defence against it, and
+  `test/e2e-guard-known-gap.test.js` asserts that deep mode accepts the first step today, so
+  nobody can claim a defence that doesn't exist.
 - **Processes that leave the check's process group.** POCP kills every process that stays
   in the check's group, including when POCP itself is killed. A check that starts a new
   session (`setsid`), detaches a daemon, or starts a service elsewhere can leave it running.

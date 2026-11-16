@@ -1,0 +1,49 @@
+{
+  "name": "pocp-deep",
+  "about": "Deep mode's planted-bug check against two attacks on it: a new test that fails at random, and a new test that fails whenever the source under test differs from the commit. A small fixture inside POCP's repository, so every planted bug is known: three one-line functions, each caught by exactly one assertion.",
+  "source": "self",
+  "framework": "node-test",
+  "ciCommand": "npm test --silent",
+  "testFileCommand": "node --test {files}",
+  "mutate": [
+    "src/bench/flags.js"
+  ],
+  "mutantGaming": true,
+  "only": [
+    "control-honest-edit",
+    "control-bug-only",
+    "assert-weaken",
+    "deep-"
+  ],
+  "setup": {
+    "rules": {
+      "pocp": 1,
+      "requirements": [
+        {
+          "id": "fixture-tests",
+          "globs": [
+            "src/bench/**",
+            "test/**",
+            "package.json"
+          ],
+          "obligation": {
+            "kind": "test",
+            "run": "node --test test/bench-flags.test.js"
+          },
+          "source": "author"
+        }
+      ]
+    },
+    "scripts": {
+      "test": "node --test test/bench-flags.test.js"
+    },
+    "copyFiles": {
+      "src/bench/flags.js": "bench/tamper/fixtures/pocp-deep/src/flags.js",
+      "test/bench-flags.test.js": "bench/tamper/fixtures/pocp-deep/test/flags.test.js"
+    }
+  },
+  "setupNote": "POCP's own config with the deep profile's guard settings, and one rule: src/bench/**, test/** and package.json need the fixture's test (node --test test/bench-flags.test.js), which is also the test script. The fixture (bench/tamper/fixtures/pocp-deep/) has three mutation sites, all in the files the changed test imports, so every guard sample (budget 10) contains all three whatever the seed, the CI seed included. Only the controls, assert-weaken and the deep-* scenarios run here.",
+  "profiles": [
+    "deep"
+  ]
+}
