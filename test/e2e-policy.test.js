@@ -1,6 +1,8 @@
 // Policy integrity in CI: a pull request can't loosen the rules it is judged by, however it
 // phrases the change.
 import { test } from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import { git, packetId, pocp, sampleRepo, write, writeConfig, writeRules } from './helpers.js';
 import { BREAK_ADD, commit } from './fixtures.js';
@@ -79,4 +81,31 @@ test('config weakening: guard globs, area depth, environment', () => {
   assert.equal(s.run.env, 'minimal');
   assert.deepEqual(s.run.env_allow, ['A']);
   assert.ok(s.guard.test_globs.includes('test/**') && s.guard.test_globs.includes('spec/**'));
+});
+
+test('verify says who acts first; a maintainer\'s label step names the pull request and pocp approve', () => {
+  const dir = sampleRepo({ hooks: true });
+  const base = git(dir, 'rev-parse', 'HEAD');
+  writeRules(dir, { triggers: { globs: [] }, requirements: [
+    { id: 'math-tests', glob: 'src/none/**', obligation: { kind: 'test', run: 'node test/math.check.mjs' }, source: 'author' },
+  ] });
+  git(dir, 'add', '-A');
+  const id = packetId(pocp(dir, ['open', '--intent', 'narrow', '--touch', '.proof/rules.json', '--command', 'true']).stdout);
+  assert.equal(pocp(dir, ['prove', id]).code, 0);
+  assert.equal(commit(dir, 'narrow the rule').status, 0);
+  const summary = path.join(dir, '.git', 'summary.md');
+  const pr = { GITHUB_REF: 'refs/pull/12/merge', GITHUB_REPOSITORY: 'o/r', GITHUB_STEP_SUMMARY: summary };
+  const v = pocp(dir, ['verify', `${base}..HEAD`, '--rerun-unsigned'], { env: pr });
+  assert.equal(v.code, 1);
+  const step = v.stdout.split('\n').find((l) => /policy_loosened/.test(l) && /next:/.test(l));
+  assert.match(step, /^ {4}\[maintainer, not the author\] policy_loosened: .*next: a maintainer reviews it and adds the `pocp-approve-policy` label to o\/r#12 \(or runs: pocp approve o\/r#12\)$/);
+  // pocp approve is only ever the maintainer's step, never the author's.
+  for (const l of v.stdout.split('\n').filter((x) => /pocp approve/.test(x))) assert.match(l, /\[maintainer, not the author\]/);
+  assert.match(fs.readFileSync(summary, 'utf8'), /- \*\*maintainer, not the author\*\* · `policy_loosened`: .*pocp approve o\/r#12/);
+  const j = pocp(dir, ['verify', `${base}..HEAD`, '--rerun-unsigned', '--json'], { env: { ...pr, GITHUB_STEP_SUMMARY: '' } });
+  const s = j.json.next_steps.find((x) => x.code === 'policy_loosened');
+  assert.deepEqual(Object.keys(s), ['by', 'code', 'why', 'next'], 'who acts comes first');
+  assert.equal(s.by, 'person');
+  // Outside a pull request, no number is guessed.
+  assert.match(pocp(dir, ['verify', `${base}..HEAD`, '--rerun-unsigned']).stdout, /to the pull request \(or runs: pocp approve owner\/repo#<number>\)/);
 });

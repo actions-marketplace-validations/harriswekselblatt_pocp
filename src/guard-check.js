@@ -12,8 +12,17 @@ import { copySnapshot, createTreeSnapshot } from './workspace.js';
 
 export { ranAndFailed, unfinishedReason };
 
-/** A mutant run that didn't finish is retried once with this many times its limit. */
+/** A mutant run that didn't finish is retried once with this many times its limit... */
 export const RETRY_FACTOR = 3;
+
+/**
+ * ...but never longer than 5× what the check took on the unmutated code, or 30 s if that's
+ * more: a mutant that runs 5× slower than the suite is as good as hung. Only mutant retries are
+ * capped; a run that hits the cap is not measured (inconclusive), never a pass.
+ */
+export function retryLimit(limit, baselineMs) {
+  return Math.min(limit * RETRY_FACTOR, Math.max(30_000, 5 * (Number(baselineMs) || 0)));
+}
 
 /**
  * The test guard's mechanical check (SPEC §6.2). A change modified or deleted existing tests
@@ -290,10 +299,10 @@ export async function runGuardCheck({
     // exit 126/127 is not a catch: under load a full suite hits the timeout whether or not it
     // would catch the mutant, so it says nothing either way.
     // Such a run is retried once, in a fresh copy with the mutant, with RETRY_FACTOR times the
-    // limit it hit (a check that didn't time out keeps its limit). A retry that ends normally
-    // counts as the run. POCP has no ceiling on check timeouts (`run.timeout_ms` is only the
-    // default a check's own `timeout_ms` overrides), so the retry limit isn't capped; the retry
-    // happens at most once per check and mutant, and only after a run that didn't finish.
+    // limit it hit (a check that didn't time out keeps its limit), capped by retryLimit at 5×
+    // the check's time on the new code (30 s at least). A retry that ends normally counts as the
+    // run. So a hung mutant costs at most the check's limit plus that cap, not 4× the limit; the
+    // retry happens at most once per check and mutant, and only after a run that didn't finish.
     // After a run that still didn't finish, the remaining checks still run, and a later one
     // that fails normally still catches the mutant. Only when none fails normally and at least
     // one didn't finish is the mutant `not-measured`. When every check ends normally there are
@@ -322,14 +331,14 @@ export async function runGuardCheck({
             // the guard isn't given) how long it ran before it was stopped, which is at least
             // that limit.
             const limit = r.timed_out ? Math.max(1, Number(ob.timeout_ms) || Number(r.duration_ms) || 0) : null;
-            const again = limit ? { ...ob, timeout_ms: limit * RETRY_FACTOR } : ob;
+            const again = limit ? { ...ob, timeout_ms: retryLimit(limit, speed.get(ob)) } : ob;
             const rc = fresh();
             try {
               r = await runObligation(again, rc.dir, { logName: `${logPrefix}-${label}-${ob.id}-retry` });
             } finally {
               rc.cleanup();
             }
-            retried.push({ check: ob.id, first: firstReason, ...(limit ? { timeout_ms: limit * RETRY_FACTOR } : {}), retry: r.passed ? 'passed' : ranAndFailed(r) ? 'failed' : unfinishedReason(r) });
+            retried.push({ check: ob.id, first: firstReason, ...(limit ? { timeout_ms: again.timeout_ms } : {}), retry: r.passed ? 'passed' : ranAndFailed(r) ? 'failed' : unfinishedReason(r) });
           }
           if (r.passed) continue;
           if (ranAndFailed(r)) return { by: ob.id, unfinished, retried };
@@ -478,7 +487,7 @@ export async function runGuardCheck({
       return `${o.file}:${o.line} \`${o.before}\` → \`${o.after}\`: "${checks.find((x) => x.id === c.check)?.run || c.check}" ${c.reason}`;
     };
     // The verdict, when some mutant couldn't be measured (its run didn't finish, and neither
-    // did the retry with RETRY_FACTOR times the limit):
+    // did the retry with up to RETRY_FACTOR times the limit):
     // - A pass must rest on evidence for every sampled mutant: each one the old tests catch,
     //   the new tests catch too. A mutant the old tests didn't finish on may be one they catch
     //   by hanging (a real infinite loop the mutant causes) or one the machine was too loaded
@@ -494,13 +503,13 @@ export async function runGuardCheck({
     // - If no measured mutant is caught by the old tests, a drop can't be measured at all:
     //   inconclusive, as for any such sample.
     const gaps = () => [
-      oldUnmeasured.length ? `the old tests didn't finish on ${oldUnmeasured.length} of the ${outcomes.length} sampled mutants, even on a retry with ${RETRY_FACTOR}× the time limit (e.g. ${example(oldUnmeasured[0])}): they may hang on it (a real infinite loop) or the machine may be overloaded, so it can't be told whether the new tests still catch it` : '',
-      newUnmeasured.length ? `the new tests didn't finish on ${newUnmeasured.length} of the ${baseKilled} mutants the old tests caught, even on a retry with ${RETRY_FACTOR}× the time limit (e.g. ${example(newUnmeasured[0])}), so it can't be told whether detection dropped` : '',
+      oldUnmeasured.length ? `the old tests didn't finish on ${oldUnmeasured.length} of the ${outcomes.length} sampled mutants, even on a retry with up to ${RETRY_FACTOR}× the time limit (e.g. ${example(oldUnmeasured[0])}): they may hang on it (a real infinite loop) or the machine may be overloaded, so it can't be told whether the new tests still catch it` : '',
+      newUnmeasured.length ? `the new tests didn't finish on ${newUnmeasured.length} of the ${baseKilled} mutants the old tests caught, even on a retry with up to ${RETRY_FACTOR}× the time limit (e.g. ${example(newUnmeasured[0])}), so it can't be told whether detection dropped` : '',
     ].filter(Boolean).join('; ');
     if (baseKilled === 0) {
       result.detection.result = 'inconclusive';
       if (oldUnmeasured.length === outcomes.length) {
-        return finishUnfinished(`none of the ${outcomes.length} sampled mutants could be measured on the old tests (e.g. ${example(oldUnmeasured[0])}, also on a retry with ${RETRY_FACTOR}× the time limit), so a drop in detection can't be measured: a person must decide`);
+        return finishUnfinished(`none of the ${outcomes.length} sampled mutants could be measured on the old tests (e.g. ${example(oldUnmeasured[0])}, also on a retry with up to ${RETRY_FACTOR}× the time limit), so a drop in detection can't be measured: a person must decide`);
       }
       const measured = outcomes.length - oldUnmeasured.length;
       return finish('inconclusive', `the old tests caught none of ${measured} sampled mutants${oldUnmeasured.length ? ` that could be measured (${oldUnmeasured.length} more couldn't be: e.g. ${example(oldUnmeasured[0])}, also on a retry)` : ''}, so a drop in detection can't be measured`);

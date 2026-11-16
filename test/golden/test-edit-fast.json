@@ -237,7 +237,15 @@
           ],
           "outcome": "waiting",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "person",
+            "code": "test_change",
+            "why": "existing tests changed and POCP could not show they still catch what they caught before.",
+            "next": "a maintainer reviews the test change and adds the `pocp-approve-tests` label to the pull request (or runs: pocp approve owner/repo#<number>)"
+          }
+        ]
       },
       "stderr": ""
     }

@@ -82,7 +82,7 @@ test('an old-side timeout is not a catch, and a mutant the old tests hang on can
   assert.equal(res.detection.old_caught, 1);
   assert.equal(res.detection.old_not_measured, 1);
   assert.equal(res.detection.not_measured.length, 1);
-  assert.match(res.summary, /the old tests didn't finish on 1 of the 3 sampled mutants, even on a retry with 3× the time limit \(e\.g\. src\/math\.js:6 `return n > 0;` → `return n <= 0;`: "node test\/a\.check\.mjs" timed out\): they may hang on it/);
+  assert.match(res.summary, /the old tests didn't finish on 1 of the 3 sampled mutants, even on a retry with up to 3× the time limit \(e\.g\. src\/math\.js:6 `return n > 0;` → `return n <= 0;`: "node test\/a\.check\.mjs" timed out\): they may hang on it/);
 });
 
 test('if every old-side "catch" was a timeout, nothing was measured: inconclusive', async () => {
@@ -99,7 +99,7 @@ test('if every old-side "catch" was a timeout, nothing was measured: inconclusiv
   assert.equal(res.detection.result, 'inconclusive');
   assert.equal(res.detection.old_caught, 0);
   assert.equal(res.detection.old_not_measured, 2);
-  assert.match(res.summary, /none of the 2 sampled mutants could be measured on the old tests \(e\.g\. src\/math\.js:\d+ .*: "test -f \.mutant.*" timed out, also on a retry with 3× the time limit\)/);
+  assert.match(res.summary, /none of the 2 sampled mutants could be measured on the old tests \(e\.g\. src\/math\.js:\d+ .*: "test -f \.mutant.*" timed out, also on a retry with up to 3× the time limit\)/);
 });
 
 test('a new-side timeout on a mutant the old tests caught is inconclusive, not a pass', async () => {

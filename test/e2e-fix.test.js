@@ -34,7 +34,7 @@ test('a blocked gate says what is wrong, why, and the next command', () => {
   assert.match(r.next, /^pocp fix/);
   assert.equal(r.by, 'pocp fix');
   const human = pocp(dir, ['gate']);
-  assert.match(human.stderr, /what: 1 staged file\(s\) are not covered/);
+  assert.match(human.stderr, /\[author: pocp fix\] 1 staged file\(s\) are not covered/, 'who acts comes first');
   assert.match(human.stderr, /why: /);
   assert.match(human.stderr, /next: pocp fix/);
   assert.match(human.stderr, /"pocp fix" takes every step/);

@@ -11,6 +11,25 @@
   whose key lives only in that environment. Limit the environment to your default branch and pin
   the required `pocp` check to the app (docs/STATUS.md, "Give the reporter its own identity").
   Without the app it posts as before. Re-run `pocp init --github --force` to get the new workflow.
+- **`pocp ci required` pins the `pocp` check to the reporter's app.** New config key
+  `ci.reporter_app_id` (the App ID): `--apply` requires `pocp` from that app only, keeping every
+  other check's source. `--check` (and `pocp doctor`) now report a required `pocp` check that
+  isn't pinned to it, or, without the key, one that any source or GitHub Actions can post: a
+  workflow a branch edits can post that one. Changing or removing the key is a policy loosening.
+  POCP's own config sets it to its live reporter App.
+
+### Changed
+
+- **Every next step says who acts first.** Gate, `pocp fix` and verify output, the job summary
+  and `verify --json` (new `next_steps: [{ by, code, why, next }]`) lead with who takes the step:
+  the author, a maintainer, a re-run (a check didn't finish) or infra (e.g. ssh-keygen missing).
+  A maintainer's label step names the pull request and `pocp approve owner/repo#N`, marked as the
+  maintainer's, never the author's or an agent's. In verify findings, `by` is now `rerun` for
+  checks that didn't finish and `infra` for an unavailable signature check (was `agent`).
+- **A hung mutant's retry is capped.** Deep mode retried a timed-out mutant run at 3× its limit
+  with no ceiling (a 10-minute limit could spend 40 minutes on one hung mutant). The retry now
+  gets at most 5× the check's measured time on the new code, or 30 s if that's more. A retry
+  that hits the cap is not measured, so the result is inconclusive, never a pass.
 
 ## 1.2.3 (2026-11-10)
 

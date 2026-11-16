@@ -369,14 +369,16 @@ use a token without the *Administration* permission.
   can't judge the change, and a person must. The base is checked per required check, so a
   check that was already red hides any behavior change it would otherwise have caught.
   Only a check that runs to the end and fails catches a mutant; a timeout, a kill, a spawn
-  error or exit 126/127 is retried once (3× the time limit for a timeout) and, if it still
+  error or exit 126/127 is retried once (for a timeout, with 3× the time limit but at most
+  5× the check's measured time on the new code, or 30 s if that's more) and, if it still
   doesn't finish, leaves the mutant not measured. Any not-measured mutant, on either side,
   makes the result `inconclusive` (a person decides), never a pass. So a mutant the old tests
   hang on for real (an infinite loop) can't be used to slip a weakened test through, but a
   slow or overloaded machine, or a suite near its timeout, costs friction: more inconclusive
-  results that need a person or a re-run with `--force`. The retry limit isn't capped (POCP
-  has no timeout ceiling), so on a suite with a 10-minute limit a hung mutant costs up to 40
-  minutes of check time. A test runner that dies by a signal on a mutant (a native crash)
+  results that need a person or a re-run with `--force`. The cap bounds what a hung mutant
+  costs: on a suite with a 10-minute limit that takes 1 minute, the run plus a 5-minute retry
+  (it was 40 minutes uncapped). A mutant that only slows the code more than 5× and then fails
+  is not measured either, so the cap can add inconclusive results; it never adds a pass. A test runner that dies by a signal on a mutant (a native crash)
   counts as not measured, not caught, so it too is inconclusive. Only mutant runs are
   retried: a baseline run that doesn't finish blocks without a retry. If the old tests
   don't finish on the new code (a timeout, a signal, a spawn error) but pass on the base,

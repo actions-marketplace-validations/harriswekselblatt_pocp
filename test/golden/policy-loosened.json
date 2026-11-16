@@ -176,7 +176,27 @@
           ],
           "outcome": "failed",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "person",
+            "code": "policy_loosened",
+            "why": "this change loosens the rules or CI that judge every later change; the change cannot approve itself.",
+            "next": "a maintainer reviews it and adds the `pocp-approve-policy` label to the pull request (or runs: pocp approve owner/repo#<number>)"
+          },
+          {
+            "by": "agent",
+            "code": "policy_mismatch",
+            "why": "the packet was proven under different rules than the ones in force.",
+            "next": "pocp fix, then commit again"
+          },
+          {
+            "by": "person",
+            "code": "missing_required",
+            "why": "this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\").",
+            "next": "ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\""
+          }
+        ]
       },
       "stderr": ""
     },

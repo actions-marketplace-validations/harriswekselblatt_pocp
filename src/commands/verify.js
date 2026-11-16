@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { COOPERATIVE } from '../runner.js';
-import { DONT_REWRITE, verifyRemedy } from '../remedies.js';
+import { DONT_REWRITE, WHO, verifyRemedy } from '../remedies.js';
 import { EXIT } from '../errors.js';
 import { VERIFY_EXIT } from '../approvals.js';
 import { createRevCheckout } from '../workspace.js';
@@ -67,19 +67,24 @@ export async function run({ engine, flags, isolated, json, rest }) {
     jobs: flags.jobs,
   };
   const rerunLines = (reruns) => reruns.map((x) => `  rerun ${x.status.padEnd(8)} ${x.run}${x.duration_ms !== undefined ? ` (${x.duration_ms}ms)` : ''}${x.kind === 'guard' && x.summary ? `: ${x.summary}` : ''}`);
+  // What to do, who acts first: { by, code, why, next } per blocking finding code.
   const nextSteps = (rows2) => {
     const seen = new Map();
-    for (const c of rows2) for (const f of (c.findings || []).filter((x) => x.blocking)) if (!seen.has(f.code)) seen.set(f.code, { code: f.code, ...verifyRemedy(f.code, f.detail, f) });
+    const add = (code, x) => seen.set(code, { by: x.by, code, why: x.why, next: x.next });
+    for (const c of rows2) for (const f of (c.findings || []).filter((x) => x.blocking)) if (!seen.has(f.code)) add(f.code, verifyRemedy(f.code, f.detail, f));
     // A re-run that ran and failed outranks one that only timed out, for what to do next.
     const reruns = (result?.rerun_failures || []).filter((x) => x.blocking !== false);
     const worst = reruns.find((x) => !x.unfinished) || reruns[0];
-    if (worst && !seen.has('rerun_failed')) seen.set('rerun_failed', { code: 'rerun_failed', ...verifyRemedy('rerun_failed', worst.detail || worst.problem, worst) });
-    const list2 = [...seen.values()];
+    if (worst && !seen.has('rerun_failed')) add('rerun_failed', verifyRemedy('rerun_failed', worst.detail || worst.problem, worst));
+    return [...seen.values()];
+  };
+  const stepLines = (list2) => {
     if (!list2.length) return [];
-    const out2 = ['  what to do:', ...list2.map((x) => `    ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}${x.by === 'person' ? '   (needs a person)' : ''}`)];
+    const out2 = ['  what to do:', ...list2.map((x) => `    [${WHO[x.by]}] ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}`)];
     if (list2.some((x) => x.by === 'person')) out2.push(`    ${DONT_REWRITE}`);
     return out2;
   };
+  let steps = [];
   // A range's own findings, apart from re-run failures (rerun_failures lists those).
   const rangeFindings = (r) => (r.findings && r.commits ? r.findings.filter((f) => f.code !== 'rerun_failed') : []);
   const commitProblems = (c) => [
@@ -98,6 +103,7 @@ export async function run({ engine, flags, isolated, json, rest }) {
     result = await engine.verifyRange(rest[0], vopts);
     // The range's net change (all commits and merges as one change) is judged like a commit.
     rows = [...result.commits, ...(result.net ? [result.net] : [])];
+    if (!result.ok) steps = nextSteps([...rows, { findings: rangeFindings(result) }]);
     human = [
       `${result.ok ? 'verified' : 'NOT verified'}: ${result.commits.length} commit(s) in ${result.range} · ${Date.now() - started}ms`,
       ...result.commits.map((c) => `  ${c.ok ? 'ok ' : 'BAD'} ${c.commit.slice(0, 12)}${c.ok ? '' : `: ${commitProblems(c).join(' | ')}`}`),
@@ -105,12 +111,13 @@ export async function run({ engine, flags, isolated, json, rest }) {
       ...(result.notes || []).map((n) => `  note: ${n}`),
       ...isolationLine([...result.reruns, ...(result.net?.reruns || [])]),
       ...rerunLines([...result.reruns, ...(result.net?.reruns || [])]),
-      ...(result.ok ? [] : nextSteps([...rows, { findings: rangeFindings(result) }])),
+      ...stepLines(steps),
       ...failedOutputLines([...result.reruns, ...(result.net?.reruns || [])]),
     ].join('\n');
   } else {
     result = await engine.verify(rest[0] || 'HEAD', vopts);
     rows = [result];
+    if (!result.ok) steps = nextSteps([result]);
     human = [
       `${result.ok ? 'verified' : 'NOT verified'}: ${result.commit.slice(0, 12)} subject ${shortDigest(result.subject)} · ${Date.now() - started}ms`,
       ...result.notes.map((n) => `  note: ${n}`),
@@ -119,13 +126,14 @@ export async function run({ engine, flags, isolated, json, rest }) {
       ...(result.coverage?.uncovered.length ? [`  not covered: ${result.coverage.uncovered.join(', ')}`] : []),
       ...isolationLine(result.reruns),
       ...rerunLines(result.reruns),
-      ...(result.ok ? [] : nextSteps([result])),
+      ...stepLines(steps),
       ...failedOutputLines(result.reruns),
     ].join('\n');
   }
   result.isolation = { mode: isolation.mode, secure: isolation.secure };
   // One decision for the library and the CLI, from typed findings (src/decision.js).
   if (!result.ok) result.approval = decideVerify(result);
+  if (steps.length) result.next_steps = steps;
   writeGithubSummary(result, rows, commitProblems, Date.now() - started, { annotations: !json });
   out(json, result, human);
   if (result.ok) return EXIT.ok;
