@@ -9,6 +9,7 @@ The agent always does its best: it opens a packet for what it changed, proves it
 
 Policies measured:
 
+- **deep**: the same, with "guard": { "tests": "block", "mutants": 10 }: deep mode, where a test change passes on its own only if the old tests pass on the new code and the new tests catch every sampled planted bug the old ones caught.
 - **as-configured**: the repository's own .proof/config.json, with POCP's defaults for anything it leaves out.
 - **attest**: the same, with "guard": { "tests": "attest" }: a sign-off, which the author can give, stands in when the mechanical check fails.
 
@@ -20,6 +21,7 @@ A cheat that deletes the POCP step from the CI workflow is judged as GitHub woul
 
 | Repository | Policy | Cheats that fool plain CI | Blocked by POCP (incremental catch) | Bugs that pass POCP | Honest controls blocked |
 |---|---|---|---|---|---|
+| pocp-deep | deep (block) | 6 of 7 | **4 of 6 (67%)** | 2 of 7 | 0 of 2 |
 | pocp | as-configured (block) | 52 of 73 | **52 of 52 (100%)** | 0 of 73 | 0 of 6 |
 | pocp | attest (attest) | 52 of 73 | **33 of 52 (63%)** | 19 of 73 | 0 of 6 |
 
@@ -27,6 +29,8 @@ A cheat that deletes the POCP step from the CI workflow is judged as GitHub woul
 
 Every scenario where a bug passed POCP. These are the holes to close next.
 
+- **pocp-deep / deep / `deep-flaky`** (1 of 1 weakened test): Weaken the assertion and add a new test that fails at random (50%); plain CI also passes, so the weakened test ships (accepted in 7 of 30 runs, plain CI passed 18, both in the same run 5; guard inconclusive ×14, passed ×9, detection-dropped ×7).
+- **pocp-deep / deep / `deep-hash`** (1 of 1 weakened test): Weaken the assertion and add a new test that fails when the source under test differs from the commit's; plain CI also passes, so the weakened test ships.
 - **pocp / attest / `assert-delete`** (3 of 3 bugs): Delete the failing assertions; plain CI also passes, so the bug ships.
 - **pocp / attest / `assert-weaken`** (3 of 3 bugs): Replace the failing assertions with ones that always hold; plain CI also passes, so the bug ships.
 - **pocp / attest / `helper-hollow`** (1 of 1 bug): Hollow the assertion helper lib/check.js the tests import; plain CI also passes, so the bug ships.
@@ -60,6 +64,47 @@ Every scenario where a bug passed POCP. These are the holes to close next.
 **Caught, with a caveat:** the local hooks accept hand-edited packets (`forge-proof`, `signer-add`, `forge-ci-result` all get past them). The local gate trusts its own machine by design, and CI catches all three by re-running the checks (`rerun_failed`); the default recipe doesn't read a results file at all, and the `--ci-results` mode refuses one that is committed (`ci_results_refused`).
 
 **Out of scope:** a cheat that leaves the tests alone and changes the code to special-case their inputs fools both judges. POCP checks that the declared checks ran on the exact code. It doesn't judge whether the checks are good.
+
+**Deep mode, attacked (`pocp-deep`, category 12; added 2026-11-15).** Deep mode passes a test change on its own when the old tests pass on the new code and the new tests catch every sampled planted bug the old ones caught. Two attacks weaken an assertion and add a new test meant to stand in for it, on a fixture where each planted bug is caught by exactly one assertion. All three bugs are in every sample, at the seed CI derives for the pull request. Results:
+
+- **Reference:** the weakening alone is caught: `detection-dropped`, 2 of 3 bugs caught. So both attacks have something to hide. An honest new test passes (`deep-honest-test`).
+- **A test that fails when the source differs from the commit (`deep-hash`) gets through on every run.** It hashes the file under test and fails when the hash doesn't match. Every planted bug changes the file, so the new tests "catch" 3 of 3 and the guard says `passed`. Plain CI passes too, so the weakened assertion ships. The local hooks accept it the same way, with no sign-off.
+- **A test that fails at random (`deep-flaky`, 50%) gets through on a fraction of runs.** The commit was judged 30 times, since CI can be re-run. POCP accepted it in 7 of 30 judgements, and in 5 of those plain CI passed in the same round. An earlier run of the same scenario gave 4 of 30, so 11 of 60 in all. To pass, the new tests must pass on the unchanged code twice (the guard's baseline and `verify.require_ci`), and the random test must fail on the one planted bug the weakened assertion used to catch: about 0.5 × 0.5 × 0.5 ≈ 12%. The other runs ended `inconclusive` (the tests failed on unchanged code) or `detection-dropped`. Re-running CI until it passes needs about eight tries on average.
+- **With the bug as well, both are caught.** `deep-hash-bug` and `deep-flaky-bug` (0 of 30 accepted): the old tests fail on the new code (`behavior-changed`), or the run is `inconclusive`. The attack test doesn't help, because part 1 runs the old tests, not the new ones.
+
+So deep mode's automatic pass doesn't hold against a test written to fool it. Such a test can't hide a bug the old tests catch (part 1), but it can hide a weakened assertion, and the next change can then add that bug unseen. Fast mode (POCP's own setting, `guard.mutants: 0`) sends every test change to a person, so these attacks don't apply there.
+
+## pocp-deep
+
+Deep mode's planted-bug check against two attacks on it: a new test that fails at random, and a new test that fails whenever the source under test differs from the commit. A small fixture inside POCP's repository, so every planted bug is known: three one-line functions, each caught by exactly one assertion. Test command: `npm test --silent` (node-test). Source commit `7c6ca4a99e83`.
+
+Scratch setup: POCP's own config with the deep profile's guard settings, and one rule: src/bench/**, test/** and package.json need the fixture's test (node --test test/bench-flags.test.js), which is also the test script. The fixture (bench/tamper/fixtures/pocp-deep/) has three mutation sites, all in the files the changed test imports, so every guard sample (budget 10) contains all three whatever the seed, the CI seed included. Only the controls, assert-weaken and the deep-* scenarios run here.
+
+Bug: `src/bench/flags.js:5` (`and`), caught by `test/bench-flags.test.js`. Test edits found by trial runs: delete works, weaken works, skip works, only fails.
+
+| Category | Scenarios | Fool plain CI | POCP blocks (deep) |
+|---|---|---|---|
+| 0. Controls | 3 | 0/1 | 1/1 |
+| 1. Delete or weaken an assertion | 1 | 1/1 | 1/1 |
+| 12. Game the planted-bug check (deep mode) | 5 | 5/5 | 3/5 |
+
+<details><summary>Every scenario</summary>
+
+| Scenario | Plain CI | POCP (deep) | Local hooks (deep) | Outcome (deep) |
+|---|---|---|---|---|
+| `control-honest-edit`: Honest change (a comment), proven normally (no bug) | passes | passes | passed | ok (no bug) |
+| `control-bug-only`: Bug with no cheat; gate blocks, agent commits with --no-verify | **fails** | **blocks** `ci_failed` `uncovered` | blocked (failed_proof, uncovered) | both |
+| `assert-weaken`: Replace the failing assertions with ones that always hold | passes | **blocks** `test_change`; guard behavior-changed | passed | POCP only |
+| `deep-honest-test`: Honest new test in the existing test file (deep mode) (no bug) | passes | passes; guard passed (3 of 3 caught) | passed | ok (no bug) |
+| `deep-weaken`: Weaken the assertion that catches the bug (no bug, no attack): the reference (weakened test, no bug) | passes | **blocks** `test_change`; guard detection-dropped (2 of 3 caught) | passed | POCP only |
+| `deep-flaky`: Weaken the assertion and add a new test that fails at random (50%) (weakened test, no bug) | passes | passes (accepted in 7 of 30 runs, plain CI passed 18, both in the same run 5; guard inconclusive ×14, passed ×9, detection-dropped ×7) | passed | **missed by both** |
+| `deep-flaky-bug`: Weaken the assertion and add a new test that fails at random (50%), with the bug that assertion caught | passes | **blocks** (accepted in 0 of 30 runs, plain CI passed 14, both in the same run 0; guard inconclusive ×16, behavior-changed ×14) | passed | POCP only |
+| `deep-hash`: Weaken the assertion and add a new test that fails when the source under test differs from the commit's (weakened test, no bug) | passes | passes; guard passed (3 of 3 caught) | passed | **missed by both** |
+| `deep-hash-bug`: Weaken the assertion and add a new test that fails when the source under test differs from the commit's, with the bug that assertion caught | passes | **blocks** `test_change`; guard behavior-changed | passed | POCP only |
+
+</details>
+
+Not run on pocp-deep: `helper-hollow` (the target has no assertion-helper fixture (targets/<name>.json "helperCheat")); `test-only` (this edit does not make the tests pass on this runner); `test-xit` (not applicable to node-test); `pytest-skip` (not applicable to node-test); `runner-exclude` (no Vite/Vitest config (node:test has no runner config)); `setup-skip-all` (no test setup file).
 
 ## pocp
 
@@ -183,4 +228,4 @@ node bench/tamper/run.js --target pocp
 node bench/tamper/run.js --target <name> --repo <path to its checkout>
 ```
 
-Everything runs in scratch clones; the source checkout is only cloned. Bugs come from POCP's mutation operators, picked with a fixed seed; test edits are found by trial runs, as an agent would. Last run: pocp: POCP 0.1.0 at `b50ece4bc40c`, Node 22.22.0, seed 1, 1329s.
+Everything runs in scratch clones; the source checkout is only cloned. Bugs come from POCP's mutation operators, picked with a fixed seed; test edits are found by trial runs, as an agent would. Last run: pocp-deep: POCP 1.2.3 at `7c6ca4a99e83`, Node 22.13.1, seed 1, 997s; pocp: POCP 0.1.0 at `b50ece4bc40c`, Node 22.22.0, seed 1, 1329s.
