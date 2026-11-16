@@ -19,7 +19,7 @@ export const GIT_ENV = {
 };
 Object.assign(process.env, GIT_ENV);
 // Tests behave the same locally and inside CI: no host, no GitHub job summary or annotations.
-for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
+for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY', 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
 
 // Temporary folders. Every test process gets one root folder and points TMPDIR at it, so
 // everything it (and every pocp it starts) puts in os.tmpdir() lands inside. A folder made

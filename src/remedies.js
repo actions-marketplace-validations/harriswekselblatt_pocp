@@ -1,8 +1,11 @@
 // Every block explains itself: what is wrong, why it matters, and the exact next step.
-// A remedy is { code, what, why, next, by } where `by` says who can take the step:
+// A remedy is { code, what, why, next, by } where `by` says who can take the step, and is
+// printed first (WHO):
 //   "pocp fix"  mechanical; `pocp fix` does it
 //   "agent"     the author changes code or files, then runs `pocp fix` again
 //   "person"    only a person can approve it (never the agent that made the change)
+//   "rerun"     nothing is known yet: run it again (a check didn't finish)
+//   "infra"     the machine that runs verify lacks something; no code change helps
 
 import { factsOf } from './finding.js';
 
@@ -11,6 +14,18 @@ export const APPROVE_POLICY_LABEL = 'pocp-approve-policy';
 export const APPROVE_INCONCLUSIVE_LABEL = 'pocp-approve-inconclusive';
 
 /** Said with every block that needs a person. Rewriting history never clears an approval. */
+/** Who takes a step, as printed before it. */
+export const WHO = { 'pocp fix': 'author: pocp fix', agent: 'author', person: 'maintainer, not the author', rerun: 're-run', infra: 'infra' };
+
+/** The pull request CI is verifying, as owner/repo#N, or null outside a pull request. */
+export function pullRequestRef(env = process.env) {
+  const n = /^refs\/pull\/(\d+)\//.exec(env.GITHUB_REF || '')?.[1];
+  return n && env.GITHUB_REPOSITORY ? `${env.GITHUB_REPOSITORY}#${n}` : null;
+}
+
+/** A label only a maintainer adds: names the pull request and `pocp approve` (docs/STATUS.md). */
+const labelStep = (label, pr = pullRequestRef()) => `adds the \`${label}\` label to ${pr || 'the pull request'} (or runs: pocp approve ${pr || 'owner/repo#<number>'})`;
+
 export const DONT_REWRITE = 'Do not squash, force-push, rewrite history or commit with --no-verify to get past this: push the commit as it is and ask for the approval.';
 
 /**
@@ -133,14 +148,14 @@ export function pendingApprovals(r) {
         code: 'test_change',
         what: w.detail,
         why: 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
-        next: `a maintainer adds the \`${APPROVE_TESTS_LABEL}\` label to the pull request`,
+        next: `a maintainer ${labelStep(APPROVE_TESTS_LABEL)}`,
         by: 'person',
       }
     : {
         code: 'policy_change',
         what: w.detail,
         why: 'a change cannot approve a loosening of the rules that judge it.',
-        next: `a maintainer adds the \`${APPROVE_POLICY_LABEL}\` label to the pull request`,
+        next: `a maintainer ${labelStep(APPROVE_POLICY_LABEL)}`,
         by: 'person',
       }));
 }
@@ -156,24 +171,24 @@ export function verifyRemedy(code, detail = '', finding = {}) {
     case 'test_change':
       if (variant === 'local_only') return { why: 'a local pass can be faked; CI must see the check pass itself.', next: 'run verify with --rerun or --rerun-unsigned (the Action does by default)', by: 'agent' };
       if (variant === 'packet_checks') return { why: 'the check must run tests a rule requires, not ones the change picked.', next: 'add a requirement in .proof/rules.json covering these tests (a policy change a maintainer approves)', by: 'person' };
-      return { why: 'existing tests changed and POCP could not show they still catch what they caught before.', next: `a maintainer reviews the test change and adds the \`${APPROVE_TESTS_LABEL}\` label`, by: 'person' };
+      return { why: 'existing tests changed and POCP could not show they still catch what they caught before.', next: `a maintainer reviews the test change and ${labelStep(APPROVE_TESTS_LABEL)}`, by: 'person' };
     case 'test_inconclusive':
-      return { why: 'existing tests changed and the check that judges them didn\'t finish (a timeout, a kill or a failed start), so nothing is known about them yet. A test approval doesn\'t cover this.', next: `re-run the job; if it still can't finish, fix the hang or the time limit, or a maintainer who has read why adds the \`${APPROVE_INCONCLUSIVE_LABEL}\` label`, by: 'person' };
+      return { why: 'existing tests changed and the check that judges them didn\'t finish (a timeout, a kill or a failed start), so nothing is known about them yet. A test approval doesn\'t cover this.', next: `re-run the job; if it still can't finish, fix the hang or the time limit, or a maintainer who has read why ${labelStep(APPROVE_INCONCLUSIVE_LABEL)}`, by: 'person' };
     case 'policy_loosened':
     case 'ci_config_changed':
-      return { why: 'this change loosens the rules or CI that judge every later change; the change cannot approve itself.', next: `a maintainer reviews it and adds the \`${APPROVE_POLICY_LABEL}\` label`, by: 'person' };
+      return { why: 'this change loosens the rules or CI that judge every later change; the change cannot approve itself.', next: `a maintainer reviews it and ${labelStep(APPROVE_POLICY_LABEL)}`, by: 'person' };
     case 'invalid_policy':
       return { why: 'POCP cannot judge anything under an invalid policy.', next: 'fix .proof/rules.json or .proof/config.json until "pocp rules check" passes, in a new commit', by: 'agent' };
     case 'ci_unfinished':
-      return { why: "a required CI check didn't finish when verify re-ran it (it timed out or was killed), so nothing is known about the code yet.", next: 're-run the job; if it still can\'t finish, fix the hang or raise the time limit', by: 'agent' };
+      return { why: "a required CI check didn't finish when verify re-ran it (it timed out or was killed), so nothing is known about the code yet.", next: 're-run the job; if it still can\'t finish, fix the hang or raise the time limit', by: 'rerun' };
     case 'ci_missing':
     case 'ci_failed':
       return { why: 'verify.require_ci lists checks CI must run on this exact code.', next: code === 'ci_failed' ? 'fix the code (not the tests) in a new commit' : 'run verify with --rerun, which runs the required checks itself (see examples/github/pocp.yml)', by: 'agent' };
     case 'rerun_failed':
-      if (finding?.unfinished ?? UNFINISHED_TEXT.test(detail)) return { why: "a required check didn't finish when verify re-ran it (it timed out, was killed or didn't start), so nothing is known about the code yet.", next: 're-run the job; if it still can\'t finish, fix the hang or raise the time limit', by: 'agent' };
+      if (finding?.unfinished ?? UNFINISHED_TEXT.test(detail)) return { why: "a required check didn't finish when verify re-ran it (it timed out, was killed or didn't start), so nothing is known about the code yet.", next: 're-run the job; if it still can\'t finish, fix the hang or raise the time limit', by: 'rerun' };
       // falls through: a check that ran and failed
     case 'failed_proof':
-      if (finding?.unfinished) return { why: UNFINISHED_PROOF.why, next: 're-run the job (or pocp fix and commit the new proof); if it still can\'t finish, fix the hang or raise timeout_ms', by: 'agent' };
+      if (finding?.unfinished) return { why: UNFINISHED_PROOF.why, next: 're-run the job (or pocp fix and commit the new proof); if it still can\'t finish, fix the hang or raise timeout_ms', by: 'rerun' };
       return { why: 'a required check fails on this code.', next: 'fix the code (not the tests) and commit the fix with "pocp fix" then "git commit"', by: 'agent' };
     case 'trailer_mismatch':
       return { why: 'the commit\'s code is not the code that was proven; this happens after a rebase or an edit after proving.', next: 'ask a maintainer how to update this branch; to bring in main, use git merge rather than rebase so proofs stay valid', by: 'person' };
@@ -186,23 +201,23 @@ export function verifyRemedy(code, detail = '', finding = {}) {
     case 'policy_mismatch':
       return { why: 'the packet was proven under different rules than the ones in force.', next: 'pocp fix, then commit again', by: 'agent' };
     case 'unfinished_proof':
-      return { why: UNFINISHED_PROOF.why, next: 're-run the job (or pocp fix and commit the new proof); if it still can\'t finish, fix the hang or raise timeout_ms', by: 'agent' };
+      return { why: UNFINISHED_PROOF.why, next: 're-run the job (or pocp fix and commit the new proof); if it still can\'t finish, fix the hang or raise timeout_ms', by: 'rerun' };
     case 'invalid_signature':
       return { why: 'a proof was edited after signing, or its signer is not trusted.', next: 'prove again with a trusted key (pocp fix) in a new commit', by: 'agent' };
     case 'signature_unavailable':
-      return { why: "the signature could not be checked here (ssh-keygen is missing, failed or timed out), so nothing is known about it: it doesn't count as valid, and it isn't a sign of tampering either.", next: 'install OpenSSH 8.1 or later (ssh-keygen) on the machine that runs verify and re-run it', by: 'agent' };
+      return { why: "the signature could not be checked here (ssh-keygen is missing, failed or timed out), so nothing is known about it: it doesn't count as valid, and it isn't a sign of tampering either.", next: 'install OpenSSH 8.1 or later (ssh-keygen) on the machine that runs verify and re-run it', by: 'infra' };
     default:
       return { why: '', next: 'pocp fix', by: 'agent' };
   }
 }
 
-/** Human lines for a list of remedies. */
+/** Human lines for a list of remedies: who acts first. */
 export function remedyLines(remedies, indent = '  ') {
   const lines = [];
   for (const r of remedies) {
-    lines.push(`${indent}what: ${r.what}`);
+    lines.push(`${indent}[${WHO[r.by] || r.by}] ${r.what}`);
     if (r.why) lines.push(`${indent}  why: ${r.why}`);
-    lines.push(`${indent}  next: ${r.next}${r.by === 'person' ? '   (needs a person)' : ''}`);
+    lines.push(`${indent}  next: ${r.next}`);
   }
   if (remedies.some((r) => r.by === 'person')) lines.push(`${indent}${DONT_REWRITE}`);
   return lines;

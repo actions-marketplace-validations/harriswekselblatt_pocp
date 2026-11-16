@@ -110,7 +110,21 @@
           "needs": [],
           "outcome": "failed",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "person",
+            "code": "missing_packet",
+            "why": "this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\").",
+            "next": "ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\""
+          },
+          {
+            "by": "person",
+            "code": "uncovered",
+            "why": "this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\").",
+            "next": "ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\""
+          }
+        ]
       },
       "stderr": ""
     },

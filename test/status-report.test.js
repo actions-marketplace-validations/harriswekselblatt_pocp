@@ -395,6 +395,22 @@ test('carry-over: the merge touching a pull request file, a policy file, or the 
   assert.equal(decideStatus(facts({ ...carryFacts(), carry: null })).state, 'pending', 'not a merge');
 });
 
+// harriswekselblatt/pocp#82: "Update branch" merged in a main that had gained another pull
+// request's proof record. That isn't policy, so the approval carries; config, rules and the
+// pull request's own packets still void it.
+test('carry-over: a proof record another pull request added to the base keeps the approval', () => {
+  const packet = '.proof/packets/p-5e6f7a8b.json';
+  const d = decideStatus(carryFacts({ carry: { merge_files: ['src/other.js', packet], base_files: ['src/other.js', packet] } }));
+  assert.equal(d.state, 'success', d.reason);
+  assert.match(d.reason, /carried over/);
+  const voided = {
+    'base config': { merge_files: ['.proof/config.json', packet], base_files: ['.proof/config.json', packet] },
+    'kept own config over the base': { base_files: ['src/other.js', '.proof/config.json'] },
+    'own packet': { merge_files: [packet], pr_files: ['test/a.test.js', 'src/a.js', packet], approved_files: ['test/a.test.js', 'src/a.js', packet] },
+  };
+  for (const [name, carry] of Object.entries(voided)) assert.equal(decideStatus(carryFacts({ carry })).description, TEXT.approvalUnverified, name);
+});
+
 test('carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head', () => {
   const inconclusive = carryFacts({ label: 'pocp-approve-inconclusive', newRun: run({ approvals: ['approval-inconclusive'] }, { created_at: '2026-11-05T10:00:00Z' }) });
   assert.equal(decideStatus(inconclusive).state, 'pending');

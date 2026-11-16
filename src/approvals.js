@@ -4,6 +4,7 @@ import { summarizeFindings } from './decision.js';
 import { withFacts } from './finding.js';
 import { POLICY_FILES } from './policy.js';
 import { PocpBaseError } from './errors.js';
+import { STATUS_CONTEXT, TEXT } from './status-report.js';
 
 // `pocp approvals`: every open pull request whose POCP verify fails only because it waits for
 // a maintainer's label, in one list, and a deliberate way for that maintainer to give each one.
@@ -125,6 +126,9 @@ function latestRuns(repo, sha) {
       running.add(run.name);
       continue;
     }
+    // A skipped run (an event the workflow ignores, like an edited description) evaluated
+    // nothing: it never hides the run that did. The reporter reads runs the same way.
+    if (run.conclusion === 'skipped') continue;
     const prev = done.get(run.name);
     if (!prev || run.id > prev.id) done.set(run.name, run);
   }
@@ -148,7 +152,7 @@ export function prStatus(repo, pr) {
     const s = readAnnotations(Array.isArray(anns) ? anns : []);
     if (!s) continue;
     if (run.conclusion === 'success' && (s.inferred || !s.only)) continue;
-    const base = { repo, number: pr.number, title: pr.title, url: pr.url, author: pr.author?.login || null, head: pr.headRefOid, draft: Boolean(pr.isDraft), check: run.name, check_url: run.html_url || null, inferred: s.inferred };
+    const base = { ...about(repo, pr), check: run.name, check_url: run.html_url || null, inferred: s.inferred };
     if (!s.only) return { ...base, state: 'blocked', needs: [] };
     const have = new Set((pr.labels || []).map((l) => l.name));
     const files = pr.files || [];
@@ -161,8 +165,22 @@ export function prStatus(repo, pr) {
     }));
     return { ...base, state: needs.every((n) => n.given) ? 'approved' : 'pending', running: running.has(run.name), needs };
   }
-  return null;
+  // verify can pass with a label the reporter (docs/STATUS.md) won't count for this head: one
+  // applied without write access, before the head's first run, or kept over a merge it can't
+  // accept. The pocp status then waits for the label to be applied again. Read that status, so
+  // this never says "nothing to approve" while the pull request is blocked on an approval.
+  const st = reporterStatus(repo, pr.headRefOid);
+  const again = (pr.labels || []).map((l) => l.name).filter((l) => Object.values(LABEL_FOR).includes(l));
+  if (st?.state !== 'pending' || st.description !== TEXT.approvalUnverified || !again.length) return null;
+  const kind = (l) => Object.keys(LABEL_FOR).find((k) => LABEL_FOR[k] === l);
+  const needs = again.map((label) => ({ label, kind: kind(label), reasons: [`the "${STATUS_CONTEXT}" status: ${st.description}`], files: [], named: [], given: false, reapply: true }));
+  return { ...about(repo, pr), check: STATUS_CONTEXT, check_url: st.target_url || null, inferred: false, state: 'pending', running: false, needs };
 }
+
+/** The reporter's pocp status on a commit (docs/STATUS.md), or null. */
+const reporterStatus = (repo, sha) => gh(['api', `repos/${repo}/commits/${sha}/status`]).json?.statuses?.find((x) => x.context === STATUS_CONTEXT) || null;
+
+const about = (repo, pr) => ({ repo, number: pr.number, title: pr.title, url: pr.url, author: pr.author?.login || null, head: pr.headRefOid, draft: Boolean(pr.isDraft) });
 
 /** Every open pull request POCP is waiting on, in the repositories asked for. */
 export function listApprovals({ repos = [], owners = [] } = {}) {
@@ -223,7 +241,12 @@ export async function approvePr({ ref, repo, label, interactive, ask, say }) {
   const pr = fetchPr(r, number);
   if (pr.state && pr.state !== 'OPEN') throw new ApprovalsError(`${r}#${number} is ${pr.state.toLowerCase()}; nothing to approve`);
   const st = prStatus(r, pr);
-  if (!st) throw new ApprovalsError(`${r}#${number}: POCP verify is not failing on this pull request's head, so there is nothing to approve`);
+  if (!st) {
+    // Never "nothing to approve" while the pocp status waits for a maintainer.
+    const wait = reporterStatus(r, pr.headRefOid);
+    if (wait?.state === 'pending' && wait.description === TEXT.waiting) throw new ApprovalsError(`${r}#${number}: the "${STATUS_CONTEXT}" status waits for a maintainer's approval, but no verify run on this head says which; open ${wait.target_url || pr.url}`);
+    throw new ApprovalsError(`${r}#${number}: POCP verify is not failing on this pull request's head, so there is nothing to approve`);
+  }
   if (st.state === 'blocked') throw new ApprovalsError(`${r}#${number}: verify fails for more than an approval (${st.check}); a label would not fix it. Open ${st.check_url || st.url}`);
   const todo = st.needs.filter((n) => !n.given && (!want || n.label === want));
   if (!todo.length) {
@@ -255,8 +278,12 @@ export async function approvePr({ ref, repo, label, interactive, ask, say }) {
   // The approval is for the code just shown: refuse if the PR moved while it was read.
   const now = fetchPr(r, number);
   if (now.headRefOid !== pr.headRefOid) throw new ApprovalsError(`${r}#${number} got new commits while you were reviewing (${pr.headRefOid.slice(0, 12)} → ${now.headRefOid.slice(0, 12)}); nothing added. Run it again to see the new diff.`);
+  // A label the reporter wants applied again for this head: take it off, then add it back.
+  const again = todo.filter((n) => n.reapply).map((n) => n.label);
+  const off = again.length ? gh(['pr', 'edit', String(number), '--repo', r, ...again.flatMap((l) => ['--remove-label', l])]) : { ok: true };
+  if (!off.ok) throw new ApprovalsError(`could not remove ${again.join(', ')} to apply it again: ${off.message}`);
   const add = gh(['pr', 'edit', String(number), '--repo', r, ...labels.flatMap((l) => ['--add-label', l])]);
-  if (!add.ok) throw new ApprovalsError(`could not add ${labels.join(', ')}: ${add.message}`);
+  if (!add.ok) throw new ApprovalsError(`could not add ${labels.join(', ')}${again.length ? ` (${again.join(', ')} was removed to be applied again; add it back)` : ''}: ${add.message}`);
   say(`  approved: ${labels.join(', ')} added to ${r}#${number}. verify runs again on the labels.`);
   const approved = labels;
   if (approved.length) say('If new commits arrive before this merges, remove the label and approve again: the label stays on through later pushes.');

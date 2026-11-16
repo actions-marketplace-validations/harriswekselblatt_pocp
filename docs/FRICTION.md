@@ -51,16 +51,19 @@ adopted (main) and PR #8; "after" is this branch. Results: `bench/friction/RESUL
 
 ## 3. Block messages
 
-Every block, at the gate, in `pocp fix`, and in `verify`, says three things:
+Every block, at the gate, in `pocp fix`, and in `verify`, says who acts first, then what, why and the next step:
 
 ```
-what: 1 staged file(s) are not covered by any packet: src/math.js
+[author: pocp fix] 1 staged file(s) are not covered by any packet: src/math.js
   why: a rule requires checks for them. A packet records what the change is and the checks that prove it.
   next: pocp fix --intent "<what this change does>"
 ```
 
-As data (`--json`), the gate carries `remedies: [{ code, what, why, next, by }]`, where `by`
-is `pocp fix` (mechanical), `agent` (change code or files), or `person` (an approval).
+As data (`--json`), the gate carries `remedies: [{ code, what, why, next, by }]`, and a failed
+verify carries `next_steps: [{ by, code, why, next }]`, where `by` is `pocp fix` (mechanical),
+`agent` (the author changes code or files), `person` (a maintainer: an approval), `rerun`
+(a check didn't finish: run it again) or `infra` (the machine running verify lacks something).
+A label approval names the pull request and `pocp approve owner/repo#N`, as the maintainer's step.
 A passing gate carries `pending_approvals`: what CI will still need a person for.
 
 ## 4. `pocp fix`: the routine steps it takes

@@ -1,0 +1,747 @@
+{
+  "pocp": 1,
+  "id": "p-1ef6d15c",
+  "intent": "pocp approve: skipped verify runs never hide the run that asked for approval; say so when pocp waits but no run says what for",
+  "touches": [
+    "src/approvals.js",
+    "test/e2e-approvals.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/e2e-approvals.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/e2e-approvals.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-16T02:03:51.178Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T02:03:52.493Z",
+      "duration_ms": 6390,
+      "stdout_sha256": "ad0e6cccd83ea9f15df3f74afb28b3f6d76d20310492e486f1c5bdc1bb9a7711",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-bfb64b0c",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T02:03:59.026Z",
+      "duration_ms": 169137,
+      "stdout_sha256": "41baa6f8eedf7e120707737b02f1c6f152fa7ea48aad5af7d70f440acb1c7a88",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-4bd64088",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-16T02:06:48.319Z",
+      "duration_ms": 600037,
+      "stdout_sha256": "a89b7e166124d2658d2edafe32ea3ec68366098de34e60621bffb24026874f76",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-70fab76b",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:a90fa87dc75453cde746192201260d0233cbcc91b382240b645e77f4aebed836",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T02:16:48.609Z",
+      "duration_ms": 619132,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"npm test --silent\" exit 1, timed out), so there is nothing to compare",
+        "base": "d58b8595c3f2c896f7934ffadda119d76bfdc905",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "test/e2e-approvals.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "scope": "changed-tests",
+              "duration_ms": 17140
+            }
+          ],
+          "changed_tests": {
+            "result": "pass",
+            "files": [
+              "test/e2e-approvals.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/e2e-approvals.test.js"
+                ],
+                "outcome": "pass",
+                "exit": 0,
+                "duration_ms": 17140,
+                "tests": {
+                  "passed": 9,
+                  "failed": 0,
+                  "skipped": 0
+                }
+              }
+            ]
+          },
+          "scope": "changed-tests"
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "timed_out": true,
+              "duration_ms": 600224
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 619132,
+        "timings": {
+          "setup_ms": 693,
+          "new_baseline": {
+            "wall_ms": 600739,
+            "run_ms": 600224,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 17700,
+            "run_ms": 17140,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 314,
+            "count": 1
+          },
+          "copy": {
+            "ms": 1013,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 614,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-16T02:27:20.081Z",
+      "duration_ms": 605037,
+      "stdout_sha256": "d4e7c0cb72bc3cedfa0f464a93a2fceb050e1b2bb7831b263f060d87672db4be",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-74cad902",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:a90fa87dc75453cde746192201260d0233cbcc91b382240b645e77f4aebed836",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T02:37:25.369Z",
+      "duration_ms": 615336,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"npm test --silent\" exit 1, timed out), so there is nothing to compare",
+        "base": "d58b8595c3f2c896f7934ffadda119d76bfdc905",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "test/e2e-approvals.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "scope": "changed-tests",
+              "duration_ms": 12006
+            }
+          ],
+          "changed_tests": {
+            "result": "pass",
+            "files": [
+              "test/e2e-approvals.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/e2e-approvals.test.js"
+                ],
+                "outcome": "pass",
+                "exit": 0,
+                "duration_ms": 12006,
+                "tests": {
+                  "passed": 9,
+                  "failed": 0,
+                  "skipped": 0
+                }
+              }
+            ]
+          },
+          "scope": "changed-tests"
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "timed_out": true,
+              "duration_ms": 601110
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 615336,
+        "timings": {
+          "setup_ms": 959,
+          "new_baseline": {
+            "wall_ms": 601738,
+            "run_ms": 601110,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 12639,
+            "run_ms": 12006,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 374,
+            "count": 1
+          },
+          "copy": {
+            "ms": 1392,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 482,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T03:35:46.877Z",
+      "duration_ms": 353019,
+      "stdout_sha256": "6d8110921f909b2883337af639ca03f901a791271912ab79c96135e3c7a8a675",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-c5ac4cf5",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:a90fa87dc75453cde746192201260d0233cbcc91b382240b645e77f4aebed836",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T03:41:40.051Z",
+      "duration_ms": 10639,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old versions of the edited tests (test/e2e-approvals.test.js) pass on the new code; a person must review the test change (test/e2e-approvals.test.js: lines were added to an existing test): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "d58b8595c3f2c896f7934ffadda119d76bfdc905",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "test/e2e-approvals.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "scope": "changed-tests",
+              "duration_ms": 9956
+            }
+          ],
+          "changed_tests": {
+            "result": "pass",
+            "files": [
+              "test/e2e-approvals.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/e2e-approvals.test.js"
+                ],
+                "outcome": "pass",
+                "exit": 0,
+                "duration_ms": 9956,
+                "tests": {
+                  "passed": 9,
+                  "failed": 0,
+                  "skipped": 0
+                }
+              }
+            ]
+          },
+          "scope": "changed-tests"
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/e2e-approvals.test.js",
+              "why": "lines were added to an existing test"
+            }
+          ]
+        },
+        "duration_ms": 10639,
+        "timings": {
+          "setup_ms": 442,
+          "new_baseline": {
+            "wall_ms": 1,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 10172,
+            "run_ms": 9956,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 275,
+            "count": 1
+          },
+          "copy": {
+            "ms": 255,
+            "count": 2
+          },
+          "cleanup": {
+            "ms": 208,
+            "count": 3
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-16T02:03:51.178Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-16T02:03:51.178Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-16T02:16:48.499Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T02:27:08.108Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T02:27:08.177Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T02:27:08.755Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T02:37:25.241Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T02:47:40.987Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T03:41:50.862Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    },
+    {
+      "at": "2026-11-16T03:41:50.914Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:a90fa87dc75453cde746192201260d0233cbcc91b382240b645e77f4aebed836",
+      "subject": "sha256:6a3826cc827e90f755c4552d5854325f9bc6b490c1a4a05b165775706f753692",
+      "by": "harriswekselblatt",
+      "at": "2026-11-16T02:27:08.755Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"npm test --silent\" exit 1, timed out), so there is nothing to compare"
+    }
+  ]
+}
