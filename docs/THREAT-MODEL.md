@@ -32,7 +32,7 @@ come from the rules in force, and its budget and seed from the base, so the chan
 an easier check or a friendlier sample. `verify base..head` also runs the guard on the pull
 request's net change (old tests from the merge base, new code from the head, merges included),
 computed by verify itself, so splitting "drop an assertion" and "add the bug it caught" into
-separate commits, or making either inside a merge commit, is judged as if it were one commit. *Partly covered:* when the mechanical check fails, a
+separate commits, or making either inside a merge commit, is judged as if it were one commit. A planned attack across pull requests (weaken now, add the bug in a later one) is out of scope: see below. *Partly covered:* when the mechanical check fails, a
 sign-off stands in. In `block` mode (the default) that isn't enough for CI: only an
 independent mechanical pass (`verify --rerun`, or a trusted signature) or a maintainer's
 `--accept-test-change` lets it through. In `attest` mode the sign-off is a free-text name, so
@@ -383,23 +383,19 @@ use a token without the *Administration* permission.
   the result is `inconclusive`, not `behavior-changed`: a run that didn't finish says
   nothing about behavior. It still blocks; a re-run with `--force` on a quiet machine, or a
   person, decides.
-- **A test written to fool the planted-bug check (deep mode).** In deep mode, a new test that
-  inspects the source under test can hide a weakened assertion, and the guard passes the
-  change. Deep mode counts a planted bug as caught when the new tests fail on it, and a test that
-  hashes the file it tests, or checks that the file still contains a given line, fails on every
-  planted bug without checking behavior. The bug the weakened assertion used to catch can then
-  arrive unseen in a later pull request. A single pull request that weakens the test and adds
-  the bug is still caught: the old tests run on the new code and fail. Measured in the tamper
-  benchmark (`bench/tamper`, target `pocp-deep`): a test that hashes the file under test was
-  accepted on every run, and a test that fails at random half the time was accepted in
-  roughly one CI run in four to one in eight on the same commit (4 to 7 of 30 per benchmark run;
-  CI can be re-run until one passes). With the bug in the same change, both were blocked. `test/e2e-guard-known-gap.test.js` asserts that
-  the guard accepts the hashing case today. POCP has no defence against this: a check that the
-  new tests also pass on a copy with a blank line added was tried and withdrawn, because a test
-  that ignores whitespace, or checks the mutated line's text, gets past it. Fast mode
-  (`guard.mutants: 0`) sends every test change to a person and isn't exposed. Projects set up
-  before fast mode became the default have no `guard.mutants` key, so they get the built-in 10:
-  deep mode (`src/init.js`, `initProofDir`).
+- **Deliberate deception across pull requests.** POCP's threat model is an agent cutting
+  corners to get green within a task: breaking something, then weakening or deleting the test
+  that caught it. Deep mode catches that, because the old tests run on the new code (tamper
+  benchmark, target `pocp-deep`: `deep-hash-bug` and `deep-flaky-bug`, 0 of 30 accepted). What
+  gets through is a planned attack across pull requests. First, weaken an assertion without
+  breaking anything, and add a test that recognises planted bugs by reading the source (one that
+  fails whenever the file under test differs from the commit "catches" every planted bug). Then,
+  in a later pull request, add the bug. In the benchmark the first step was accepted on every run
+  (`deep-hash`), and a variant with a test that fails at random on some runs (`deep-flaky`). That
+  is an agent deliberately working against its owner over time: outside POCP's threat model,
+  like a CI job that lies or a stolen key. POCP has no defence against it, and
+  `test/e2e-guard-known-gap.test.js` asserts that deep mode accepts the first step today, so
+  nobody can claim a defence that doesn't exist.
 - **Processes that leave the check's process group.** POCP kills every process that stays
   in the check's group, including when POCP itself is killed. A check that starts a new
   session (`setsid`), detaches a daemon, or starts a service elsewhere can leave it running.
