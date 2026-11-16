@@ -1,0 +1,375 @@
+{
+  "pocp": 1,
+  "id": "p-0a7ab711",
+  "intent": "Tamper bench: deep-mode target pocp-deep with two attacks on the planted-bug check (a flaky new test, a source-hashing new test), each with and without the bug; --trials judges a flaky commit repeatedly; the report counts a weakened test as harmful",
+  "touches": [
+    "bench/tamper/fixtures/pocp-deep/src/flags.js",
+    "bench/tamper/fixtures/pocp-deep/test/flags.test.js",
+    "bench/tamper/lib/discover.js",
+    "bench/tamper/lib/execute.js",
+    "bench/tamper/lib/report.js",
+    "bench/tamper/lib/scenarios.js",
+    "bench/tamper/results/pocp-deep.json",
+    "bench/tamper/run.js",
+    "bench/tamper/targets/pocp-deep.json",
+    "test/bench-tamper-deep.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "bench/tamper/fixtures/pocp-deep/test/flags.test.js",
+        "bench/tamper/lib/discover.js",
+        "bench/tamper/lib/execute.js",
+        "bench/tamper/lib/report.js",
+        "bench/tamper/lib/scenarios.js",
+        "test/bench-tamper-deep.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (bench/tamper/fixtures/pocp-deep/test/flags.test.js, bench/tamper/lib/discover.js, bench/tamper/lib/execute.js, bench/tamper/lib/report.js, bench/tamper/lib/scenarios.js, test/bench-tamper-deep.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-15T23:49:03.588Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-15T23:49:04.750Z",
+      "duration_ms": 5983,
+      "stdout_sha256": "9ac04a55cf9982c06769fd2d8a51d669e5b72ab6cd8e9d749a24120080a0280e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-009d785a",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-15T23:49:10.836Z",
+      "duration_ms": 91268,
+      "stdout_sha256": "72eea2568a6c1b00c9519c6b6095461bf2a594a03b1034ce7107911ff348ae1e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-8d8e67ad",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-15T23:50:42.270Z",
+      "duration_ms": 601314,
+      "stdout_sha256": "58330013af3a2699d3a9435b65d29a9a5c409c050e10ce3512f1b4b937cf8e34",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-667e1dcb",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:ef7a2468acf9abe1a4741f4b07ec8a770aae34a1cc10fcb9a521cceebd3eb763",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-16T00:00:43.834Z",
+      "duration_ms": 1173992,
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (bench/tamper/fixtures/pocp-deep/test/flags.test.js: a test file was added (it runs with the others and can change their outcome); bench/tamper/lib/discover.js: test setup or a test helper changed; bench/tamper/lib/execute.js: test setup or a test helper changed; and 3 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "7c6ca4a99e831b5d2cb28ef2905455a7190e2b9c",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "-bench/tamper/fixtures/pocp-deep/test/flags.test.js",
+            "bench/tamper/lib/discover.js",
+            "bench/tamper/lib/execute.js",
+            "bench/tamper/lib/report.js",
+            "bench/tamper/lib/scenarios.js",
+            "-test/bench-tamper-deep.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2895
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 72702
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 494631
+            }
+          ],
+          "left_out": [
+            "bench/tamper/fixtures/pocp-deep/test/flags.test.js",
+            "test/bench-tamper-deep.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "bench/tamper/fixtures/pocp-deep/test/flags.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 596488
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "bench/tamper/fixtures/pocp-deep/test/flags.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "bench/tamper/lib/discover.js",
+              "why": "test setup or a test helper changed"
+            },
+            {
+              "file": "bench/tamper/lib/execute.js",
+              "why": "test setup or a test helper changed"
+            },
+            {
+              "file": "bench/tamper/lib/report.js",
+              "why": "test setup or a test helper changed"
+            },
+            {
+              "file": "bench/tamper/lib/scenarios.js",
+              "why": "test setup or a test helper changed"
+            },
+            {
+              "file": "test/bench-tamper-deep.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            }
+          ]
+        },
+        "duration_ms": 1173992,
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T00:20:36.245Z",
+      "duration_ms": 473693,
+      "stdout_sha256": "f0987b0387e35bf3306a31d2c8da5880ff631913f548c1ed0a8b8e7ec11be726",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-0d7d2534",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-15T23:49:03.588Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-15T23:49:03.588Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-16T00:00:43.723Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220"
+    },
+    {
+      "at": "2026-11-16T00:20:18.206Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220"
+    },
+    {
+      "at": "2026-11-16T00:20:18.304Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220"
+    },
+    {
+      "at": "2026-11-16T00:20:18.876Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220"
+    },
+    {
+      "at": "2026-11-16T00:28:30.112Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:ef7a2468acf9abe1a4741f4b07ec8a770aae34a1cc10fcb9a521cceebd3eb763",
+      "subject": "sha256:15ffc48c9c220520ee7c825cd2260b541f65a50e5ebea6c49e8ca35402404220",
+      "by": "harriswekselblatt",
+      "at": "2026-11-16T00:20:18.876Z",
+      "to": "ci-approval",
+      "reason": "the old tests pass on the new code; a person must review the test change (bench/tamper/fixtures/pocp-deep/test/flags.test.js: a test file was added (it runs with the others and can change their outcome); bench/tamper/lib/discover.js: test setup or a test helper changed; bench/tamper/lib/execute.js: test setup or a test helper changed; and 3 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
+    }
+  ]
+}

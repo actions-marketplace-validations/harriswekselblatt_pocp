@@ -395,6 +395,7 @@ export function validateConfig(config) {
   if (!isStrArray(ci.required_checks)) problems.push('ci.required_checks must be an array of check names');
   for (const k of ['require_pull_request', 'enforce_admins']) if (typeof ci[k] !== 'boolean') problems.push(`ci.${k} must be true or false`);
   if (ci.require_up_to_date !== undefined && typeof ci.require_up_to_date !== 'boolean') problems.push('ci.require_up_to_date must be true or false');
+  if (ci.reporter_app_id != null && !(Number.isInteger(ci.reporter_app_id) && ci.reporter_app_id > 0)) problems.push('ci.reporter_app_id must be a GitHub App id (a positive whole number)');
   if (!['independent', 'any-writer'].includes(ci.workflow_approver)) problems.push('ci.workflow_approver must be "independent" or "any-writer"');
   if (!['github', 'local'].includes(ci.mode)) problems.push('ci.mode must be "github" (CI checks every pull request) or "local" (the git hooks only)');
   const globLists = { 'guard.test_globs': guard.test_globs, 'guard.runner_globs': guard.runner_globs, 'guard.extra_test_globs': guard.extra_test_globs, 'guard.extra_runner_globs': guard.extra_runner_globs, 'ci.files': ci.files, 'eval.exclude': c.eval?.exclude };
@@ -428,6 +429,7 @@ export function configWeakening(base, head) {
   if (base.ci?.require_up_to_date !== false && head.ci?.require_up_to_date === false) out.push('ci.require_up_to_date turned off');
   if ((base.ci?.workflow_approver ?? 'independent') === 'independent' && (head.ci?.workflow_approver ?? 'independent') !== 'independent') out.push('ci.workflow_approver no longer requires an approver other than the author');
   if (base.ci?.branch && head.ci?.branch !== base.ci.branch) out.push(`ci.branch changed from "${base.ci.branch}"`);
+  if (base.ci?.reporter_app_id != null && head.ci?.reporter_app_id !== base.ci.reporter_app_id) out.push(`ci.reporter_app_id changed from ${base.ci.reporter_app_id}`);
   // What the test guard watches: replacing or trimming its globs can hide a gutted test.
   const bg = effectiveGuardGlobs(base);
   const hg = effectiveGuardGlobs(head);
@@ -459,6 +461,7 @@ export function strictConfig(base, head) {
   out.ci.enforce_admins = base.ci?.enforce_admins === true || head.ci?.enforce_admins === true;
   out.ci.workflow_approver = [base.ci?.workflow_approver, head.ci?.workflow_approver].includes('independent') || !base.ci?.workflow_approver || !head.ci?.workflow_approver ? 'independent' : 'any-writer';
   if (base.ci?.branch) out.ci.branch = base.ci.branch;
+  if (base.ci?.reporter_app_id != null) out.ci.reporter_app_id = base.ci.reporter_app_id;
   const bg = effectiveGuardGlobs(base);
   const hg = effectiveGuardGlobs(head);
   out.guard.test_globs = [...new Set([...bg.test, ...hg.test])];

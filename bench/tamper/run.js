@@ -27,10 +27,11 @@ export const PROFILES = {
   'as-configured': { name: 'as-configured', about: "the repository's own .proof/config.json, with POCP's defaults for anything it leaves out", config: {} },
   block: { name: 'block', about: 'the same, with "guard": { "tests": "block" } (POCP\'s default): CI needs an independent mechanical pass or a maintainer\'s approval for a test change', config: { guard: { tests: 'block' } } },
   attest: { name: 'attest', about: 'the same, with "guard": { "tests": "attest" }: a sign-off, which the author can give, stands in when the mechanical check fails', config: { guard: { tests: 'attest' } } },
+  deep: { name: 'deep', about: 'the same, with "guard": { "tests": "block", "mutants": 10 }: deep mode, where a test change passes on its own only if the old tests pass on the new code and the new tests catch every sampled planted bug the old ones caught', config: { guard: { tests: 'block', mutants: 10 } } },
 };
 
 function parseArgs(argv) {
-  const a = { target: [], repo: [], profiles: null, mutants: 1, seed: 1, concurrency: Math.max(1, Math.min(4, os.cpus().length - 2)), out: path.join(here, 'results'), keep: false, only: null };
+  const a = { target: [], repo: [], profiles: null, mutants: 1, seed: 1, trials: 20, concurrency: Math.max(1, Math.min(4, os.cpus().length - 2)), out: path.join(here, 'results'), keep: false, only: null };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     const v = () => argv[++i];
@@ -39,6 +40,7 @@ function parseArgs(argv) {
     else if (k === '--profiles') a.profiles = v().split(',');
     else if (k === '--mutants') a.mutants = Number(v());
     else if (k === '--seed') a.seed = Number(v());
+    else if (k === '--trials') a.trials = Number(v());
     else if (k === '--concurrency') a.concurrency = Number(v());
     else if (k === '--work') a.work = v();
     else if (k === '--out') a.out = v();
@@ -97,11 +99,13 @@ async function benchTarget(target, args) {
       all.push(...built.scenarios.map((s) => ({ ...s, id: `${s.id}${tag}` })));
       skipped.push(...built.skipped.map((s) => ({ ...s, id: `${s.id}${tag}` })));
     }
-    const chosen = args.only ? all.filter((s) => args.only.some((o) => s.id.startsWith(o))) : all;
+    // A target can name the scenarios it is for (targets/<name>.json "only"); --only overrides.
+    const only = args.only || target.only;
+    const chosen = only ? all.filter((s) => only.some((o) => s.id.startsWith(o))) : all;
     log(`${target.name} [${p}]: ${chosen.length} scenario(s), ${args.concurrency} at a time`);
     const results = await pool(chosen, args.concurrency, async (sc) => {
-      const r = await runScenario(sc, { baseDir: base.dir, base: base.head, target, workDir: work, profile: p, baseConfig: base.config, keep: args.keep });
-      log(`  ${p} ${r.id}: plain CI ${r.plain_ci}, POCP ${r.pocp}${r.codes.length ? ` (${r.codes.join(', ')})` : ''} → ${r.outcome}${r.error ? ` [${r.error}]` : ''} ${Math.round(r.ms / 1000)}s`);
+      const r = await runScenario(sc, { baseDir: base.dir, base: base.head, target, workDir: work, profile: p, baseConfig: base.config, keep: args.keep, trials: args.trials });
+      log(`  ${p} ${r.id}: plain CI ${r.plain_ci}, POCP ${r.pocp}${r.codes.length ? ` (${r.codes.join(', ')})` : ''}${r.guard?.length ? ` guard ${r.guard.map((g) => g.verdict).join(',')}` : ''}${r.trials ? ` accepted ${r.trials.accepted}/${r.trials.runs}` : ''} → ${r.outcome}${r.error ? ` [${r.error}]` : ''} ${Math.round(r.ms / 1000)}s`);
       return r;
     });
     const mode = base.config.guard?.tests || DEFAULT_GUARD_MODE;
@@ -140,7 +144,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   fs.mkdirSync(args.out, { recursive: true });
   if (!args.reportOnly) {
-    if (!args.target.length) throw new Error('usage: node bench/tamper/run.js --target <name|spec.json> [--repo <path>] [--profiles as-configured,strict] [--mutants N] [--seed N] [--concurrency N] [--only id,...] [--work dir] [--keep]');
+    if (!args.target.length) throw new Error('usage: node bench/tamper/run.js --target <name|spec.json> [--repo <path>] [--profiles as-configured,strict] [--mutants N] [--seed N] [--trials N] [--concurrency N] [--only id,...] [--work dir] [--keep]');
     for (const [i, t] of args.target.entries()) {
       const target = loadTarget(t, args.repo[i]);
       const result = await benchTarget(target, args);

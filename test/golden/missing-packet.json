@@ -89,7 +89,15 @@
           "needs": [],
           "outcome": "failed",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "person",
+            "code": "uncovered",
+            "why": "this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\").",
+            "next": "ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\""
+          }
+        ]
       },
       "stderr": ""
     },
@@ -102,7 +110,7 @@
         "--exit-detail"
       ],
       "exit": 1,
-      "stdout": "NOT verified: 1 commit(s) in <commit:baseline>..HEAD · <duration>\n  BAD <commit:skip the hooks>: not covered: src/math.js\n  what to do:\n    uncovered: this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\"). next: ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\"   (needs a person)\n    Do not squash, force-push, rewrite history or commit with --no-verify to get past this: push the commit as it is and ask for the approval.\n",
+      "stdout": "NOT verified: 1 commit(s) in <commit:baseline>..HEAD · <duration>\n  BAD <commit:skip the hooks>: not covered: src/math.js\n  what to do:\n    [maintainer, not the author] uncovered: this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\"). next: ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\"\n    Do not squash, force-push, rewrite history or commit with --no-verify to get past this: push the commit as it is and ask for the approval.\n",
       "stderr": ""
     }
   ]

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { RETRY_FACTOR, runGuardCheck } from '../src/guard-check.js';
+import { RETRY_FACTOR, retryLimit, runGuardCheck } from '../src/guard-check.js';
 import { createProcessRunner } from '../src/runner.js';
 import { git, write } from './helpers.js';
 
@@ -106,7 +106,7 @@ test('deleting the only test that hangs on a mutant is never a pass: inconclusiv
   assert.equal(res.detection.lost.length, 0, 'no measured loss');
   assert.equal(res.verdict, 'inconclusive', res.summary);
   assert.equal(res.passed, false);
-  assert.match(res.summary, /the old tests didn't finish on 1 of the 3 sampled mutants, even on a retry with 3× the time limit \(e\.g\. src\/math\.js:6 `return n > 0;` → `return n <= 0;`: "node test\/loop\.check\.mjs" timed out\): they may hang on it \(a real infinite loop\) or the machine may be overloaded/);
+  assert.match(res.summary, /the old tests didn't finish on 1 of the 3 sampled mutants, even on a retry with up to 3× the time limit \(e\.g\. src\/math\.js:6 `return n > 0;` → `return n <= 0;`: "node test\/loop\.check\.mjs" timed out\): they may hang on it \(a real infinite loop\) or the machine may be overloaded/);
   assert.match(res.summary, /a person must decide/);
 });
 
@@ -117,4 +117,33 @@ test('when nothing times out, nothing is retried and no new fields appear', asyn
   assert.ok(!seen.some((s) => s.log.endsWith('-retry')));
   assert.ok(res.detection.mutants.every((m) => !('retried' in m) && !('not_measured' in m)));
   assert.ok(!('not_measured' in res.detection) && !('old_not_measured' in res.detection));
+});
+
+// A hung mutant used to be retried at 3× the check's limit with no ceiling: a check with a
+// 10-minute limit spent 40 minutes on it. The retry is now capped at 5× the check's measured
+// time on the new code (30 s at least), and a run that hits the cap is never a pass.
+test('the retry of a hung mutant is capped by the check\'s measured time, and stays inconclusive', async () => {
+  assert.equal(retryLimit(4000, 50), 12_000, 'under the cap: 3× the limit, as before');
+  assert.equal(retryLimit(600_000, 2_000), 30_000, 'a fast suite: the 30 s floor');
+  assert.equal(retryLimit(600_000, 60_000), 300_000, '5× the measured time');
+  assert.equal(retryLimit(600_000, 300_000), 1_500_000, 'never more than 3× the limit');
+  assert.equal(retryLimit(600_000, undefined), 30_000);
+  const fx = repo({ 'test/a.check.mjs': ADD, 'test/loop.check.mjs': hangOn('n <= 0') }, { 'test/loop.check.mjs': '// removed\n' });
+  const TEN_MINUTES = 600_000;
+  const checks = [{ id: 'a', run: 'node test/a.check.mjs', timeout_ms: TEN_MINUTES }, { id: 'loop', run: 'node test/loop.check.mjs', timeout_ms: TEN_MINUTES }];
+  const seen = [];
+  // The hang is faked: a run of the loop check on the `n <= 0` mutant reports a timeout at once.
+  const fake = async (ob, dir, opts) => {
+    seen.push({ log: opts.logName, timeout_ms: ob.timeout_ms });
+    if (ob.id === 'loop' && fs.readFileSync(path.join(dir, 'src/math.js'), 'utf8').includes('n <= 0')) return { passed: false, exit: null, timed_out: true, duration_ms: ob.timeout_ms };
+    return runObligation({ ...ob, timeout_ms: TIMEOUT_MS }, dir, opts);
+  };
+  const res = await runGuardCheck({ root: fx.dir, base: fx.base, rev: fx.rev, changes: fx.changes, checks, sourceGlobs: ['src/**'], links: [], guardGlobs: { test: ['test/**'], runner: [] }, runObligation: fake, seed: 1, mutants: 10, jobs: 3 });
+  const hung = at(res, 'return n <= 0;');
+  const retry = seen.find((s) => s.log.includes(`-m${res.detection.mutants.indexOf(hung)}-old-loop-retry`));
+  assert.equal(retry.timeout_ms, 30_000, 'not 30 minutes: 5× the measured time, at least 30 s');
+  assert.deepEqual(hung.retried, [{ side: 'old', check: 'loop', first: 'timed out', timeout_ms: 30_000, retry: 'timed out' }]);
+  assert.equal(hung.old, 'not-measured');
+  assert.equal(res.verdict, 'inconclusive', res.summary);
+  assert.equal(res.passed, false);
 });

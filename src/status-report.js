@@ -56,6 +56,10 @@ export const CARRYABLE = Object.freeze(['pocp-approve-tests', 'pocp-approve-poli
 // GitHub's compare API lists at most this many files: a list that reaches it may be missing some.
 export const COMPARE_FILES_CAP = 300;
 const POLICY_PREFIX = '.proof/';
+// Proof records: nearly every merged pull request adds one, and none is policy. Packets the
+// pull request itself changes are still covered by the checks on its own files below.
+const PROOF_RECORDS = '.proof/packets/';
+const isPolicy = (f) => f.startsWith(POLICY_PREFIX) && !f.startsWith(PROOF_RECORDS);
 
 /** The CI files a pull request may not change without a maintainer (the base's ci.files, defaults always included). */
 export function workflowFiles(baseConfig) {
@@ -328,14 +332,14 @@ export function carriedOver(facts, label) {
   const approved = new Set(c.approved_files || []);
   const added = (c.pr_files || []).filter((f) => !approved.has(f));
   if (added.length) return no(`the merge adds changes the approval didn't cover: ${added.slice(0, 3).join(', ')}`);
-  const policy = [...merged].filter((f) => f.startsWith(POLICY_PREFIX));
+  const policy = [...merged].filter(isPolicy);
   if (policy.length) return no(`the merge changed policy files: ${policy.slice(0, 3).join(', ')}`);
   // What the base branch changed since the approved head branched off. A merge can keep the
   // pull request's own version of a file, so the merge's file list never shows that the base
   // changed it: the base must not have changed the policy (the authority the approval was judged
   // by) or any file the approval covers (the side the person compared against).
   if (!Array.isArray(c.base_files)) return no("GitHub's data for the base branch's changes was missing");
-  const basePolicy = c.base_files.filter((f) => f.startsWith(POLICY_PREFIX));
+  const basePolicy = c.base_files.filter(isPolicy);
   if (basePolicy.length) return no(`the base branch changed policy files since the approval: ${basePolicy.slice(0, 3).join(', ')}`);
   const baseTouched = c.base_files.filter((f) => approved.has(f));
   if (baseTouched.length) return no(`the base branch changed files the approval covers: ${baseTouched.slice(0, 3).join(', ')}`);

@@ -122,7 +122,27 @@
           ],
           "outcome": "failed",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "agent",
+            "code": "invalid_policy",
+            "why": "POCP cannot judge anything under an invalid policy.",
+            "next": "fix .proof/rules.json or .proof/config.json until \"pocp rules check\" passes, in a new commit"
+          },
+          {
+            "by": "person",
+            "code": "policy_loosened",
+            "why": "this change loosens the rules or CI that judge every later change; the change cannot approve itself.",
+            "next": "a maintainer reviews it and adds the `pocp-approve-policy` label to the pull request (or runs: pocp approve owner/repo#<number>)"
+          },
+          {
+            "by": "person",
+            "code": "uncovered",
+            "why": "this commit was made without the proof its files need (were the hooks skipped or not installed? see \"pocp doctor\").",
+            "next": "ask a maintainer how to repair the commit; for new commits run \"pocp fix\" before \"git commit\""
+          }
+        ]
       },
       "stderr": ""
     }

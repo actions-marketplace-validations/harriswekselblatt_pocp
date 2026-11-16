@@ -420,14 +420,15 @@ runnable obligations. Every run below is in its own fresh copy of the code.
    the end and failed: the same rule as for base runs in part 1. A run that timed out, was
    killed by a signal, couldn't start, or exited 126 or 127 says nothing about whether the
    tests catch the mutant (under load, a full suite hits the timeout either way). Such a run
-   is retried once, in a fresh copy with the mutant: with 3× the time limit it hit if it
-   timed out, otherwise with the same limit. POCP has no ceiling on check timeouts
-   (`run.timeout_ms` is the default a check's own `timeout_ms` overrides), so the retry
-   limit isn't capped; it costs at most one extra run per unfinished check and mutant, and
-   none when every run finishes. Worst case, every sampled mutant hangs every check: up to
-   4× each check's limit per mutant on a side (the run plus the 3× retry), spread over the
-   parallel jobs; with the defaults (10 mutants, a 10-minute limit, one check, 4 jobs) about
-   100 minutes of wall time before the result is `inconclusive`. Only mutant runs are
+   is retried once, in a fresh copy with the mutant: if it timed out, with
+   min(3× the limit it hit, max(30 s, 5× the check's measured time on the new code)),
+   otherwise with the same limit. A mutant that runs 5× slower than the suite is as good as
+   hung, so the retry needn't wait longer; a retry that hits the cap is not measured, never
+   a pass. It costs at most one extra run per unfinished check and mutant, and none when
+   every run finishes. Worst case, every sampled mutant hangs every check: each check's
+   limit plus that cap per mutant on a side, spread over the parallel jobs; with the
+   defaults (10 mutants, a 10-minute limit, one check that takes a minute, 4 jobs) about 40
+   minutes of wall time before the result is `inconclusive` (100 minutes without the cap). Only mutant runs are
    retried: the baselines in part 1 are not (a baseline that doesn't finish blocks the
    result). A retry that ends normally counts as the run. After a run
    that still didn't finish, the remaining checks still run. The mutant is caught if any

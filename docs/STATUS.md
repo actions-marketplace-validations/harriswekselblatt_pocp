@@ -21,18 +21,18 @@ In local mode (`pocp init --local` or `pocp ci off`, [QUICKSTART](QUICKSTART.md#
 
 Each label covers one thing, only on the head it was added to. Every push removes all of them (`pocp-labels.yml`).
 
-**Several approvals at once:** `pocp approve owner/repo#12` (also `pocp approvals --approve`) shows every approval the pull request waits for, with the diff each covers, and adds all of them after you type the pull request's number once. Your answer covers exactly what was listed: each label is still checked on its own, and anything verify reports later needs its own approval. It must be run by a person at a terminal. `pocp-approve-workflow` isn't included: add it yourself after reviewing the CI change.
+**Several approvals at once:** `pocp approve owner/repo#12` (also `pocp approvals --approve`) shows every approval the pull request waits for, with the diff each covers, and adds all of them after you type the pull request's number once. Your answer covers exactly what was listed: each label is still checked on its own, and anything verify reports later needs its own approval. It must be run by a person at a terminal. `pocp-approve-workflow` isn't included: add it yourself after reviewing the CI change. When verify waits for a label, its "what to do" (and the job summary, and `next_steps` in `verify --json`) marks that step `[maintainer, not the author]` and names the pull request and this command; it is never the author's or an agent's step.
 
 **Updating the branch keeps the approval** when the `pocp` status is live (`POCP_STATUS_LIVE`). If the push is only a merge of the base branch into the approved head (GitHub's "Update branch"), `pocp-labels.yml` keeps `pocp-approve-tests`, `pocp-approve-policy` and `pocp-approve-coverage`. The reporter then counts the label for the new head only if all of these hold:
 
 - the new head's parents are the approved head and the pull request's current base;
 - the label was last added by someone with write access, after the approved head's first run for this pull request;
-- the merge changed no file the pull request changes, and no file under `.proof/`;
+- the merge changed no file the pull request changes, and no policy file under `.proof/` (proof records in `.proof/packets/`, which nearly every merged pull request adds, don't count; the pull request's own packets are covered by the rule before);
 - after the merge, the pull request changes only files the approved head already changed (so a merge that keeps an old version of a file the base changed doesn't carry);
-- since the approved head branched off, the base branch changed nothing under `.proof/` and none of the files the approval covers;
+- since the approved head branched off, the base branch changed no policy file under `.proof/` (again, proof records don't count) and none of the files the approval covers;
 - GitHub's file lists for the merge are complete.
 
-Otherwise the status says to approve again: remove the label and add it back. The approval is kept, never the result: the merged head is verified again on the new base and turns green only from its own run. It carries over one merge only: a second update before the label is added again needs a new approval. Inconclusive and workflow approvals never carry over, and any other push still removes every label.
+Otherwise the status says to approve again: remove the label and add it back. `pocp approve owner/repo#N` reads that status and does it for you (after you confirm), even when verify itself passed with the label on. The approval is kept, never the result: the merged head is verified again on the new base and turns green only from its own run. It carries over one merge only: a second update before the label is added again needs a new approval. Inconclusive and workflow approvals never carry over, and any other push still removes every label.
 
 | Label | Covers |
 |---|---|
@@ -81,7 +81,7 @@ Close that by giving the reporter its own GitHub App and requiring `pocp` from t
 
 1. **Create a GitHub App** (Settings → Developer settings → GitHub Apps → New). No webhook. Repository permissions: Commit statuses *read and write*; Actions, Contents, Issues, Pull requests *read*. Install it on the repository. Note its **Client ID** and generate a **private key**.
 2. **Create the environment `pocp-reporter`** (repository Settings → Environments). Under *Deployment branches and tags*, choose *Selected branches* and add only your default branch. Add the secret `POCP_REPORTER_KEY` (the whole private key file) and the variable `POCP_REPORTER_CLIENT_ID` to the environment.
-3. **Pin the required check to the app.** In branch protection (or a ruleset), set the required `pocp` check's source to the new app instead of "any source".
+3. **Pin the required check to the app.** Set `ci.reporter_app_id` in `.proof/config.json` to the app's **App ID** (a number, on the app's settings page) and run `pocp ci required --apply`: it requires `pocp` from that app only and leaves other checks as they are. (By hand: in branch protection, set the required `pocp` check's source to the new app instead of "any source".) `pocp ci required --check` and `pocp doctor` report a required `pocp` check that isn't pinned to it, or, without `ci.reporter_app_id`, one that any source or GitHub Actions can post. Changing or removing `ci.reporter_app_id` later is a policy loosening.
 
 The example `pocp-status.yml` already runs in that environment and uses the app when `POCP_REPORTER_CLIENT_ID` is set; without it, it posts as GitHub Actions as before.
 

@@ -48,8 +48,14 @@ export function requiredChecksPlan(root, config) {
     // what merges is the pull request combined with base commits nobody verified with it. On
     // unless a repository turns it off explicitly (doctor and --check then report the gap).
     require_up_to_date: ci.require_up_to_date !== false,
+    // The GitHub App the reporter posts the pocp status as (docs/STATUS.md): --apply pins the
+    // required pocp check to it, and --check reports a pocp check anything else could post.
+    reporter_app_id: ci.reporter_app_id ?? null,
   };
 }
+
+/** GitHub Actions' app id. Every workflow on every branch posts as it. */
+export const GITHUB_ACTIONS_APP_ID = 15368;
 
 const logins = (list = []) => list.map((u) => u.login).filter(Boolean);
 const slugs = (list = []) => list.map((t) => t.slug).filter(Boolean);
@@ -68,7 +74,9 @@ export function protectionPayload(existing, plan, { remove = [] } = {}) {
     : (ex.required_status_checks?.contexts || []).map((context) => ({ context }))).filter((c) => !remove.includes(c.context));
   const have = new Set(exChecks.map((c) => c.context));
   const added = plan.required_checks.filter((c) => !have.has(c));
-  const checks = [...exChecks, ...added.map((context) => ({ context }))];
+  // The pocp status is pinned to the reporter's app when the config names one; other checks keep theirs.
+  const pin = (c) => (c.context === STATUS_CHECK && plan.reporter_app_id ? { context: c.context, app_id: plan.reporter_app_id } : c);
+  const checks = [...exChecks, ...added.map((context) => ({ context }))].map(pin);
 
   let reviews = null;
   const exReviews = ex.required_pull_request_reviews;
@@ -140,6 +148,13 @@ export function protectionGaps(existing, plan) {
   if (plan.require_pull_request && !existing.required_pull_request_reviews) gaps.push('changes can be pushed without a pull request');
   if (plan.enforce_admins && !existing.enforce_admins?.enabled) gaps.push('admins can merge past the required checks');
   if (plan.require_up_to_date && !ex?.strict) gaps.push('pull requests can merge without being up to date with the base, so the merged code is not the code that was verified');
+  // GitHub matches a required check by name and by the app that posts it. Unpinned, or pinned to
+  // GitHub Actions, a branch that edits a workflow can post its own "pocp: success".
+  if (plan.required_checks.includes(STATUS_CHECK) && have.has(STATUS_CHECK)) {
+    const app = (ex?.checks || []).find((c) => c.context === STATUS_CHECK)?.app_id;
+    const pinned = plan.reporter_app_id ? app === plan.reporter_app_id : app > 0 && app !== GITHUB_ACTIONS_APP_ID;
+    if (!pinned) gaps.push(`the required "${STATUS_CHECK}" check is not pinned to ${plan.reporter_app_id ? `the reporter's app (ci.reporter_app_id ${plan.reporter_app_id})` : "an app of the reporter's own (set ci.reporter_app_id)"}, so a workflow a branch edits can post its own "${STATUS_CHECK}: success" (docs/STATUS.md)`);
+  }
   return gaps;
 }
 

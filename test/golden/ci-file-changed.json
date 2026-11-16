@@ -134,7 +134,15 @@
           ],
           "outcome": "waiting",
           "unfinished_reruns": 0
-        }
+        },
+        "next_steps": [
+          {
+            "by": "person",
+            "code": "ci_config_changed",
+            "why": "this change loosens the rules or CI that judge every later change; the change cannot approve itself.",
+            "next": "a maintainer reviews it and adds the `pocp-approve-policy` label to the pull request (or runs: pocp approve owner/repo#<number>)"
+          }
+        ]
       },
       "stderr": ""
     }

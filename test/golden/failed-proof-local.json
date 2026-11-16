@@ -71,7 +71,7 @@
       ],
       "exit": 1,
       "stdout": "",
-      "stderr": "pocp: commit blocked\n  why: 1 file(s) have required checks\n  not covered by any packet: src/math.js\n  suggested packet:\n    pocp open --intent '<what this change does>' --touch 'src/math.js'\n    Required checks for these files are added automatically when the packet opens.\n  what to do:\n    what: 1 staged file(s) are not covered by any packet: src/math.js\n      why: a rule requires checks for them. A packet records what the change is and the checks that prove it.\n      next: pocp fix --intent \"<what this change does>\"\n  \"pocp fix\" takes every step above marked pocp fix, then commit again.\n"
+      "stderr": "pocp: commit blocked\n  why: 1 file(s) have required checks\n  not covered by any packet: src/math.js\n  suggested packet:\n    pocp open --intent '<what this change does>' --touch 'src/math.js'\n    Required checks for these files are added automatically when the packet opens.\n  what to do:\n    [author: pocp fix] 1 staged file(s) are not covered by any packet: src/math.js\n      why: a rule requires checks for them. A packet records what the change is and the checks that prove it.\n      next: pocp fix --intent \"<what this change does>\"\n  \"pocp fix\" takes every step above marked pocp fix, then commit again.\n"
     },
     {
       "args": [

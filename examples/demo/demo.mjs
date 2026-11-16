@@ -105,8 +105,8 @@ const v = step('pocp verify main..HEAD --rerun', {
     const bad = lines.find((l) => /^\s*BAD /.test(l)) || '';
     const why = /the old tests fail on the new code[^;]*/.exec(bad)?.[0] || bad.trim();
     const rerun = lines.find((l) => /rerun passed/.test(l))?.replace(/\s*\(\d+ms\)/, '').trim();
-    const next = /next: (.*?)\s+\(needs a person\)/.exec(s)?.[1];
-    return [head, '\u0000', rerun && `  ${rerun}   <- the edited test passes`, `  BAD: ${why}`, '       behavior changed, so a person must approve it', next && `  next: ${next}`].filter(Boolean).join('\n');
+    const next = /\[maintainer, not the author\] .*?next: (.*)/.exec(s)?.[1];
+    return [head, '\u0000', rerun && `  ${rerun}   <- the edited test passes`, `  BAD: ${why}`, '       behavior changed, so a person must approve it', next && `  [maintainer] next: ${next}`].filter(Boolean).join('\n');
   },
   after: 3,
 });
