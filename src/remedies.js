@@ -41,6 +41,10 @@ export function approvalStep(label, { local = false, how = '' } = {}) {
 export const whoOf = (x) => x.who || WHO[x.by] || x.by;
 
 export const DONT_REWRITE = 'Do not squash, force-push, rewrite history or commit with --no-verify to get past this: push the commit as it is and ask for the approval.';
+/** The same in local mode, where nothing is pushed for approval: you approve before merging. */
+export const DONT_REWRITE_LOCAL = 'Do not squash, rewrite history or commit with --no-verify to get past this: keep the commit as it is and approve it before merging.';
+/** DONT_REWRITE for a list of steps: the local wording when a step is yours (local mode). */
+export const dontRewrite = (steps) => (steps.some((x) => x.who === LOCAL_WHO) ? DONT_REWRITE_LOCAL : DONT_REWRITE);
 
 /**
  * A check that didn't finish (timed out, killed, didn't start, exit 126/127) says nothing
@@ -166,7 +170,7 @@ export function pendingApprovals(r) {
     ? {
         code: 'test_change',
         what: w.detail,
-        why: 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
+        why: r.local_mode ? 'the test-change check did not pass, so a person must read and accept the change before it merges.' : 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
         next: approvalStep(APPROVE_TESTS_LABEL, { local: r.local_mode }),
         by: 'person',
         ...(r.local_mode ? { who: LOCAL_WHO } : {}),
@@ -241,6 +245,6 @@ export function remedyLines(remedies, indent = '  ') {
     if (r.why) lines.push(`${indent}  why: ${r.why}`);
     lines.push(`${indent}  next: ${r.next}`);
   }
-  if (remedies.some((r) => r.by === 'person')) lines.push(`${indent}${DONT_REWRITE}`);
+  if (remedies.some((r) => r.by === 'person')) lines.push(`${indent}${dontRewrite(remedies)}`);
   return lines;
 }

@@ -286,7 +286,7 @@ export async function approvePr({ ref, repo, label, interactive, ask, say }) {
   if (!add.ok) throw new ApprovalsError(`could not add ${labels.join(', ')}${again.length ? ` (${again.join(', ')} was removed to be applied again; add it back)` : ''}: ${add.message}`);
   say(`  approved: ${labels.join(', ')} added to ${r}#${number}. verify runs again on the labels.`);
   const approved = labels;
-  if (approved.length) say('If new commits arrive before this merges, remove the label and approve again: the label stays on through later pushes.');
+  if (approved.length) say('A new push needs a new approval: after reviewing the new commits, run pocp approve again.');
   return { approved, skipped: [] };
 }
 

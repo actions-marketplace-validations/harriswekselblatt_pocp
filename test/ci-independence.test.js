@@ -162,7 +162,7 @@ test('forged CI result: the trusting ci-run mode accepts it, as documented', () 
 test('every CI recipe users copy re-runs the checks and trusts no results file', () => {
   const recipes = {
     'README.md': snippetAfter('README.md', 'In CI:'),
-    'docs/QUICKSTART.md': snippetAfter('docs/QUICKSTART.md', '## 4. Add CI'),
+    'docs/QUICKSTART.md': snippetAfter('docs/QUICKSTART.md', '### Another CI'),
     'examples/any-ci/pocp-ci.sh': fs.readFileSync(path.join(ROOT, 'examples/any-ci/pocp-ci.sh'), 'utf8'),
     'examples/gitlab/.gitlab-ci.yml': fs.readFileSync(path.join(ROOT, 'examples/gitlab/.gitlab-ci.yml'), 'utf8'),
   };

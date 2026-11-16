@@ -15,7 +15,7 @@ npm install --save-dev proof-of-change
 npx pocp init --hooks --github
 ```
 
-`init` creates `.proof/`, installs git hooks (yours keep running) and, with `--github`, writes the workflows and creates the approval labels. Then:
+`init` creates `.proof/` and installs git hooks (yours keep running). Then:
 
 1. **Say what must be proven.** A rule in `.proof/rules.json` maps files to a check, which is any command (`npm test`, `pytest`, `go test ./...`):
 
@@ -27,17 +27,20 @@ npx pocp init --hooks --github
 
 2. **Commit.** If the hook blocks it, run `npx pocp fix --intent "<what the change does>"` and commit again. The commit gets a `Proof-Of-Change` trailer.
 3. **Check the setup** with `npx pocp doctor`, which prints the commands for anything missing.
-4. **Require the `pocp` status** once the workflows are merged: `npx pocp ci required --apply`. `init --github` already turned it on: green when verified, yellow while waiting for a maintainer's approval label, red on a real failure ([docs/STATUS.md](docs/STATUS.md)).
+
+## Where the checks run
+
+**GitHub CI** (`--github`, above). Run it once the GitHub repository exists, `origin` points at it and `gh` is logged in: `init` then writes the workflows, creates the approval labels and turns on the `pocp` status, which is green when verified, yellow while waiting for a maintainer's approval label and red on a real failure ([docs/STATUS.md](docs/STATUS.md)). Once the workflows are merged, `npx pocp ci required --apply` makes GitHub block merges until `pocp` is green. CI re-runs every check on a clean machine, and approvals are a maintainer's label. The trade: each pull request costs about one extra test run of Actions minutes, and on a free plan's private repository nothing blocks a merge.
+
+**Local mode, no CI.** `npx pocp init --local` instead of `--github`, or `npx pocp ci off` on a repository that already has the workflows (`pocp ci on` reverses it). The git hooks are the gate and CI costs nothing. The trade: nothing re-runs the checks on another machine, nothing blocks a merge, and `git commit --no-verify` skips the gate unless you run `npx pocp verify --require-coverage --rerun main..HEAD` before you merge. Approvals are `--accept-*` flags on that command, so anything that can run commands on your machine, an agent included, can give them. `pocp doctor` suggests it when Actions jobs aren't starting for billing reasons.
+
+**The reporter's own GitHub App** (optional, on top of GitHub CI). By default the `pocp` status is posted as GitHub Actions, like any workflow, so a branch pushed to your repository, by an agent using your token for example, can edit a workflow and post its own `pocp: success`. Giving the reporter its own App, with its key in an environment only the default branch can use, and requiring `pocp` from that App closes this. The trade: three setup steps, and it needs a public repository or GitHub Pro or Team ([docs/STATUS.md](docs/STATUS.md#give-the-reporter-its-own-identity)).
 
 **On another CI** (GitLab, Jenkins, plain shell). In CI: keep your existing test step, and add:
 
 ```bash
 npx pocp verify origin/main..HEAD --require-coverage --rerun
 ```
-
-**Private repositories pay for CI in GitHub Actions minutes.** POCP's `verify` re-runs your tests, so each pull request costs about one extra test run, plus about a minute for each push or approval. On a free plan, check you have minutes to spare.
-
-**No CI (local mode).** `npx pocp init --local` instead of `--github`, or `npx pocp ci off` on a repository that already has the workflows (it disables them on GitHub; `pocp ci on` turns them back on). The git hooks are then the gate and CI costs nothing. In exchange nothing re-runs the checks on another machine, nothing blocks a merge, and `git commit --no-verify` skips the gate unless you run `npx pocp verify --require-coverage --rerun origin/main..HEAD` before you merge. Approvals are `--accept-*` flags on that command, so anything that can run commands on your machine, an agent included, can give them. `pocp doctor` tells you when Actions jobs aren't starting for billing reasons and suggests it. [docs/QUICKSTART.md](docs/QUICKSTART.md#no-ci-local-mode) has the details.
 
 [docs/QUICKSTART.md](docs/QUICKSTART.md) walks through all of this on a non-JavaScript project.
 

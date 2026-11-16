@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as g from './git.js';
 import { matchGlob } from './glob.js';
 import { GITHUB_WORKFLOWS, hooksHealth, INSTALL_HINT, recordedBin } from './init.js';
-import { LOCAL_MODE_TRADE, listWorkflows, localVerifyCommand, protectionGaps, requiredChecksPlan } from './ci-github.js';
+import { LOCAL_MODE_TRADE, STATUS_CHECK, listWorkflows, localVerifyCommand, protectionGaps, reporterIdentityNote, requiredChecksPlan, verifyBase } from './ci-github.js';
 import { validateRules } from './rules.js';
 import { policyKeyWarnings } from './schema.js';
 import { validateConfig } from './store.js';
@@ -119,6 +119,22 @@ function actionsBlocked(root, repo, workflows) {
   return hit ? { message: hit.message, active: [...active].sort() } : null;
 }
 
+// GitHub blocks pull_request_target by default in public repositories with no Actions event
+// policy (enforced from 2026-12-02): runs of pocp-labels.yml and pocp-status.yml on it then end
+// in startup_failure, and approval labels are no longer removed on push (docs/STATUS.md).
+const PRT_WORKFLOWS = ['.github/workflows/pocp-labels.yml', '.github/workflows/pocp-status.yml'];
+export function pullRequestTargetBlocked(root, repo, workflows) {
+  const active = new Set(workflows.filter((w) => w.state === 'active' && PRT_WORKFLOWS.includes(w.path)).map((w) => w.path));
+  if (!active.size) return null;
+  const runs = gh(root, ['api', `repos/${repo}/actions/runs?event=pull_request_target&per_page=30`]);
+  const blocked = [];
+  for (const file of active) {
+    const latest = (runs.json?.workflow_runs || []).find((r) => r.path === file);
+    if (latest?.conclusion === 'startup_failure') blocked.push(file);
+  }
+  return blocked.length ? blocked.sort() : null;
+}
+
 export async function runDoctor(engine, { base, offline = false } = {}) {
   const root = engine.root;
   const checks = [];
@@ -186,9 +202,17 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   const workflows = scanWorkflows(root);
   const wf = workflows.find((w) => w.runs_verify);
   const plan = requiredChecksPlan(root, cfg);
+  // A repository pushed rather than cloned has no origin/HEAD, so git alone can't say which
+  // branch is the default one. Ask GitHub before falling back to main, master or the branch
+  // checked out (defaultBranch): otherwise doctor judges an adoption branch against itself.
+  if (!cfg.ci?.branch && !offline && !g.git(root, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD'], { allowFail: true })
+    && /github\.com[:/]/.test(g.git(root, ['remote', 'get-url', 'origin'], { allowFail: true }) || '')) {
+    const r = gh(root, ['repo', 'view', '--json', 'defaultBranchRef']);
+    if (r.ok && typeof r.json?.defaultBranchRef?.name === 'string' && r.json.defaultBranchRef.name) plan.branch = r.json.defaultBranchRef.name;
+  }
   if (local) {
     add({ id: 'workflow', status: 'skipped', what: 'local mode (ci.mode "local"): no CI workflow expected' });
-    add({ id: 'local-mode', status: 'warning', what: 'local mode: no CI', why: LOCAL_MODE_TRADE, fix: `before merging: ${localVerifyCommand(plan.branch)}; for CI: pocp ci on (or pocp init --github)` });
+    add({ id: 'local-mode', status: 'warning', what: 'local mode: no CI', why: LOCAL_MODE_TRADE, fix: `before merging: ${localVerifyCommand(root, plan.branch)}; for CI: pocp ci on (or pocp init --github)` });
   } else if (!wf) {
     add({ id: 'workflow', status: 'problem', what: 'no CI workflow runs pocp verify', why: 'the hooks are local and can be skipped; only CI checks every pull request', fix: 'copy examples/github/pocp.yml to .github/workflows/pocp.yml' });
   } else {
@@ -205,7 +229,7 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   }
 
   // 6. What the adoption pull request carries.
-  const scope = adoptionScope(root, base || `origin/${plan.branch}`, cfg);
+  const scope = adoptionScope(root, base || verifyBase(root, plan.branch), cfg);
   if (!scope.known) add({ id: 'adoption-scope', status: 'skipped', what: `base ${scope.base} not found (pass --base <rev>)` });
   else if (scope.adopted) add({ id: 'adoption-scope', status: 'ok', what: `${scope.base} already has POCP` });
   else if (scope.extra.length) {
@@ -247,6 +271,11 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
         if (local && active.length) add({ id: 'ci-mode', status: 'warning', what: `local mode, but POCP's workflows still run on ${repo}: ${active.join(', ')}`, why: 'each push spends Actions minutes on checks nothing requires', fix: 'pocp ci off' });
         else if (local && disabled.length) add({ id: 'ci-mode', status: 'ok', what: `POCP's workflows are off on ${repo}, as local mode expects` });
         else if (!local && disabled.length) add({ id: 'ci-mode', status: 'problem', what: `POCP's workflows are disabled on ${repo}: ${disabled.join(', ')}`, why: 'nothing checks pull requests, and .proof/config.json does not say local mode', fix: 'pocp ci on; or, for no CI, pocp ci off and commit .proof/config.json' });
+        const prt = local ? null : pullRequestTargetBlocked(root, repo, listed.workflows);
+        if (prt) {
+          const live = plan.required_checks.includes(STATUS_CHECK);
+          add({ id: 'pull-request-target', status: live ? 'warning' : 'problem', what: `GitHub is blocking pull_request_target on ${repo}: the latest run of ${prt.join(', ')} ended in startup_failure`, why: live ? 'approval labels are no longer removed on push; the reporter still refuses a label given before the head, so this is untidy, not a way through' : 'approval labels are no longer removed on push, and with verify as the required check a label left on can let verify pass on code nobody approved', fix: 'allow pull_request_target in Settings → Actions → General (the Actions event policy), or turn the pocp status live; docs/STATUS.md, "GitHub\'s pull_request_target block"' });
+        }
         const blocked = actionsBlocked(root, repo, listed.workflows);
         if (blocked) {
           const others = blocked.active.filter((f) => !ours.includes(f));
@@ -294,6 +323,8 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
         add(gaps.length
           ? { id: 'branch-protection', status: 'problem', what: `${repo}@${plan.branch}: ${gaps.join('; ')}`, why: 'POCP can only block a merge GitHub enforces: each gap is a way for unverified code to merge', fix: 'pocp ci required --apply' }
           : { id: 'branch-protection', status: 'ok', what: `${repo}@${plan.branch} enforces the plan: ${plan.required_checks.join(', ')} required, pull requests only, admins included${plan.require_up_to_date ? ', branches up to date' : ''}` });
+        const identity = reporterIdentityNote(prot.json, plan);
+        if (identity) add({ id: 'reporter-identity', status: 'warning', what: identity.split('. Optional:')[0], why: 'optional hardening for repositories where branches are pushed with a maintainer\'s token (agents, for example)', fix: 'docs/STATUS.md, "Give the reporter its own identity" (needs a public repository or GitHub Pro or Team)' });
         if (!plan.require_up_to_date) add({ id: 'up-to-date', status: 'warning', what: 'ci.require_up_to_date is false', why: 'a pull request can merge without the latest base, so the merged code is not the code that was verified', fix: 'remove ci.require_up_to_date from .proof/config.json (or set it to true), then pocp ci required --apply' });
       } else if (/upgrade to github pro|make this repository public/i.test(prot.message || '')) {
         add({ id: 'branch-protection', status: 'warning', what: `${repo} is private on a free plan, which has no branch protection`, why: 'verify still runs and reports, but GitHub will not block a merge on it: POCP is advisory here, and anyone with write access can merge unverified code', fix: 'make the repository public, or move it to a plan with branch protection (GitHub Pro, Team or Enterprise); or, if CI isn\'t worth its Actions minutes here, use local mode: pocp ci off' });

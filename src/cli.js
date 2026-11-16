@@ -130,8 +130,8 @@ Commit time
 Checking
   ci required [--check | --apply]    which CI checks must pass to merge (from .proof/config.json "ci");
                                      --check reads GitHub's branch protection and exits 1 on any gap;
-                                     --apply sets them as GitHub branch protection via gh
-                                     (schema-validated, not yet tested against the live API)
+                                     --apply sets them as GitHub branch protection via gh,
+                                     never loosening an existing protection
   ci off | ci on                     local mode and back: disable (enable) POCP's workflows on GitHub
                                      and set (remove) ci.mode "local" in .proof/config.json
   ci-run [--results <file>] [--dir <folder>] -- <command…>

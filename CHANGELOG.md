@@ -1,22 +1,34 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (2026-11-16)
 
-### Security
+Upgrading: re-run `pocp init --github --force` to get the new `pocp-status.yml` (the reporter
+App needs it; without the App it posts as before).
+
+### Added
 
 - **The reporter can post as its own GitHub App.** Until now the `pocp` status was posted as
-  GitHub Actions, like every workflow, so a branch pushed to the repository could edit a workflow
-  and post its own `pocp: success`. The example `pocp-status.yml` now runs in a `pocp-reporter`
-  environment and, when `POCP_REPORTER_CLIENT_ID` is set, posts with a token from your own App
-  whose key lives only in that environment. Limit the environment to your default branch and pin
-  the required `pocp` check to the app (docs/STATUS.md, "Give the reporter its own identity").
-  Without the app it posts as before. Re-run `pocp init --github --force` to get the new workflow.
-- **`pocp ci required` pins the `pocp` check to the reporter's app.** New config key
-  `ci.reporter_app_id` (the App ID): `--apply` requires `pocp` from that app only, keeping every
-  other check's source. `--check` (and `pocp doctor`) now report a required `pocp` check that
-  isn't pinned to it, or, without the key, one that any source or GitHub Actions can post: a
-  workflow a branch edits can post that one. Changing or removing the key is a policy loosening.
-  POCP's own config sets it to its live reporter App.
+  GitHub Actions, like every workflow, so a branch pushed to the repository (by an agent using
+  your token, say) could edit a workflow and post its own `pocp: success`. The example
+  `pocp-status.yml` now runs in a `pocp-reporter` environment and, when
+  `POCP_REPORTER_CLIENT_ID` is set, posts with a token from your own App whose key lives only in
+  that environment. Limit the environment to your default branch and pin the required `pocp`
+  check to the App (docs/STATUS.md, "Give the reporter its own identity"). It needs a public
+  repository or GitHub Pro or Team. New config key `ci.reporter_app_id` (the App ID):
+  `pocp ci required --apply` requires `pocp` from that App only, keeping every other check's
+  source, and `--check` and `pocp doctor` report a required `pocp` check that any source or
+  GitHub Actions can post. Changing or removing the key is a policy loosening.
+- **Local mode: POCP without CI.** For repositories where CI isn't available or wanted, such as
+  a free private repository whose Actions jobs fail for billing. `pocp init --local` sets
+  `ci.mode: "local"` and installs the hooks. `pocp ci off` disables POCP's workflows on GitHub
+  and sets the mode; `pocp ci on` reverses both, with no workflow file to commit. Run
+  `pocp verify --require-coverage --rerun main..HEAD` before merging to recover most of what CI
+  checked, including commits made with `--no-verify`. The trade, which `pocp doctor` states: no
+  independent re-run, nothing blocks a merge, and you trust your own machine. Approvals are
+  `--accept-*` flags on that verify, which anything on your machine can pass, an agent included;
+  the gate, `pocp fix` and verify name you, not CI and a label, as the approver. Switching to
+  local mode is a policy loosening. `pocp doctor` also recognises Actions jobs GitHub doesn't
+  start for billing reasons and suggests `pocp ci off`.
 
 ### Changed
 
@@ -30,65 +42,80 @@
   with no ceiling (a 10-minute limit could spend 40 minutes on one hung mutant). The retry now
   gets at most 5× the check's measured time on the new code, or 30 s if that's more. A retry
   that hits the cap is not measured, so the result is inconclusive, never a pass.
+- **The test guard's result records where its time went** (`timings`: setup, baselines, mutant
+  runs and retries, snapshots). For profiling only; nothing reads it to decide a verdict.
+- Messages no longer promise CI or a push where there is none: the pre-commit hook's message
+  when pocp can't be found says "pocp verify still flags it", and in local mode the advice not to
+  rewrite history says to keep the commit and approve it before merging.
 
 ### Fixed
 
 - **A commit that edits only a test keeps the rule's `cwd`.** With no rule covering the test
-  file, `pocp fix` borrowed the repo's most-required test command for the packet but left the
-  rule's settings behind, so a check that runs in a subfolder (QUICKSTART's own
-  `"cwd": "tests"`) ran at the root, couldn't start, and `fix` advised re-running forever. It
-  now borrows the rule's whole check (`cwd`, `timeout_ms`, `inputs`, ...), and two rules with
-  the same command in different folders are no longer counted as one (`fix --json` reports the
-  folder as `check_cwd`). The test guard's changed-tests run likewise carries the whole check
-  instead of copying `cwd` and `timeout_ms` by hand. `pocp ci-run --dir` writes its folder the
-  way a rule does, so `--dir tests/` now matches a rule's `"cwd": "tests"` in verify, and a
-  folder outside the repository is refused. Tests now cover every place a check is run or re-run
-  keeping its settings.
-- **A pull request no longer needs `pocp-approve-policy` because the base tightened its policy.**
-  `verify base..head` compared every commit's policy with the base's current one, so when the
-  base added a setting (say `ci.reporter_app_id`) while a pull request was open, the pull
-  request's older commits, which never touched policy, counted as removing it. In a range, a
-  commit now answers only for loosenings its parent didn't already have. The head still answers
-  for everything it loosens against the base, every commit is still judged under the base's
-  rules, and a loosening made in one commit and reverted later is still flagged at that commit.
-
+  file, `pocp fix` borrowed the repository's most-required test command but dropped the rule's
+  settings, so a check that runs in a subfolder (QUICKSTART's own `"cwd": "tests"`) ran at the
+  root, couldn't start, and `fix` advised re-running forever. It now borrows the rule's whole
+  check (`cwd`, `timeout_ms`, `inputs`, ...), and two rules with the same command in different
+  folders are no longer counted as one. The test guard's changed-tests run carries the whole
+  check too. `pocp ci-run --dir tests/` now matches a rule's `"cwd": "tests"` in verify, and a
+  folder outside the repository is refused.
+- **`pocp approve` no longer says "nothing to approve" while the `pocp` status waits for an
+  approval.** When verify passed with a label the reporter won't count for this head, `pocp
+  approve` (and `pocp approvals`) read the `pocp` status, list the label, and on your
+  confirmation remove it and add it back. They also skip a verify run that was skipped (such as
+  one for an edited description) instead of letting it hide the run that asked for approval,
+  and say so when the status waits for a maintainer but no run says what for.
 - **"Update branch" no longer drops an approval because the base gained a proof record.** The
   reporter's carry-over rule treated every file under `.proof/` as policy, so a base that had
   merged any other pull request (which adds a `.proof/packets/` record) voided every carried
   approval. Proof records no longer count; config, rules and the pull request's own packets
-  still void it. Seen on harriswekselblatt/pocp#82.
-- **`pocp approve` no longer says "nothing to approve" while the `pocp` status waits for an
-  approval.** When verify passed with a label the reporter won't count for this head, `pocp
-  approve` (and `pocp approvals`) now read the `pocp` status, list the label, and on your
-  confirmation remove it and add it back. They also skip a verify run that was skipped (an
-  ignored event, such as editing the description) instead of letting it hide the run that
-  asked for approval, as the reporter already did; and when the `pocp` status waits for a
-  maintainer but no run says what for, `pocp approve` says so. Seen on harriswekselblatt/pocp#86.
+  still void it.
+- **A pull request no longer needs `pocp-approve-policy` because the base tightened its policy.**
+  `verify base..head` compared every commit's policy with the base's current one, so when the
+  base added a setting (say `ci.reporter_app_id`) while a pull request was open, the pull
+  request's older commits counted as removing it. In a range, a commit now answers only for
+  loosenings its parent didn't already have. The head still answers for everything it loosens
+  against the base, and a loosening made in one commit and reverted later is still flagged.
+- **An approval label no longer counts for a head brought back by a force-push.** The reporter
+  counted a label applied after the head's first run. If the author force-pushed another head,
+  a maintainer labelled that one, and the author force-pushed back, the label counted for code
+  nobody approved. `pocp-labels.yml` removed it on that push, but nothing else did. Now a label
+  counts only if it was also applied after the pull request's latest force-push, and the same
+  holds for "Update branch" carry-over.
+- **Fixes from the new-user walkthrough on GitHub and with no remote:**
+  - In a repository with no remote, `init --local`, `ci off` and `doctor` printed
+    `pocp verify … origin/main..HEAD`, which fails there. They now print a base that exists:
+    `origin/<branch>` when there is an origin, else the local default branch.
+  - Without `--base`, `doctor` judged an adoption branch against itself when `origin/HEAD` wasn't
+    set (a repository pushed rather than cloned). It now asks GitHub for the default branch, then
+    tries `main` and `master`.
+  - With no `ci.reporter_app_id`, `ci required --check` and `doctor` reported an unpinned `pocp`
+    check as a gap to fix with `ci required --apply`, which can't fix it. It is now a note that
+    points to the optional App setup in docs/STATUS.md.
+  - When verify waits only for a label, the job summary's heading names it. Before the
+    adoption pull request merges, this summary is the only place that says so.
+  - After approving, `pocp approve` says a new push needs a new approval (it said the label
+    stays on through later pushes).
+  - The `pocp` status for an approval label added before the head commit says so, instead of
+    blaming write access.
 
-### Added
+### Known limit
 
-- **Local mode: POCP without CI.** For repositories where CI isn't available or wanted, such as
-  a free private repository whose Actions jobs fail for billing. `pocp init --local` sets
-  `ci.mode: "local"` and installs the hooks. `pocp ci off` disables POCP's workflows on GitHub
-  and sets the mode; `pocp ci on` reverses both. No workflow file changes, so there is nothing
-  to commit under `.github/`. In local mode `pocp doctor` skips the CI checks and states the
-  trade: no independent re-run, no merge blocking, `--no-verify` skips the gate, and you trust
-  your own machine. It also flags POCP workflows that disagree with the mode. Run
-  `pocp verify --require-coverage --rerun origin/main..HEAD` before merging to recover most of
-  what CI checked, including commits made with `--no-verify`. The gate, `pocp fix` and verify
-  then name you, through `--accept-*`, as the approver instead of CI and a label. That approval
-  is a flag anything on your machine can pass, an agent included; the docs say so next to it.
-  Switching to local mode (`ci.mode` "github" → "local") is a policy loosening that needs
-  `pocp-approve-policy` in CI.
-- **`pocp doctor` recognises Actions jobs GitHub doesn't start for billing reasons** ("recent
-  account payments have failed or your spending limit needs to be increased"). It names the
-  workflows that fail on every push and suggests `pocp ci off`, plus `gh workflow disable` for the
-  others.
+- **GitHub's `pull_request_target` block.** From December 2, 2026, GitHub blocks
+  `pull_request_target` workflows by default in public repositories with no Actions event
+  policy. `pocp-labels.yml` runs on it, so approval labels then stay on after a push. With the
+  `pocp` status live, the reporter still refuses them, and this is only untidy. With `verify` as
+  the required check, allow `pull_request_target` in the repository's Actions settings, or turn
+  the status live. `pocp doctor` reports the block, and docs/STATUS.md explains it. 1.3.1
+  removes the dependence on `pull_request_target`.
 
-### Changed
-
-- The pre-commit hook's message when pocp can't be found no longer promises that CI checks a
-  `--no-verify` commit: "pocp verify still flags it", which holds in either mode.
+- **Deep mode doesn't defend against deception planned across pull requests.** An agent can
+  first weaken an assertion and add a test that "catches" every planted bug by reading the
+  source, which deep mode accepts, then add the bug in a later pull request. That is an agent
+  working against its owner over time, outside POCP's threat model; POCP has no defence against
+  it. Deep mode still catches the corner-cutting it is built for: breaking code and weakening
+  the test that caught it in the same pull request (docs/THREAT-MODEL.md, "Out of scope";
+  `test/e2e-guard-known-gap.test.js` pins the gap). Fast mode sends every test edit to a person,
+  so the attack doesn't apply there.
 
 ## 1.2.3 (2026-11-10)
 

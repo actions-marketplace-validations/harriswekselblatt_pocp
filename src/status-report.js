@@ -47,7 +47,7 @@ export const TEXT = Object.freeze({
   unidentified: "The newest verify run doesn't say which pull request it checked: re-run it.",
   outdated: 'pocp.yml is older than this reporter: update it (pocp init --github --force) and re-run.',
   stale: 'The pull request changed while its status was decided: deciding again.',
-  approvalUnverified: 'An approval label was not applied by a maintainer with write access for this commit: a maintainer applies it again.',
+  approvalUnverified: 'An approval label was added before this commit, or by someone without write access: re-apply it after reviewing the new commits.',
 });
 
 // Approvals of content (not of one run's outcome, and not of a workflow, which can run any file)
@@ -275,7 +275,7 @@ export function decideStatus(facts) {
     // (triage) manage labels. Each approval the run used must have been applied last by a
     // writer, after this head's first run (so it was given for this code).
     const unauthorized = approvals.filter((l) => !approvedByWriter(facts, l, sha) && !carriedOver(facts, l).ok);
-    if (unauthorized.length) return status('pending', TEXT.approvalUnverified, `run ${newest.id} relied on ${unauthorized.join(', ')}, last applied by someone without write access, before this head's first run, or not readable${via}`, newest);
+    if (unauthorized.length) return status('pending', TEXT.approvalUnverified, `run ${newest.id} relied on ${unauthorized.join(', ')}, last applied by someone without write access, before this head's first run, before a force-push, or not readable${via}`, newest);
     const carried = approvals.filter((l) => !approvedByWriter(facts, l, sha));
     const how = carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : '';
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
@@ -287,8 +287,20 @@ export function decideStatus(facts) {
 const short = (sha) => (sha ? String(sha).slice(0, 12) : '(none)');
 
 /**
+ * Whether a force-push came after the label's last application. Then the label was given for a
+ * head the pull request no longer has, even when the head now is one that ran before it: H1 runs,
+ * H2 is force-pushed and labelled, H1 is force-pushed back. A normal push can't go back to an
+ * older head, so the force-pushes are the only way. Only the reporter checks this, from the pull
+ * request's issue events (head_ref_force_pushed), not pocp-labels.yml's removal.
+ */
+function labelOutlived(facts, last) {
+  return (facts.force_pushes || []).some((t) => String(t) > String(last.created_at));
+}
+
+/**
  * Whether the label's current application is a writer's, given for this head: its most recent
- * "labeled" event is by someone with write access, after the head's first run of the workflow.
+ * "labeled" event is by someone with write access, after the head's first run of the workflow,
+ * and no force-push came after it.
  * Needs the whole event list (facts.label_events_complete): a list cut short could hide a later
  * application by someone else.
  */
@@ -296,7 +308,7 @@ function approvedByWriter(facts, label, sha) {
   if (!facts.label_events_complete) return false;
   const firstRunAt = (facts.runs || []).filter((r) => r.head_sha === sha).map((r) => String(r.created_at)).sort()[0] || null;
   const last = (facts.label_events || []).filter((e) => e.label === label).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).at(-1);
-  return Boolean(last && WRITE_PERMISSIONS.has(last.permission) && firstRunAt && String(last.created_at) > firstRunAt);
+  return Boolean(last && WRITE_PERMISSIONS.has(last.permission) && firstRunAt && String(last.created_at) > firstRunAt && !labelOutlived(facts, last));
 }
 
 /**
@@ -323,6 +335,7 @@ export function carriedOver(facts, label) {
   const last = (facts.label_events || []).filter((e) => e.label === label).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).at(-1);
   if (!last || !WRITE_PERMISSIONS.has(last.permission)) return no(`${label} was last applied by someone without write access`);
   if (!firstRunAt || String(last.created_at) <= firstRunAt) return no(`${label} was not given for ${short(c.from_sha)}`);
+  if (labelOutlived(facts, last)) return no(`${label} was applied before a force-push, so it was given for another head`);
   const merged = new Set(c.merge_files || []);
   const touched = (c.pr_files || []).filter((f) => merged.has(f));
   if (touched.length) return no(`the merge changed files the pull request changes: ${touched.slice(0, 3).join(', ')}`);
@@ -414,7 +427,7 @@ async function listAll(gh, url, key, max) {
 /** Fetch every fact decideStatus needs, fresh. */
 export async function gather(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH }) {
   const repo = `/repos/${repository}`;
-  const facts = { event_sha: sha, repository, ci_globs: workflowFiles(baseConfig), workflow_approver: baseConfig?.ci?.workflow_approver || 'independent', pr: null, base_sha: null, changed_files: null, head_prs: [], incomplete: [], files: [], runs: [], label_events: [] };
+  const facts = { event_sha: sha, repository, ci_globs: workflowFiles(baseConfig), workflow_approver: baseConfig?.ci?.workflow_approver || 'independent', pr: null, base_sha: null, changed_files: null, head_prs: [], incomplete: [], files: [], runs: [], label_events: [], force_pushes: [] };
   const need = (r) => {
     if (!r.complete) facts.incomplete.push(r.reason || 'a list was cut short');
     return r.items;
@@ -464,6 +477,9 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
       }
       facts.label_events.push({ label: e.label.name, actor: login, permission: permissions.get(login) ?? null, created_at: e.created_at });
     }
+    // A force-push can bring back a head that was replaced: a label applied before it was given
+    // for another head (labelOutlived).
+    facts.force_pushes = listed.items.filter((x) => x.event === 'head_ref_force_pushed').map((x) => String(x.created_at));
   }
   if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow);
   return facts;

@@ -155,6 +155,23 @@ test('approval gone: a verified run that relied on a label now removed is pendin
   assert.equal(d.description, TEXT.approvalGone);
 });
 
+// A label given for another head counts for none after it. H1 runs; the author force-pushes H2;
+// a maintainer labels H2; the author force-pushes back to H1. The label is later than H1's first
+// run, but was given for H2. pocp-labels.yml used to strip it on that push; when it can't run
+// (GitHub blocking pull_request_target), the reporter must refuse it itself.
+test('a label applied before the pull request\'s latest force-push counts for no head', () => {
+  const approved = run({ approvals: ['approval-tests'] }, { created_at: '2026-11-04T10:00:00Z' });
+  const label = [{ label: 'pocp-approve-tests', actor: 'maintainer', permission: 'write', created_at: '2026-11-04T11:00:00Z' }];
+  const pr = { number: 7, state: 'open', head_sha: SHA, labels: ['pocp-approve-tests'] };
+  assert.equal(decideStatus(facts({ runs: [approved], label_events: label, pr, force_pushes: [] })).state, 'success');
+  const back = decideStatus(facts({ runs: [approved], label_events: label, pr, force_pushes: ['2026-11-04T10:30:00Z', '2026-11-04T11:30:00Z'] }));
+  assert.equal(back.state, 'pending', back.reason);
+  assert.equal(back.description, TEXT.approvalUnverified);
+  // Applied again after the force-push: it counts.
+  const again = [...label, { ...label[0], created_at: '2026-11-04T11:45:00Z' }];
+  assert.equal(decideStatus(facts({ runs: [approved], label_events: again, pr, force_pushes: ['2026-11-04T11:30:00Z'] })).state, 'success');
+});
+
 test('out of order: the newest run decides, whatever order they finished or arrived in', () => {
   const older = run({ waiting: 'success' }, { created_at: '2026-11-04T10:00:00Z' });
   const newer = run({}, { created_at: '2026-11-04T10:05:00Z' });
@@ -422,6 +439,12 @@ test('carry-over: never for inconclusive or workflow approvals, a non-writer, or
   assert.equal(decideStatus(workflow).description, TEXT.workflow);
 });
 
+test('carry-over: a force-push after the label voids it (the label was for another head)', () => {
+  assert.equal(decideStatus(carryFacts()).state, 'success');
+  const d = decideStatus({ ...carryFacts(), force_pushes: ['2026-11-04T12:00:00Z'] });
+  assert.equal(d.state, 'pending', d.reason);
+});
+
 test('carry-over keeps the approval, never a result: a failing run on the merged head is red', () => {
   const d = decideStatus(carryFacts({ newRun: run({ failed: 'failure', approvals: ['approval-tests'] }, { created_at: '2026-11-05T10:00:00Z' }) }));
   assert.equal(d.state, 'failure');
@@ -448,7 +471,7 @@ test('carry-over facts come from GitHub: the merge parents, both file lists and 
       if (url.includes('/pulls/7/files')) return [{ filename: 'src/a.js' }, { filename: 'test/a.test.js' }];
       if (url.includes('/runs?head_sha=')) return runsFor(url.match(/head_sha=(\w+)/)[1]);
       if (url.includes('/jobs')) return [{ name: 'verify', status: 'completed', conclusion: 'success', steps: steps({ approvals: ['approval-tests'] }).map((st) => (st.name.startsWith('pocp-run') ? { ...st, name: runMarker(7, BASE) } : st)) }];
-      if (url.includes('/events')) return [{ event: 'labeled', label: { name: 'pocp-approve-tests' }, actor: { login: 'm' }, created_at: '2026-11-04T11:00:00Z' }];
+      if (url.includes('/events')) return [{ event: 'labeled', label: { name: 'pocp-approve-tests' }, actor: { login: 'm' }, created_at: '2026-11-04T11:00:00Z' }, ...(compareFiles.forced ? [{ event: 'head_ref_force_pushed', actor: { login: 'author' }, created_at: compareFiles.forced }] : [])];
       throw new Error(`unexpected ${url}`);
     };
     return { get, all };
@@ -461,6 +484,10 @@ test('carry-over facts come from GitHub: the merge parents, both file lists and 
   const capped = await gather(router({ ...clean, merge: Array.from({ length: 300 }, (_, i) => ({ filename: `src/m${i}.js` })) }), { repository: 'o/r', sha: SHA, prNumber: 7 });
   assert.equal(capped.carry.complete, false);
   assert.equal(decideStatus(capped).state, 'pending');
+  // The force-push events come from the same issue events list.
+  const forced = await gather(router({ ...clean, forced: '2026-11-04T12:00:00Z' }), { repository: 'o/r', sha: SHA, prNumber: 7 });
+  assert.deepEqual(forced.force_pushes, ['2026-11-04T12:00:00Z']);
+  assert.equal(decideStatus(forced).state, 'pending');
 });
 
 test('a label other than an approval, added while deciding, does not hold the status at pending', async () => {

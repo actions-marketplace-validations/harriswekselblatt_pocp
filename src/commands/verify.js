@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { COOPERATIVE } from '../runner.js';
-import { DONT_REWRITE, verifyRemedy, whoOf } from '../remedies.js';
+import { dontRewrite, verifyRemedy, whoOf } from '../remedies.js';
 import { EXIT } from '../errors.js';
 import { VERIFY_EXIT } from '../approvals.js';
 import { createRevCheckout } from '../workspace.js';
@@ -82,7 +82,7 @@ export async function run({ engine, flags, isolated, json, rest }) {
   const stepLines = (list2) => {
     if (!list2.length) return [];
     const out2 = ['  what to do:', ...list2.map((x) => `    [${whoOf(x)}] ${x.code}: ${x.why ? `${x.why} ` : ''}next: ${x.next}`)];
-    if (list2.some((x) => x.by === 'person')) out2.push(`    ${DONT_REWRITE}`);
+    if (list2.some((x) => x.by === 'person')) out2.push(`    ${dontRewrite(list2)}`);
     return out2;
   };
   let steps = [];

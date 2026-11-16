@@ -18,8 +18,8 @@ export async function run({ engine, flags, json, rest }) {
     const human = r.error
       ? `could not read branch protection for ${where}: ${r.error}`
       : r.ok
-        ? `${where} enforces the plan: ${plan.required_checks.join(', ')} must pass before a merge`
-        : [`${where} does not enforce the plan:`, ...r.gaps.map((x) => `  - ${x}`), '  A pull request that drops POCP from its workflow can merge. Fix with: pocp ci required --apply (or in Settings → Branches)'].join('\n');
+        ? [`${where} enforces the plan: ${plan.required_checks.join(', ')} must pass before a merge`, ...(r.notes || []).map((n) => `note: ${n}`)].join('\n')
+        : [`${where} does not enforce the plan:`, ...r.gaps.map((x) => `  - ${x}`), '  A pull request that drops POCP from its workflow can merge. Fix with: pocp ci required --apply (or in Settings → Branches)', ...(r.notes || []).map((n) => `note: ${n}`)].join('\n');
     out(json, { plan, result: r }, human);
     return r.ok ? EXIT.ok : r.error ? EXIT.usage : EXIT.blocked;
   }
@@ -78,7 +78,7 @@ function switchCi(engine, enable, json) {
     configChanged ? `${enable ? 'removed ci.mode "local" from' : 'set ci.mode "local" in'} .proof/config.json: commit it (pocp fix, then git commit)${enable ? '' : '. Verify counts the switch as a policy loosening: approve it with --accept-policy-change'}` : `.proof/config.json already says ${enable ? 'CI' : 'local mode'}`,
     ...(enable ? [] : [
       `local mode: ${LOCAL_MODE_TRADE}`,
-      `  before merging: ${localVerifyCommand(plan.branch)}`,
+      `  before merging: ${localVerifyCommand(engine.root, plan.branch)}`,
       ...r.required.map((c) => `warning: branch protection on ${plan.branch} requires "${c}", which nothing posts now: every pull request will wait for it. Remove it in Settings → Branches, or undo with pocp ci on`),
       ...(r.others_active.length ? [`still running on every push (not POCP's, left alone): ${r.others_active.join(', ')}`, ...r.others_active.map((f) => `  to stop it: gh workflow disable ${f.split('/').pop()}`)] : []),
     ]),

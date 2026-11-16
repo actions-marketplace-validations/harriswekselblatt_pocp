@@ -60,7 +60,8 @@ test('init --local writes ci.mode "local", installs the hooks and says what it g
   assert.equal(config(dir).ci.mode, 'local');
   assert.match(r.stdout, /hooks installed in/);
   assert.match(r.stdout, /local mode \(ci\.mode "local"\): .*nothing blocks a merge.*--no-verify/);
-  assert.match(r.stdout, /before merging: pocp verify --require-coverage --rerun origin\/main\.\.HEAD/);
+  // No remote: the base it prints is the local main, not an origin/main that doesn't exist.
+  assert.match(r.stdout, /before merging: pocp verify --require-coverage --rerun main\.\.HEAD /);
   assert.ok(!fs.existsSync(path.join(dir, '.github')), 'local mode writes no workflows');
   // Re-run on an existing .proof/: the mode is still set.
   const again = tmpRepo();
@@ -149,6 +150,39 @@ test('doctor in local mode: no CI problems, and the trade stated once', () => {
   assert.match(note.fix, /pocp verify --require-coverage --rerun origin\/main\.\.HEAD/);
 });
 
+// Regression: with no remote, init --local and doctor printed "origin/<branch>..HEAD", which
+// fails; and doctor, on a feature branch, took that branch for the base. The command they print
+// must run as printed.
+test('with no remote, init --local and doctor print a base that exists, and the command runs', () => {
+  const dir = sampleRepo({ hooks: true });
+  const init = pocp(dir, ['init', '--local']);
+  assert.equal(init.code, 0, init.stderr);
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'Adopt POCP');
+  git(dir, 'checkout', '-q', '-b', 'default-name');
+  write(dir, 'README.md', 'notes\n'); // a file no rule covers
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'notes');
+  const printed = [
+    init.stdout.match(/before merging: (pocp verify [^\n]*?\.\.HEAD)/)[1],
+    check(pocp(dir, ['doctor', '--offline', '--json']), 'local-mode')[0].fix.match(/before merging: (pocp verify .*?\.\.HEAD)/)[1],
+  ];
+  for (const cmd of printed) {
+    assert.equal(cmd, 'pocp verify --require-coverage --rerun main..HEAD');
+    const r = pocp(dir, cmd.split(' ').slice(1));
+    assert.equal(r.code, 0, `${cmd}\n${r.stdout}\n${r.stderr}`);
+  }
+  // The old command fails here: that is the bug.
+  assert.notEqual(pocp(dir, ['verify', '--require-coverage', '--rerun', 'origin/main..HEAD']).code, 0);
+});
+
+test('with an origin remote, the printed base stays origin/<branch>', () => {
+  const dir = githubRepo({ local: true }); // origin added, never fetched
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  const fix = check(pocp(dir, ['doctor', '--offline', '--json']), 'local-mode')[0].fix;
+  assert.match(fix, /before merging: pocp verify --require-coverage --rerun origin\/main\.\.HEAD/);
+});
+
 test('doctor flags POCP workflows that disagree with the mode', () => {
   const local = githubRepo({ local: true });
   const running = fakeGh(local, WORKFLOWS({ 'pocp.yml': 'active' }));
@@ -164,6 +198,31 @@ test('doctor flags POCP workflows that disagree with the mode', () => {
   const c = check(d, 'ci-mode')[0];
   assert.equal(c.status, 'problem');
   assert.match(c.fix, /pocp ci on/);
+});
+
+// GitHub's pull_request_target block (public repositories, from 2026-12-02): pocp-labels.yml
+// and pocp-status.yml runs end in startup_failure and labels stay on after a push.
+test('doctor reports pull_request_target runs GitHub blocked: a note when live, a problem when verify is required', () => {
+  const runs = (conclusion) => ({
+    ...WORKFLOWS({ 'pocp.yml': 'active', 'pocp-labels.yml': 'active', 'pocp-status.yml': 'active' }),
+    'repos/me/site/actions/runs?event=pull_request_target&per_page=30': { body: { workflow_runs: [
+      { id: 9, path: '.github/workflows/pocp-labels.yml', conclusion },
+      { id: 8, path: '.github/workflows/pocp-status.yml', conclusion: 'success' },
+    ] } },
+  });
+  const live = githubRepo(); // requires the pocp status
+  const warn = check(pocp(live, ['doctor', '--json'], { env: { POCP_GH: fakeGh(live, runs('startup_failure')).gh } }), 'pull-request-target')[0];
+  assert.equal(warn.status, 'warning');
+  assert.match(warn.what, /pocp-labels\.yml ended in startup_failure/);
+  assert.doesNotMatch(warn.what, /pocp-status/);
+  assert.match(warn.fix, /Actions event policy.*STATUS\.md/);
+
+  const notLive = githubRepo();
+  writeConfig(notLive, { guard: { tests: 'block' }, ci: { branch: 'main', required_checks: ['verify'] } });
+  assert.equal(check(pocp(notLive, ['doctor', '--json'], { env: { POCP_GH: fakeGh(notLive, runs('startup_failure')).gh } }), 'pull-request-target')[0].status, 'problem');
+
+  const fine = githubRepo();
+  assert.equal(check(pocp(fine, ['doctor', '--json'], { env: { POCP_GH: fakeGh(fine, runs('success')).gh } }), 'pull-request-target').length, 0);
 });
 
 test('doctor recognises Actions jobs that never start for billing, and suggests local mode', () => {
@@ -230,12 +289,18 @@ test('local mode end to end: a test edit commits without CI, you approve it in v
   assert.equal(commit.status, 0, commit.stderr);
   assert.match(commit.stderr + commit.stdout, /needs your approval before you merge \(local mode\)/);
   for (const out of [fix.stdout, commit.stderr + commit.stdout]) assert.doesNotMatch(out, /\bCI\b|label/, out);
+  // Nothing is pushed for approval and no maintainer approves in local mode: the advice says so.
+  for (const out of [fix.stdout, commit.stderr + commit.stdout]) {
+    assert.match(out, /keep the commit as it is and approve it before merging/, out);
+    assert.doesNotMatch(out, /push the commit|only a maintainer/, out);
+  }
 
   const range = 'main..HEAD';
   const waiting = pocp(dir, ['verify', '--require-coverage', '--rerun', range]);
   assert.equal(waiting.code, 1, waiting.stdout);
   assert.match(waiting.stdout, /\[you, before merging \(local mode\)\] test_change: .*--accept-test-change <head sha>/);
-  assert.doesNotMatch(waiting.stdout, /label|pocp approve/);
+  assert.doesNotMatch(waiting.stdout, /label|pocp approve|push the commit/);
+  assert.match(waiting.stdout, /keep the commit as it is and approve it before merging/);
   const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
   assert.equal(approved.code, 0, approved.stdout + approved.stderr);
 
