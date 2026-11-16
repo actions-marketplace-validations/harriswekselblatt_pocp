@@ -1,9 +1,9 @@
 # POCP verifying its own pull requests with the POCP from the base branch: a change to the
 # verifier is judged by the verifier it would replace, never by its own code. The pull request
 # is checked out in pr/ and the base commit in verifier/; only verifier/bin/pocp.js runs verify.
-# Approval labels count on label events, for the head at that moment. pocp-labels.yml removes
-# them on every push, except (with POCP_STATUS_LIVE) the tests, policy and coverage approvals on
-# a push that only merges the base branch in; the reporter decides whether those still apply.
+# Approval labels are passed with the head's sha; verify (--label-freshness) asks GitHub whether
+# each was applied by a writer after this head first ran, or carries over to a clean merge of the
+# base. The token for that is read-only and set on the verify step alone.
 #
 # The pull request's code still runs: verify re-runs its checks. With --isolate (used whenever
 # the base branch's verifier supports it), each check runs as a fresh unprivileged Linux user
@@ -35,6 +35,8 @@ on:
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]   # edited: a retarget changes the base that judges it
 permissions:
   contents: read
+  actions: read          # --label-freshness: when this head first ran
+  pull-requests: read    # --label-freshness: who applied each approval label, and when
 jobs:
   verify:
     if: vars.POCP_STATUS_LIVE != 'true' || ((github.event.action != 'labeled' && github.event.action != 'unlabeled') || startsWith(github.event.label.name, 'pocp-approve-')) && (github.event.action != 'edited' || github.event.changes.base)
@@ -47,10 +49,10 @@ jobs:
     # A verify re-runs each commit's checks (about 4 minutes for this repo's test suite today).
     timeout-minutes: 40
     env:
-      APPROVE_POLICY: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-policy') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_TESTS: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-tests') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_COVERAGE: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-coverage') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_INCONCLUSIVE: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && contains(github.event.pull_request.labels.*.name, 'pocp-approve-inconclusive') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_POLICY: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-policy') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_TESTS: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-tests') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_COVERAGE: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-coverage') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_INCONCLUSIVE: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-inconclusive') && github.event.pull_request.head.sha || 'false' }}
       WAIT_EXIT: ${{ vars.POCP_STATUS_LIVE == 'true' && '0' || '1' }}
     steps:
       # Which pull request and base this run evaluated. A head commit can belong to several pull
@@ -100,6 +102,12 @@ jobs:
             fi
           fi
           if node ../verifier/bin/pocp.js help 2>&1 | grep -q -- '--exit-detail'; then set -- "$@" --exit-detail; fi
+          # The token is for a verifier that checks label freshness; one that can't never holds it.
+          if node ../verifier/bin/pocp.js help 2>&1 | grep -q -- '--label-freshness'; then
+            set -- "$@" --label-freshness=github --repo="$GITHUB_REPOSITORY" --pull-request="$PR_NUMBER"
+          else
+            unset POCP_GITHUB_TOKEN
+          fi
           # Isolated checks (see the top of this file). This repo has no dependencies to install;
           # a project with some passes --install "<command>" too, so its install runs isolated.
           if node ../verifier/bin/pocp.js help 2>&1 | grep -q -- '--isolate'; then
@@ -119,6 +127,8 @@ jobs:
         working-directory: pr
         env:
           RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          POCP_GITHUB_TOKEN: ${{ github.token }}
       # Which approvals verify was given (the reporter re-checks each label is still on).
       - name: approval-tests
         if: env.APPROVE_TESTS != 'false'

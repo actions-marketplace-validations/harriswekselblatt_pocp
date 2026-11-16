@@ -62,13 +62,13 @@ test('the example verify job has the step layout the reporter reads, like POCP\'
 test('the example reporter never checks out or runs pull request code', () => {
   const wf = read('examples/github/pocp-status.yml');
   assert.match(wf, /workflow_run:\s*\n\s*workflows: \[pocp\]\s*\n\s*types: \[completed\]/);
-  assert.match(wf, /pull_request_target:/);
+  assert.doesNotMatch(wf.replace(/(^|\s)#.*$/gm, ''), /pull_request_target/);
   assert.equal(wf.split('\n').filter((l) => l.includes('actions/checkout')).length, 1);
   assert.match(wf, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/);
   assert.doesNotMatch(wf, /head\.ref|head_branch|download-artifact|head_repository/);
   assert.match(wf, /uses: harriswekselblatt\/pocp\/status@POCP_REF/);
   assert.match(wf, /statuses: write/);
-  assert.doesNotMatch(wf, /contents: write|pull-requests: write|issues: write/);
+  assert.doesNotMatch(wf, /contents: write|issues: write/);
   // The reporter action passes event data only through env.
   const action = read('status/action.yml');
   const run = action.split('\n').find((l) => l.trim().startsWith('run:'));
@@ -91,12 +91,6 @@ test('the reporter posts as its own app, with the key only in the default-branch
     assert.deepEqual(perms, ['actions:read', 'contents:read', 'issues:read', 'pull-requests:read', 'statuses:write'], rel);
     assert.match(wf, /\$\{\{ steps\.app\.outputs\.token \|\| github\.token \}\}/, `${rel}: the reporter uses the app's token`);
   }
-});
-
-test('the example labels workflow removes every approval label on push', () => {
-  const wf = read('examples/github/pocp-labels.yml');
-  for (const l of ['pocp-approve-tests', 'pocp-approve-policy', 'pocp-approve-coverage', 'pocp-approve-inconclusive', 'pocp-approve-workflow']) assert.ok(wf.includes(l), l);
-  assert.doesNotMatch(wf, /actions\/checkout/);
 });
 
 /** Run the action's Verify step with POCP_CMD standing in for pocp; it exits `exit`. */
@@ -179,7 +173,7 @@ test('action.yml: pocp-command is split into words without glob or variable expa
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('pocp init --github writes the three workflows, pinned, and keeps existing ones', () => {
+test('pocp init --github writes the workflows, pinned, and keeps existing ones', () => {
   const dir = tmp();
   const r = writeGithubWorkflows(dir);
   assert.deepEqual(r.written.map((f) => path.basename(f)), GITHUB_WORKFLOWS);

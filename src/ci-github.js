@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from './git.js';
-import { GITHUB_WORKFLOWS } from './init.js';
+import { GITHUB_WORKFLOWS, LEGACY_GITHUB_WORKFLOWS } from './init.js';
 
 // Branch protection from versioned config: which CI checks must pass before merging,
 // whether changes must arrive through pull requests, and whether admins are held to it.
@@ -319,7 +319,9 @@ export function setPocpWorkflows(root, plan, { enable }) {
   const repo = repoR.stdout.trim();
   const { workflows, error } = listWorkflows(repo);
   if (error) return { ok: false, repo, error };
-  const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
+  // A leftover pocp-labels.yml (LEGACY_GITHUB_WORKFLOWS) is switched with the rest, when GitHub has it.
+  const legacy = LEGACY_GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
+  const ours = [...GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`), ...legacy.filter((f) => workflows.some((w) => w.path === f))];
   const changed = [];
   const unchanged = [];
   const missing = [];

@@ -44,6 +44,7 @@ export async function run({ flags, json }) {
     ...(github ? [
       github.written.length ? `wrote ${github.written.join(', ')} (POCP actions pinned to ${github.ref})` : 'GitHub workflows already present',
       ...github.skipped.map((f) => `kept ${f} (exists; --force replaces it)`),
+      ...github.removed.map((f) => `removed ${f} (no longer needed: verify checks approval labels against the head)`),
       ...(labels?.ok ? [labels.created.length ? `created the approval labels on ${labels.repo}: ${labels.created.join(', ')}` : `approval labels already on ${labels.repo}`]
         : labels ? [`approval labels not created: ${labels.error} (pocp doctor prints the commands)`] : []),
       ...(live?.ok ? [`${LIVE_VARIABLE} set on ${live.repo}: a pull request waiting for approval shows a yellow "${STATUS_CHECK}" status, not a red failure`, ...live.notes.map((n) => `  ${n}`)]

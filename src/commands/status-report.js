@@ -17,8 +17,11 @@ export async function run({ flags, json }) {
   const cfgFile = path.join(process.cwd(), '.proof', 'config.json');
   const baseConfig = fs.existsSync(cfgFile) ? withDefaults(JSON.parse(fs.readFileSync(cfgFile, 'utf8'))) : null;
   const gh = githubClient({ token: process.env.GH_TOKEN || process.env.GITHUB_TOKEN });
-  const r = await reportStatus(gh, { repository, sha, prNumber, baseConfig, workflowPath: flags.workflow || undefined, dryRun: Boolean(flags['dry-run']) });
+  // LABELS_TOKEN (github.token with pull-requests: write): removes the approval labels found
+  // stale. GH_TOKEN may be the reporter App's, which only reads pull requests.
+  const labelGh = process.env.LABELS_TOKEN ? githubClient({ token: process.env.LABELS_TOKEN }) : null;
+  const r = await reportStatus(gh, { repository, sha, prNumber, baseConfig, workflowPath: flags.workflow || undefined, dryRun: Boolean(flags['dry-run']), labelGh });
   const d = r.decision;
-  out(json, r, d.write ? `${r.written ? 'set' : 'would set'} ${STATUS_CONTEXT} on ${d.sha.slice(0, 12)}: ${d.state} (${d.description}); ${d.reason}` : `nothing written: ${d.reason}`);
+  out(json, r, `${d.write ? `${r.written ? 'set' : 'would set'} ${STATUS_CONTEXT} on ${d.sha.slice(0, 12)}: ${d.state} (${d.description}); ${d.reason}` : `nothing written: ${d.reason}`}${r.removed?.length ? `\nremoved stale approval label(s): ${r.removed.join(', ')}` : ''}`);
   return EXIT.ok;
 }

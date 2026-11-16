@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as g from './git.js';
 import { matchGlob } from './glob.js';
-import { GITHUB_WORKFLOWS, hooksHealth, INSTALL_HINT, recordedBin } from './init.js';
+import { GITHUB_WORKFLOWS, hooksHealth, INSTALL_HINT, LEGACY_GITHUB_WORKFLOWS, recordedBin } from './init.js';
 import { LOCAL_MODE_TRADE, STATUS_CHECK, listWorkflows, localVerifyCommand, protectionGaps, reporterIdentityNote, requiredChecksPlan, verifyBase } from './ci-github.js';
 import { validateRules } from './rules.js';
 import { policyKeyWarnings } from './schema.js';
@@ -67,6 +67,7 @@ export function scanWorkflows(root) {
       labels: { tests: text.includes(APPROVE_TESTS_LABEL), policy: text.includes(APPROVE_POLICY_LABEL) },
       mentions: Object.keys(APPROVAL_LABELS).filter((l) => text.includes(l)),
       exit_detail: /exit-detail:\s*true|--exit-detail/.test(text),
+      label_freshness: codeLines.some((l) => /^\s*label-freshness:\s*['"]?github\b|--label-freshness/.test(l)),
       reporter: /\bstatus-report\b|\/pocp\/status@/.test(text),
     });
   }
@@ -117,22 +118,6 @@ function actionsBlocked(root, repo, workflows) {
   const notes = gh(root, ['api', `repos/${repo}/check-runs/${job.id}/annotations`]);
   const hit = (Array.isArray(notes.json) ? notes.json : []).find((a) => ACTIONS_BILLING.test(a.message || ''));
   return hit ? { message: hit.message, active: [...active].sort() } : null;
-}
-
-// GitHub blocks pull_request_target by default in public repositories with no Actions event
-// policy (enforced from 2026-12-02): runs of pocp-labels.yml and pocp-status.yml on it then end
-// in startup_failure, and approval labels are no longer removed on push (docs/STATUS.md).
-const PRT_WORKFLOWS = ['.github/workflows/pocp-labels.yml', '.github/workflows/pocp-status.yml'];
-export function pullRequestTargetBlocked(root, repo, workflows) {
-  const active = new Set(workflows.filter((w) => w.state === 'active' && PRT_WORKFLOWS.includes(w.path)).map((w) => w.path));
-  if (!active.size) return null;
-  const runs = gh(root, ['api', `repos/${repo}/actions/runs?event=pull_request_target&per_page=30`]);
-  const blocked = [];
-  for (const file of active) {
-    const latest = (runs.json?.workflow_runs || []).find((r) => r.path === file);
-    if (latest?.conclusion === 'startup_failure') blocked.push(file);
-  }
-  return blocked.length ? blocked.sort() : null;
 }
 
 export async function runDoctor(engine, { base, offline = false } = {}) {
@@ -227,6 +212,17 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
     else if (!wf.exit_detail) add({ id: 'reporter', status: 'warning', what: `${wf.file} makes verify fail on every wait for approval`, why: 'each push that needs an approval shows a red ✗ and sends a failure email', fix: 'use the "pocp" status instead: pocp init --github --force writes the workflows (docs/STATUS.md)' });
     else add({ id: 'reporter', status: 'ok', what: 'a trusted reporter sets the "pocp" status' });
   }
+  // Workflows from before 1.3.1: approval labels taken as given, removed on push by
+  // pocp-labels.yml, which runs on pull_request_target (blocked by default in public
+  // repositories from 2026-12-02, so labels stay on after a push).
+  if (!local) {
+    const outdated = [
+      ...(wf && (wf.labels.tests || wf.labels.policy) && !wf.label_freshness ? [`${wf.file} doesn't check approval labels against the head (label-freshness)`] : []),
+      ...LEGACY_GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`).filter((f) => fs.existsSync(path.join(root, f))).map((f) => `${f} runs on pull_request_target, which GitHub blocks by default in public repositories`),
+    ];
+    const live = plan.required_checks.includes(STATUS_CHECK);
+    if (outdated.length) add({ id: 'workflows-outdated', status: live ? 'warning' : 'problem', what: outdated.join('; '), why: live ? 'an approval label left on after a push passes verify; the reporter still refuses it, so the pocp status stays yellow' : 'with verify as the required check, an approval label left on after a push lets verify pass commits nobody reviewed', fix: 'regenerate with pocp init --github --force (it also removes pocp-labels.yml), then commit .github/workflows' });
+  }
 
   // 6. What the adoption pull request carries.
   const scope = adoptionScope(root, base || verifyBase(root, plan.branch), cfg);
@@ -264,18 +260,13 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
       // POCP's workflows on GitHub (what pocp ci off / on switch), and whether Actions starts at all.
       const listed = listWorkflows(repo);
       if (listed.workflows) {
-        const ours = GITHUB_WORKFLOWS.map((f) => `.github/workflows/${f}`);
+        const ours = [...GITHUB_WORKFLOWS, ...LEGACY_GITHUB_WORKFLOWS].map((f) => `.github/workflows/${f}`);
         const mine = listed.workflows.filter((w) => ours.includes(w.path));
         const active = mine.filter((w) => w.state === 'active').map((w) => w.path);
         const disabled = mine.filter((w) => w.state !== 'active').map((w) => w.path);
         if (local && active.length) add({ id: 'ci-mode', status: 'warning', what: `local mode, but POCP's workflows still run on ${repo}: ${active.join(', ')}`, why: 'each push spends Actions minutes on checks nothing requires', fix: 'pocp ci off' });
         else if (local && disabled.length) add({ id: 'ci-mode', status: 'ok', what: `POCP's workflows are off on ${repo}, as local mode expects` });
         else if (!local && disabled.length) add({ id: 'ci-mode', status: 'problem', what: `POCP's workflows are disabled on ${repo}: ${disabled.join(', ')}`, why: 'nothing checks pull requests, and .proof/config.json does not say local mode', fix: 'pocp ci on; or, for no CI, pocp ci off and commit .proof/config.json' });
-        const prt = local ? null : pullRequestTargetBlocked(root, repo, listed.workflows);
-        if (prt) {
-          const live = plan.required_checks.includes(STATUS_CHECK);
-          add({ id: 'pull-request-target', status: live ? 'warning' : 'problem', what: `GitHub is blocking pull_request_target on ${repo}: the latest run of ${prt.join(', ')} ended in startup_failure`, why: live ? 'approval labels are no longer removed on push; the reporter still refuses a label given before the head, so this is untidy, not a way through' : 'approval labels are no longer removed on push, and with verify as the required check a label left on can let verify pass on code nobody approved', fix: 'allow pull_request_target in Settings → Actions → General (the Actions event policy), or turn the pocp status live; docs/STATUS.md, "GitHub\'s pull_request_target block"' });
-        }
         const blocked = actionsBlocked(root, repo, listed.workflows);
         if (blocked) {
           const others = blocked.active.filter((f) => !ours.includes(f));

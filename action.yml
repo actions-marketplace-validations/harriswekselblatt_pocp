@@ -48,6 +48,14 @@ inputs:
     description: Fail commits whose changed files needed a packet but had none.
     required: false
     default: 'true'
+  label-freshness:
+    description: "'github' (examples/github/pocp.yml): an approval counts only if its label was applied by someone with write access after this head first ran, and after the latest force-push, or it carries over to a clean merge of the base (\"Update branch\"). verify asks GitHub's API, with github-token, so the job needs `actions: read` and `pull-requests: read`. Empty (the default, for workflows written before v1.3.1): the label is taken as given, and pocp-labels.yml must remove approvals on push."
+    required: false
+    default: ''
+  github-token:
+    description: "With label-freshness: a token that reads the pull request's events and Actions runs (github.token). Only verify's own process gets it, and it takes it out of its environment before anything runs; no check ever sees it."
+    required: false
+    default: ${{ github.token }}
   pocp-command:
     description: "Command to run pocp with, instead of the copy bundled with this action (for example: node verifier/bin/pocp.js). It is split into words on whitespace, without shell expansion (no quotes, globs or variables). The bundled copy is pinned by the ref you use the action at (uses: harriswekselblatt/pocp@<commit>)."
     required: false
@@ -78,6 +86,9 @@ runs:
         ISOLATE: ${{ inputs.isolate }}
         INSTALL: ${{ inputs.install }}
         POCP_CMD: ${{ inputs.pocp-command }}
+        LABEL_FRESHNESS: ${{ inputs.label-freshness }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        POCP_GITHUB_TOKEN: ${{ inputs.label-freshness == 'github' && inputs.github-token || '' }}
       run: |
         if [ -n "$RANGE_INPUT" ]; then RANGE=$RANGE_INPUT
         elif [ -n "$PR_BASE" ] && [ -n "$PR_HEAD" ]; then RANGE="$PR_BASE..$PR_HEAD"
@@ -94,6 +105,16 @@ runs:
         [ -n "$ACCEPT_INCONCLUSIVE" ] && [ "$ACCEPT_INCONCLUSIVE" != "false" ] && args+=("--accept-inconclusive=$ACCEPT_INCONCLUSIVE")
         [ -n "$ACCEPT_UNCOVERED" ] && [ "$ACCEPT_UNCOVERED" != "false" ] && args+=("--accept-uncovered=$ACCEPT_UNCOVERED")
         [ "$COVERAGE" = "true" ] && args+=(--require-coverage)
+        case "$LABEL_FRESHNESS" in
+          github) args+=(--label-freshness=github "--repo=$GITHUB_REPOSITORY" "--pull-request=$PR_NUMBER") ;;
+          '')
+            given=
+            for v in "$ACCEPT_POLICY" "$ACCEPT_TESTS" "$ACCEPT_INCONCLUSIVE" "$ACCEPT_UNCOVERED"; do [ -n "$v" ] && [ "$v" != "false" ] && given=1; done
+            if [ -n "$PR_NUMBER" ] && [ -n "$given" ]; then
+              echo "::warning title=POCP approvals::this workflow predates POCP 1.3.1: approval labels aren't checked against the head, and the pocp-labels.yml that removed them runs on pull_request_target, which GitHub blocks by default in public repositories. Regenerate the workflows with: pocp init --github --force"
+            fi ;;
+          *) echo "::error title=POCP verify::label-freshness must be 'github' or empty, not '$LABEL_FRESHNESS'"; exit 2 ;;
+        esac
         # Isolation fails closed: an unknown value is an error, not a quiet "false".
         case "$ISOLATE" in
           true) args+=(--isolate) ;;

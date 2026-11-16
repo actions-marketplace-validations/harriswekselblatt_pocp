@@ -12,6 +12,10 @@ inputs:
     description: Token that can read pull requests and Actions runs and write commit statuses.
     required: false
     default: ${{ github.token }}
+  labels-token:
+    description: "Token that removes the approval labels the reporter finds stale (given before the head): github.token, with pull-requests: write on the job. Empty: none are removed (the status still refuses them)."
+    required: false
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
@@ -20,6 +24,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        LABELS_TOKEN: ${{ inputs.labels-token }}
         HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
         PR_NUMBER: ${{ github.event.pull_request.number || '' }}
         WORKFLOW: ${{ inputs.workflow }}

@@ -9,28 +9,25 @@
 # own copy of pocp.yml, so if it edits that, the status stays yellow until a maintainer approves
 # the workflow change with pocp-approve-workflow.
 #
-# workflow_run: when a pocp run finishes. pull_request_target: when the head or the labels change.
+# workflow_run: when a pocp run finishes. pocp.yml runs on every push, retarget and approval label,
+# so that covers each change (no pull_request_target, which GitHub blocks by default in public
+# repositories). A label given before the head's first run doesn't count, and the reporter
+# removes it with github.token, so the maintainer sees to approve again.
 name: pocp-status
 on:
   workflow_run:
     workflows: [pocp]
     types: [completed]
-  pull_request_target:
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]   # edited: a retarget changes the base that judges it
 permissions:
   contents: read
   actions: read
-  pull-requests: read
+  pull-requests: write   # only github.token's, to remove the approval labels it finds stale
   statuses: write
 jobs:
   report:
-    # Skipped (no Actions minutes) for events that can't change the status: a label other than
-    # pocp-approve-*, or an edit that doesn't change the base. Pushes, retargets, approval labels
-    # and finished verify runs always report.
-    if: github.event_name != 'pull_request_target' || ((github.event.action != 'labeled' && github.event.action != 'unlabeled') || startsWith(github.event.label.name, 'pocp-approve-')) && (github.event.action != 'edited' || github.event.changes.base)
     # One at a time per head, none cancelled: each recomputes from scratch, so the last one wins.
     concurrency:
-      group: pocp-status-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+      group: pocp-status-${{ github.event.workflow_run.head_sha }}
       cancel-in-progress: false
     # The reporter's own identity (docs/STATUS.md, "Give the reporter its own identity"): the App's
     # key lives in this environment, limited to the default branch, so only this job, running from
@@ -63,3 +60,4 @@ jobs:
         with:
           workflow: .github/workflows/pocp.yml
           github-token: ${{ steps.app.outputs.token || github.token }}
+          labels-token: ${{ github.token }}

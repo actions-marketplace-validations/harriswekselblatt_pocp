@@ -12,16 +12,57 @@ import { failedOutputLines } from '../output-tail.js';
 import { git, resolveRev } from '../git.js';
 import { readCiResults } from '../ci-results.js';
 import { shortDigest } from '../hash.js';
+import { UsageError } from '../cli-args.js';
+import { freshnessFacts, labelFreshness } from '../label-freshness.js';
+import { githubClient } from '../status-report.js';
+
+// Which label gives each approval (examples/github/pocp.yml).
+const APPROVAL_LABELS = Object.freeze({
+  'accept-test-change': 'pocp-approve-tests',
+  'accept-policy-change': 'pocp-approve-policy',
+  'accept-inconclusive': 'pocp-approve-inconclusive',
+  'accept-uncovered': 'pocp-approve-coverage',
+});
+
+/**
+ * --label-freshness=github: whether each approval's label counts for this head, by the rule the
+ * reporter uses (src/label-freshness.js), from GitHub's API. { label: verdict } for the
+ * approvals given. One GitHub can't settle is refused, never assumed.
+ */
+async function labelVerdicts(engine, flags, headRev, token) {
+  if (flags['label-freshness'] !== 'github') throw new UsageError(`--label-freshness takes "github", not "${flags['label-freshness']}"`);
+  if (!token) throw new UsageError("--label-freshness=github needs a token in POCP_GITHUB_TOKEN (the action's github-token input)");
+  const repository = flags.repo || process.env.GITHUB_REPOSITORY;
+  const prNumber = Number(flags['pull-request']) || null;
+  if (!repository || !prNumber) throw new UsageError('--label-freshness=github needs --repo <owner/name> (or GITHUB_REPOSITORY) and --pull-request <n>');
+  const given = (name) => [].concat(flags[name] ?? false).some((v) => v && v !== 'false');
+  const labels = Object.entries(APPROVAL_LABELS).filter(([name]) => given(name)).map(([, label]) => label);
+  const verdicts = {};
+  if (!labels.length) return verdicts;
+  const sha = resolveRev(engine.root, headRev);
+  try {
+    const facts = await freshnessFacts(githubClient({ token, api: process.env.GITHUB_API_URL || undefined }), { repository, prNumber, sha, labels });
+    for (const label of labels) verdicts[label] = labelFreshness(facts, label, sha);
+  } catch (e) {
+    for (const label of labels) verdicts[label] = { ok: false, stale: false, why: `couldn't check ${label} against GitHub (${e.message}): re-run this job` };
+  }
+  return verdicts;
+}
 
 export async function run({ engine, flags, isolated, json, rest }) {
   const started = Date.now();
+  // The token for --label-freshness: read, then taken out of this process's environment before
+  // anything else runs, so no check (cooperative or isolated) or install inherits it.
+  const ghToken = process.env.POCP_GITHUB_TOKEN || '';
+  delete process.env.POCP_GITHUB_TOKEN;
+  const headRev = rest[0] && rest[0].includes('..') ? rest[0].split(/\.\.\.?/)[1] || 'HEAD' : rest[0] || 'HEAD';
+  const verdicts = flags['label-freshness'] ? await labelVerdicts(engine, flags, headRev, ghToken) : null;
   // Before any of the pull request's code runs: set up and probe the isolation. If it
   // can't be set up, this throws and verify fails; it never falls back.
   const isolation = isolated ? isolated.isolation : COOPERATIVE;
   if (isolated) {
     await isolated.prepare({ root: engine.root });
     if (flags.install) {
-      const headRev = rest[0] && rest[0].includes('..') ? rest[0].split(/\.\.\.?/)[1] || 'HEAD' : rest[0] || 'HEAD';
       const cfg = engine.config();
       const co = createRevCheckout(engine.root, resolveRev(engine.root, headRev), { links: [] });
       try {
@@ -43,9 +84,16 @@ export async function run({ engine, flags, isolated, json, rest }) {
   });
   if (ignoredCi) errWrite(`pocp: ignored ${ignoredCi} CI result(s) recorded by a different CI run\n`);
   if (ciResults.length) errWrite('pocp: trusting CI results from --ci-results: anything that ran earlier in this job could have written them (docs/THREAT-MODEL.md)\n');
-  // An approval that names a commit covers only that head: a later push needs a new one.
-  const headRev = rest[0] && rest[0].includes('..') ? rest[0].split(/\.\.\.?/)[1] || 'HEAD' : rest[0] || 'HEAD';
+  // An approval that names a commit covers only that head: a later push needs a new one. With
+  // --label-freshness, its label must also count for this head (labelVerdicts).
   const approval = (name) => {
+    const ok = approvalFor(name);
+    const verdict = verdicts?.[APPROVAL_LABELS[name]];
+    if (!ok || !verdict || verdict.ok) return ok;
+    errWrite(`pocp: ${APPROVAL_LABELS[name]} not applied: ${verdict.why}\n`);
+    return false;
+  };
+  const approvalFor = (name) => {
     const v = [].concat(flags[name] ?? false).pop();
     if (typeof v !== 'string') return Boolean(v);
     const head = resolveRev(engine.root, headRev);
@@ -132,6 +180,7 @@ export async function run({ engine, flags, isolated, json, rest }) {
     ].join('\n');
   }
   result.isolation = { mode: isolation.mode, secure: isolation.secure };
+  if (verdicts) result.label_freshness = Object.fromEntries(Object.entries(verdicts).map(([l, v]) => [l, v.ok ? { ok: true, how: v.how } : v]));
   // One decision for the library and the CLI, from typed findings (src/decision.js).
   if (!result.ok) result.approval = decideVerify(result);
   if (steps.length) result.next_steps = steps;

@@ -265,10 +265,23 @@ loosening in the change at once, including new signing keys.
 
 Bind approvals to the reviewed code. `--accept-test-change=<sha>` and
 `--accept-policy-change=<sha>` approve only when the head being verified is that commit. The
-GitHub example honours the labels only on label events, passing the head at that moment, and
-`examples/github/pocp-labels.yml` removes both labels on every push, so a new approval is a
-decision about the new code. (A label added in the seconds between a push and that removal
-still applies to the new head; whoever adds it is looking at the pull request as it is then.)
+GitHub example passes each label with the head at that moment, and verify's
+`--label-freshness=github` asks GitHub's API whether the label still counts for that head: its
+last application is by someone with write access, after the head's first run of the workflow and
+after the pull request's latest force-push, or it carries over to a clean merge of the base
+(STATUS.md, "Updating the branch keeps the approval"). A label left on from before a push is
+refused, so a new approval is a decision about the new code; the trusted reporter applies the
+same rule (src/label-freshness.js) and removes such a label. Anything GitHub can't settle (an
+API error, a list cut short, an unreadable permission) refuses the approval. (A label added in
+the seconds between a push and that head's first run is refused too: add it again.)
+
+The token for those reads (`actions: read`, `pull-requests: read`) is set only in the verify
+step's environment. verify takes it out of its own environment before it installs or runs
+anything, and isolated checks get an allowlisted environment that never includes it, nor can
+they read verify's process. With `isolate: false` (the cooperative runner, not a security
+boundary) a check running as the job's user could read it from verify's process: it is
+read-only, and lasts as long as the job. Workflows written before 1.3.1 don't pass
+`label-freshness`: their labels are taken as given, as before, and the action warns on each run.
 On GitLab, a maintainer runs a pipeline with `POCP_ACCEPT_*` set to the reviewed head's sha;
 a project-wide CI/CD variable would approve every merge request.
 

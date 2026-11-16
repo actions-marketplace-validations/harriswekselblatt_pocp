@@ -200,29 +200,17 @@ test('doctor flags POCP workflows that disagree with the mode', () => {
   assert.match(c.fix, /pocp ci on/);
 });
 
-// GitHub's pull_request_target block (public repositories, from 2026-12-02): pocp-labels.yml
-// and pocp-status.yml runs end in startup_failure and labels stay on after a push.
-test('doctor reports pull_request_target runs GitHub blocked: a note when live, a problem when verify is required', () => {
-  const runs = (conclusion) => ({
-    ...WORKFLOWS({ 'pocp.yml': 'active', 'pocp-labels.yml': 'active', 'pocp-status.yml': 'active' }),
-    'repos/me/site/actions/runs?event=pull_request_target&per_page=30': { body: { workflow_runs: [
-      { id: 9, path: '.github/workflows/pocp-labels.yml', conclusion },
-      { id: 8, path: '.github/workflows/pocp-status.yml', conclusion: 'success' },
-    ] } },
-  });
+// GitHub's pull_request_target block (public repositories, from 2026-12-02): since 1.3.1 no POCP
+// workflow uses it, and doctor flags a pocp-labels.yml left over from before: a note while the
+// pocp status is live (the reporter refuses stale labels), a problem while verify is required
+// (test/label-freshness.test.js).
+test('doctor flags a leftover pocp-labels.yml: a warning with the pocp status live', () => {
   const live = githubRepo(); // requires the pocp status
-  const warn = check(pocp(live, ['doctor', '--json'], { env: { POCP_GH: fakeGh(live, runs('startup_failure')).gh } }), 'pull-request-target')[0];
+  write(live, '.github/workflows/pocp-labels.yml', 'name: pocp-labels\non:\n  pull_request_target:\n');
+  const warn = check(pocp(live, ['doctor', '--offline', '--json']), 'workflows-outdated')[0];
   assert.equal(warn.status, 'warning');
-  assert.match(warn.what, /pocp-labels\.yml ended in startup_failure/);
-  assert.doesNotMatch(warn.what, /pocp-status/);
-  assert.match(warn.fix, /Actions event policy.*STATUS\.md/);
-
-  const notLive = githubRepo();
-  writeConfig(notLive, { guard: { tests: 'block' }, ci: { branch: 'main', required_checks: ['verify'] } });
-  assert.equal(check(pocp(notLive, ['doctor', '--json'], { env: { POCP_GH: fakeGh(notLive, runs('startup_failure')).gh } }), 'pull-request-target')[0].status, 'problem');
-
-  const fine = githubRepo();
-  assert.equal(check(pocp(fine, ['doctor', '--json'], { env: { POCP_GH: fakeGh(fine, runs('success')).gh } }), 'pull-request-target').length, 0);
+  assert.match(warn.what, /pocp-labels\.yml runs on pull_request_target/);
+  assert.match(warn.fix, /pocp init --github --force/);
 });
 
 test('doctor recognises Actions jobs that never start for billing, and suggests local mode', () => {

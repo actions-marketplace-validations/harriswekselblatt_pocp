@@ -416,7 +416,11 @@ export function hooksHealth(cwd) {
 
 // The GitHub workflows a project copies to run POCP in CI (examples/github), written by
 // `pocp init --github` with the action pinned to this POCP's release.
-export const GITHUB_WORKFLOWS = Object.freeze(['pocp.yml', 'pocp-status.yml', 'pocp-labels.yml']);
+export const GITHUB_WORKFLOWS = Object.freeze(['pocp.yml', 'pocp-status.yml']);
+// Written by earlier releases, no longer: pocp-labels.yml (up to 1.3.0) ran on
+// pull_request_target, which GitHub blocks by default in public repositories. `init --github
+// --force` removes it; `ci off` / `on` and doctor still recognise it.
+export const LEGACY_GITHUB_WORKFLOWS = Object.freeze(['pocp-labels.yml']);
 const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // The newest POCP release that has a tag on GitHub. A development or pre-release build (a
@@ -431,9 +435,10 @@ export function releaseRef() {
 }
 
 /**
- * Write .github/workflows/{pocp,pocp-status,pocp-labels}.yml, with the POCP actions pinned to
- * `ref` (a release tag or a commit sha). Files that exist are left alone unless `force`.
- * Returns { written: [paths], skipped: [paths], ref }.
+ * Write .github/workflows/{pocp,pocp-status}.yml, with the POCP actions pinned to `ref` (a
+ * release tag or a commit sha). Files that exist are left alone unless `force`, which also
+ * removes the workflows earlier releases wrote and this one doesn't (LEGACY_GITHUB_WORKFLOWS).
+ * Returns { written: [paths], skipped: [paths], removed: [paths], ref }.
  */
 export function writeGithubWorkflows(cwd, { ref = releaseRef(), force = false } = {}) {
   if (!/^[\w.\-/]+$/.test(ref)) throw new Error(`not a usable ref for the POCP action: ${ref}`);
@@ -452,5 +457,11 @@ export function writeGithubWorkflows(cwd, { ref = releaseRef(), force = false } 
     fs.writeFileSync(target, text);
     written.push(rel);
   }
-  return { written, skipped, ref };
+  const removed = [];
+  for (const name of force ? LEGACY_GITHUB_WORKFLOWS : []) {
+    if (!fs.existsSync(path.join(dir, name))) continue;
+    fs.rmSync(path.join(dir, name));
+    removed.push(path.join('.github', 'workflows', name));
+  }
+  return { written, skipped, removed, ref };
 }
