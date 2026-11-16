@@ -226,11 +226,6 @@
                         "run_ms": 0,
                         "runs": 0
                       },
-                      "control": {
-                        "wall_ms": 0,
-                        "run_ms": 0,
-                        "runs": 0
-                      },
                       "snapshot": {
                         "ms": 0,
                         "count": 0

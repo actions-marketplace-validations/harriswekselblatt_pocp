@@ -4,16 +4,6 @@
 
 ### Security
 
-- **Deep mode no longer passes a test change whose new tests fail on a behavior-neutral copy.**
-  A new test that hashes the source it tests, or one that fails at random, "catches" every
-  planted bug, so it could hide a weakened assertion: the tamper benchmark's new `pocp-deep`
-  target measured the hashing test accepted on every run, and a 50% flaky test in 11 of 60.
-  Before a pass, the guard now runs the new tests once more on a copy of the new code with one
-  blank line added to each file a bug was planted in; if they fail there, the result is
-  `inconclusive` and a person decides. This catches the hashing test every time and the random
-  one half the time (re-measured: blocked, and 1 of 30); a test that ignores whitespace, or one that fails rarely, can still get
-  through (docs/THREAT-MODEL.md). Costs one more run of the checks on a pass, none otherwise.
-
 - **The reporter can post as its own GitHub App.** Until now the `pocp` status was posted as
   GitHub Actions, like every workflow, so a branch pushed to the repository could edit a workflow
   and post its own `pocp: success`. The example `pocp-status.yml` now runs in a `pocp-reporter`

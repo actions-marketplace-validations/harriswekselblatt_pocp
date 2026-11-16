@@ -1,6 +1,6 @@
 # Results so far
 
-**The main result is the preregistered evaluation of POCP 1.2.3: [eval/campaign-123](../eval/campaign-123/README.md).** POCP accepted none of 48 harmful changes and held each for review. Deep mode accepted 78–82% of honest changes per seed; fast mode accepted 27%. The results below came earlier. None of them is a counted evaluation. They followed the earlier plan ([docs/EVAL-PLAN.md](EVAL-PLAN.md)), whose pre-registration ([eval/PREREG.md](../eval/PREREG.md)) is unfinished.
+**The main result is the preregistered evaluation of POCP 1.2.3: [eval/campaign-123](../eval/campaign-123/README.md).** POCP accepted none of 48 harmful changes and held each for review. In every one of the 48, the weakened test and the behavior change it hid came in the same change, and the old tests failed on the new code. The evaluation had no test written to fool deep mode's planted-bug check, and no case that weakened a test ahead of the bug. Deep mode accepts that: see the deep-mode limits in [THREAT-MODEL.md](THREAT-MODEL.md) and the tamper benchmark's `pocp-deep` target. Deep mode accepted 78–82% of honest changes per seed; fast mode accepted 27%. The results below came earlier. None of them is a counted evaluation. They followed the earlier plan ([docs/EVAL-PLAN.md](EVAL-PLAN.md)), whose pre-registration ([eval/PREREG.md](../eval/PREREG.md)) is unfinished.
 
 These results were all measured in deep mode (`guard.mutants: 10`), before fast mode existed. They don't describe fast mode, which was first benchmarked in the 1.2.3 evaluation.
 
