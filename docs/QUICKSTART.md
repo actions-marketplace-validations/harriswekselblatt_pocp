@@ -64,6 +64,58 @@ A faster mode runs your tests once, through `pocp ci-run`, and passes `--ci-resu
 It trusts everything that ran earlier in the job: a new test file can write a passing result
 for any check. See [the threat model](THREAT-MODEL.md) before choosing it.
 
+### No CI (local mode)
+
+When CI isn't available or wanted (a free private repository out of Actions minutes, say),
+choose local mode:
+
+```bash
+pocp init --local     # a new setup: hooks, and ci.mode "local" in .proof/config.json
+pocp ci off           # a repository that has POCP's workflows: disables them on GitHub
+pocp ci on            # back to CI: enables them again
+```
+
+`ci off` and `ci on` switch POCP's own workflows (`pocp.yml`, `pocp-status.yml`,
+`pocp-labels.yml`) on GitHub and leave the workflow files alone, so there is nothing to commit
+under `.github/` and the switch reverses exactly. They also set or remove `ci.mode` in
+`.proof/config.json`; commit that change. Switching to local mode is a policy loosening, so
+verify asks for `--accept-policy-change` on that commit. `ci off` lists your other workflows and the command to
+disable each; it doesn't touch them. The test guard's fast or deep mode is a separate setting
+and works the same under the hooks.
+
+What you give up:
+
+| | CI | Local mode |
+|---|---|---|
+| Commits checked | hooks, then verify in CI | hooks only |
+| Re-run on another machine | every pull request | none; `verify --require-coverage --rerun` on yours before merging |
+| Unverified merges blocked | with branch protection | never |
+| `git commit --no-verify` | caught by verify | caught only if you verify before merging |
+| Test and policy approvals | a maintainer's label | you, through `--accept-*` |
+| You trust | the runner and GitHub | your own machine |
+
+Before merging, run what CI would have run:
+
+```bash
+pocp verify --require-coverage --rerun origin/main..HEAD && gh pr merge --merge
+```
+
+It re-runs each commit's checks from a clean checkout, by the base branch's rules, and
+`--require-coverage` fails a commit made without its proof (`git commit --no-verify`). When it
+waits for a person (a test change the check couldn't pass, a policy loosening), read the change,
+then approve it for that exact head:
+`pocp verify --require-coverage --rerun origin/main..HEAD --accept-test-change $(git rev-parse HEAD)` (or
+`--accept-policy-change`).
+
+**A local approval is a flag, not a person.** Anything that can run commands on your machine,
+an agent included, can pass `--accept-*` itself, just as it can run `git commit --no-verify`. It
+is the same trade as the rest of local mode: you trust your own machine. Where you need a test
+change or a policy loosening to wait for a person, use CI, where only a maintainer's label
+approves it.
+
+`pocp doctor` reports local mode, POCP workflows still running in
+it, and Actions jobs that GitHub doesn't start for billing reasons.
+
 ### On GitHub
 
 `pocp init --github` writes three workflows, with the POCP actions pinned to your POCP release:

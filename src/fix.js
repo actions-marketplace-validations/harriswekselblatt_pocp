@@ -201,9 +201,14 @@ export function formatFix(r) {
   if (r.ok && r.nothing_staged) return 'pocp fix: nothing is staged; stage the change (git add) and run pocp fix again';
   if (r.ok && r.nothing_to_prove) return 'pocp fix: ready to commit (git commit): nothing staged needs proof';
   const onlyTests = r.needs_person.length && r.needs_person.every((x) => x.code === 'test_change');
+  // Local mode (ci.mode "local"): no CI; you approve before merging, through verify.
+  const local = Boolean(r.gate?.local_mode);
+  const awaiting = local
+    ? (onlyTests ? 'the test change needs your approval before you merge (local mode)' : 'it needs your approval before you merge (local mode, see below)')
+    : (onlyTests ? 'CI requires human approval of the test change' : 'CI requires human approval (see below)');
   const head = r.ok
     ? r.needs_person.length
-      ? onlyTests ? 'pocp fix: committable now; CI requires human approval of the test change' : 'pocp fix: committable now; CI requires human approval (see below)'
+      ? `pocp fix: committable now; ${awaiting}`
       : 'pocp fix: ready to commit (git commit)'
     : r.needs_person.length && !r.needs_agent.length ? 'pocp fix: needs a person' : 'pocp fix: needs you';
   lines.push(head);
@@ -220,10 +225,10 @@ export function formatFix(r) {
         const failing = a.failed.filter((f) => !f.unfinished).map((f) => f.obligation).filter((o) => !handed.includes(o));
         const unfinished = a.failed.filter((f) => f.unfinished).map((f) => f.obligation).filter((o) => !handed.includes(o));
         const total = Math.max(a.checks ?? a.ran, a.failed.length);
-        lines.push(`  did: proved ${total - a.failed.length} of ${total} check(s) for ${a.packets.join(', ')}${extra ? ` (${extra.slice(2)})` : ''}${handed.length ? `; ${handed.join(', ')} handed to CI` : ''}${failing.length ? `; ${failing.join(', ')} failed` : ''}${unfinished.length ? `; ${unfinished.join(', ')} didn't finish` : ''}`);
+        lines.push(`  did: proved ${total - a.failed.length} of ${total} check(s) for ${a.packets.join(', ')}${extra ? ` (${extra.slice(2)})` : ''}${handed.length ? `; ${handed.join(', ')} ${local ? 'left for your approval' : 'handed to CI'}` : ''}${failing.length ? `; ${failing.join(', ')} failed` : ''}${unfinished.length ? `; ${unfinished.join(', ')} didn't finish` : ''}`);
       }
     }
-    else if (a.action === 'defer') lines.push(`  did: handed ${a.packet} ${a.obligations.join(', ')} to CI: a maintainer approves the test change there (no sign-off from you)`);
+    else if (a.action === 'defer') lines.push(local ? `  did: left ${a.packet} ${a.obligations.join(', ')} for your approval: in local mode you approve the test change before merging, through verify` : `  did: handed ${a.packet} ${a.obligations.join(', ')} to CI: a maintainer approves the test change there (no sign-off from you)`);
     else if (a.action === 'stage') lines.push(`  did: staged ${a.packets.map((id) => `.proof/packets/${id}.json`).join(', ')}`);
     else if (a.action === 'note') lines.push(`  note: ${a.detail}`);
   }

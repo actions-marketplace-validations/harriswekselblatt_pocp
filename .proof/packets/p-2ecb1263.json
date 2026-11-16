@@ -61,32 +61,6 @@
         "{tests}"
       ],
       "source": "rule:test-suite"
-    },
-    {
-      "id": "o4",
-      "kind": "guard",
-      "files": [
-        "test/ci-up-to-date.test.js",
-        "test/e2e-fix.test.js",
-        "test/e2e-guard-retry.test.js",
-        "test/e2e-guard-timeouts.test.js",
-        "test/e2e-policy.test.js",
-        "test/golden/ci-file-changed.json",
-        "test/golden/corrupt-packet.json",
-        "test/golden/failed-proof-local.json",
-        "test/golden/incomplete-packet.json",
-        "test/golden/invalid-policy.json",
-        "test/golden/missing-packet.json",
-        "test/golden/policy-loosened.json",
-        "test/golden/test-added.json",
-        "test/golden/test-edit-fast.json",
-        "test/golden/test-edit-old-tests-fail-deep.json",
-        "test/helpers.js"
-      ],
-      "mutants": 0,
-      "seed": 1,
-      "text": "Existing tests or test setup changed (test/ci-up-to-date.test.js, test/e2e-fix.test.js, test/e2e-guard-retry.test.js, test/e2e-guard-timeouts.test.js, test/e2e-policy.test.js, test/golden/ci-file-changed.json, test/golden/corrupt-packet.json, test/golden/failed-proof-local.json and 8 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
-      "source": "guard:tests"
     }
   ],
   "state": "proven",
@@ -458,6 +432,78 @@
         "duration_ms": 1267581,
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:e661bd0102b9a33dc4a7179db75f99c289811ec7b1be35f5bfe6f570427bd1af",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T05:37:10.601Z",
+      "duration_ms": 4807,
+      "stdout_sha256": "e539e970eaf5df7cf124bcff5f4afefd5bf7ee95750bb49117a03962a9a7ae5c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-2e2f49dc",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:e661bd0102b9a33dc4a7179db75f99c289811ec7b1be35f5bfe6f570427bd1af",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T05:37:15.560Z",
+      "duration_ms": 90999,
+      "stdout_sha256": "cc63f79cf01a70643c48f7f644897f54fce257d1f922e69a8e8606b48e0ed6f7",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-6155b815",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:e661bd0102b9a33dc4a7179db75f99c289811ec7b1be35f5bfe6f570427bd1af",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-16T05:38:46.672Z",
+      "duration_ms": 324909,
+      "stdout_sha256": "2ccb23c6ac5748740464c7e38b77d4a344391e62b51a7bb6b8c626b00ea250dc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-d9346cc3",
+      "runner": {
+        "pocp": "1.2.3",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
     }
   ],
   "attestations": [],
@@ -516,6 +562,13 @@
       "from": "failed",
       "to": "proven",
       "subject": "sha256:2fbdc2f7d59be7756b35c5e4c01089da438669a33c732cda91c2c4a9bed6518c"
+    },
+    {
+      "at": "2026-11-16T05:37:10.485Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
     }
   ],
   "deferrals": [

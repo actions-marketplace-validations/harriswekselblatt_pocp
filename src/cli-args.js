@@ -53,9 +53,10 @@ export const COMMANDS = {
   version: { summary: 'print the version', usage: ['version'], flags: {} },
   init: {
     summary: 'create .proof/, and optionally the git hooks and GitHub workflows',
-    usage: ['init [--hooks] [--github] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>]'],
+    usage: ['init [--hooks] [--github | --local] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>]'],
     flags: {
       hooks: bool('install the git hooks'),
+      local: bool('local mode: the git hooks are the gate and no CI is expected (ci.mode "local"); implies --hooks'),
       github: bool('write the GitHub workflows (verify, the pocp status, approval labels) and turn the pocp status on through gh'),
       'no-live': bool('with --github: leave the pocp status off (report-only)'),
       force: bool('replace existing hooks and workflow files'),
@@ -155,8 +156,8 @@ export const COMMANDS = {
     flags: { rev: str('rev', 'commit to read (default HEAD)'), quiet: bool('print nothing') },
   },
   ci: {
-    summary: 'which CI checks must pass to merge (from .proof/config.json "ci")',
-    usage: ['ci required [--check | --apply]'],
+    summary: 'which CI checks must pass to merge (from .proof/config.json "ci"); or turn CI off (local mode) and on',
+    usage: ['ci required [--check | --apply]', 'ci off', 'ci on'],
     engine: true,
     flags: { check: bool("read GitHub's branch protection; exit 1 on any gap"), apply: bool('set them as GitHub branch protection via gh') },
   },

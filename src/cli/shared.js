@@ -5,7 +5,7 @@ import { SELF_BIN } from '../init.js';
 import { approvalAnnotation } from '../approvals.js';
 import { createPocp } from '../engine.js';
 import { loadHost } from '../host.js';
-import { WHO, remedyLines } from '../remedies.js';
+import { remedyLines, whoOf } from '../remedies.js';
 import { shortDigest } from '../hash.js';
 
 export const list = (v) => (v === undefined ? [] : [].concat(v));
@@ -50,7 +50,7 @@ export function formatGate(r) {
     lines.push(r.required_files.length ? `pocp: gate passed (${proven} packet(s) proven for ${shortDigest(r.subject)})` : `pocp: gate passed (no packet needed for ${r.files.length} file(s))`);
     for (const w of (r.warnings || []).filter((x) => !x.code?.startsWith('awaiting_'))) lines.push(`  note: ${w.detail}`);
     if (r.pending_approvals?.length) {
-      lines.push('  CI requires human approval for this commit:');
+      lines.push(r.local_mode ? '  needs your approval before you merge (local mode):' : '  CI requires human approval for this commit:');
       lines.push(...remedyLines(r.pending_approvals, '    '));
     }
     return lines.join('\n');
@@ -115,7 +115,7 @@ export function writeGithubSummary(result, rows, commitProblems, ms, { annotatio
   if (result.isolation) lines.push('', result.isolation.secure ? 'Checks ran isolated: each as a fresh unprivileged user.' : 'Checks ran as the job\'s own user (cooperative runner): not the hosted secure profile.');
   if (result.approval?.only) lines.push('', `Waiting only for a maintainer: ${result.approval.needs.map((n) => `\`${n.label}\``).join(' and ')} (see \`pocp approvals\`).`);
   // What to do, who acts first (verify's next steps).
-  if (result.next_steps?.length) lines.push('', '**What to do**', '', ...result.next_steps.map((x) => `- **${WHO[x.by]}** · \`${x.code}\`: ${esc(x.next)}`));
+  if (result.next_steps?.length) lines.push('', '**What to do**', '', ...result.next_steps.map((x) => `- **${whoOf(x)}** · \`${x.code}\`: ${esc(x.next)}`));
   const reruns = [...(result.reruns || []), ...(result.net?.reruns || [])];
   if (reruns.length) {
     lines.push('', '| Check | Result |', '|---|---|', ...reruns.map((x) => `| \`${esc(x.run)}\` | ${esc(x.status)}${x.duration_ms !== undefined ? ` (${x.duration_ms}ms)` : ''} |`));

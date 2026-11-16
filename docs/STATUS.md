@@ -15,6 +15,8 @@ POCP reports its result on a pull request as one commit status, **`pocp`**, on t
 
 A pending status blocks merging just like a failure, once `pocp` is a required check. Only success allows a merge.
 
+In local mode (`pocp init --local` or `pocp ci off`, [QUICKSTART](QUICKSTART.md#no-ci-local-mode)) POCP's workflows don't run, so there is no `pocp` status, and nothing blocks a merge.
+
 ## Approvals
 
 Each label covers one thing, only on the head it was added to. Every push removes all of them (`pocp-labels.yml`).

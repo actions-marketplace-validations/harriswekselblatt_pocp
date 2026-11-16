@@ -47,13 +47,13 @@ const NOT_FOUND = `pocp: not found (install it with ${INSTALL_HINT}, or set POCP
 
 // pre-commit is the gate, so it fails closed. prepare-commit-msg and post-commit also run
 // under "git commit --no-verify"; they only add trailers and record landings, so without pocp
-// they warn and let the commit through. CI's "pocp verify --require-coverage" still flags a
-// commit that needed proof and has none.
+// they warn and let the commit through. "pocp verify --require-coverage" (in CI, or before a
+// merge in local mode) still flags a commit that needed proof and has none.
 export function hookBodies(known = SELF_BIN) {
   const RUNNER = runner(known);
   return {
-    'pre-commit': `${RUNNER}\npocp_missing() { echo "${NOT_FOUND}; this commit can't be checked, so it is blocked. To commit without the check once: git commit --no-verify (CI's pocp verify still checks it)" >&2; return 1; }\nexport POCP_GATE_SOURCE=hook\npocp_run gate || exit $?`,
-    'prepare-commit-msg': `${RUNNER}\npocp_missing() { echo "${NOT_FOUND}; warning: committing without proof trailers. CI's pocp verify will flag this commit if it needed proof" >&2; return 0; }\ncase "$2" in merge|squash) ;; *) pocp_run trailer "$1" "$2" || exit $? ;; esac`,
+    'pre-commit': `${RUNNER}\npocp_missing() { echo "${NOT_FOUND}; this commit can't be checked, so it is blocked. To commit without the check once: git commit --no-verify (pocp verify still flags it)" >&2; return 1; }\nexport POCP_GATE_SOURCE=hook\npocp_run gate || exit $?`,
+    'prepare-commit-msg': `${RUNNER}\npocp_missing() { echo "${NOT_FOUND}; warning: committing without proof trailers. pocp verify will flag this commit if it needed proof" >&2; return 0; }\ncase "$2" in merge|squash) ;; *) pocp_run trailer "$1" "$2" || exit $? ;; esac`,
     'post-commit': `${RUNNER}\npocp_missing() { echo "${NOT_FOUND}; warning: this commit's landing was not recorded" >&2; return 0; }\npocp_run land --quiet || true`,
   };
 }
@@ -240,7 +240,7 @@ export function formatLayout(layout, { written = false } = {}) {
  * instead (guard.mutants 10). Projects set up before this kept the built-in default of 10,
  * which still applies when guard.mutants is absent, so an upgrade never turns deep mode off.
  */
-export function initProofDir(cwd, { deep = false, github = false } = {}) {
+export function initProofDir(cwd, { deep = false, github = false, local = false } = {}) {
   const root = repoRoot(cwd);
   const layout = detectTestLayout(root);
   const dir = path.join(root, PROOF_DIR);
@@ -262,6 +262,8 @@ export function initProofDir(cwd, { deep = false, github = false } = {}) {
   // With the GitHub workflows, the pocp status (not the verify job) is the check that must pass:
   // a wait for approval is then yellow, not a red failure (docs/STATUS.md).
   if (github) config.ci.required_checks = ['pocp'];
+  // Local mode: the git hooks are the gate and no CI is expected (docs/QUICKSTART.md, "No CI").
+  if (local) config.ci.mode = 'local';
   if (layout.extra.length) {
     Object.assign(config.guard, {
       extra_test_globs: layout.extra,
@@ -274,7 +276,23 @@ export function initProofDir(cwd, { deep = false, github = false } = {}) {
   write('.gitignore', 'runs/\n');
   write('packets/.gitkeep', '');
   write('misses/.gitkeep', '');
+  if (local && !configWritten) setCiMode(root, 'local');
   return { root, created, layout, layout_written: configWritten && layout.extra.length > 0, config_created: configWritten };
+}
+
+/**
+ * Set ci.mode in .proof/config.json: "local" writes it, "github" (the default) removes it.
+ * Returns true when the file changed. The file is rewritten as formatted JSON.
+ */
+export function setCiMode(root, mode) {
+  const file = path.join(root, PROOF_DIR, 'config.json');
+  const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { pocp: 1 };
+  const current = config.ci?.mode || 'github';
+  if (current === mode) return false;
+  if (mode === 'local') config.ci = { ...config.ci, mode };
+  else delete config.ci.mode;
+  fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
+  return true;
 }
 
 /**

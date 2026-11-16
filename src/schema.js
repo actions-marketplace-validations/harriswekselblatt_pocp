@@ -36,7 +36,7 @@ export const CONFIG_SCHEMA = Object.freeze({
   sign: { key: LEAF, principal: LEAF },
   guard: { tests: LEAF, test_globs: LEAF, runner_globs: LEAF, extra_test_globs: LEAF, extra_runner_globs: LEAF, mutants: LEAF, seed: LEAF },
   verify: { fail_on: LEAF, require_ci: LEAF },
-  ci: { files: LEAF, branch: LEAF, required_checks: LEAF, require_pull_request: LEAF, enforce_admins: LEAF, require_up_to_date: LEAF, workflow_approver: LEAF, reporter_app_id: LEAF },
+  ci: { files: LEAF, branch: LEAF, required_checks: LEAF, require_pull_request: LEAF, enforce_admins: LEAF, require_up_to_date: LEAF, workflow_approver: LEAF, reporter_app_id: LEAF, mode: LEAF },
   eval: { exclude: LEAF },
 });
 

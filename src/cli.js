@@ -89,7 +89,8 @@ Usage: pocp <command> [options]   (every command accepts --json)
 Setup
   init [--hooks] [--github] [--force] create .proof/; --hooks installs git hooks; --github writes the
                                      GitHub workflows (verify, the pocp status, approval labels),
-                                     pinned to this release (--pocp-ref <tag|sha> to pin another)
+                                     pinned to this release (--pocp-ref <tag|sha> to pin another);
+                                     --local: no CI, the hooks are the gate (implies --hooks)
   doctor [--base <rev>] [--offline]  check an adoption: hooks, policy, Action access, labels,
                                      branch protection, and what the adoption PR carries
   approve [<owner/repo#n>] [--repo <owner/repo>]... [--owner <login>]...  (also: approvals)
@@ -131,6 +132,8 @@ Checking
                                      --check reads GitHub's branch protection and exits 1 on any gap;
                                      --apply sets them as GitHub branch protection via gh
                                      (schema-validated, not yet tested against the live API)
+  ci off | ci on                     local mode and back: disable (enable) POCP's workflows on GitHub
+                                     and set (remove) ci.mode "local" in .proof/config.json
   ci-run [--results <file>] [--dir <folder>] -- <command…>
                                      CI: run a command on HEAD and record a result bound to its code;
                                      exits with the command's exit code (default file .proof/runs/ci-results.jsonl)
@@ -180,7 +183,7 @@ Blocks pull requests that pass by weakening their own tests or rules.
 Usage: pocp <command> [options]   (every command accepts --json)
 
 Start here
-  init       set up .proof/, git hooks (--hooks) and the GitHub workflows (--github)
+  init       set up .proof/, git hooks (--hooks), and CI (--github) or no CI (--local)
   doctor     check the setup and print what's missing
   fix        make a blocked commit committable: run the required checks, record proof
   status     what's staged, what needs proof, what's proven

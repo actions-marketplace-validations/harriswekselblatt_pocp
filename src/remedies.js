@@ -26,6 +26,20 @@ export function pullRequestRef(env = process.env) {
 /** A label only a maintainer adds: names the pull request and `pocp approve` (docs/STATUS.md). */
 const labelStep = (label, pr = pullRequestRef()) => `adds the \`${label}\` label to ${pr || 'the pull request'} (or runs: pocp approve ${pr || 'owner/repo#<number>'})`;
 
+// Local mode (ci.mode "local", docs/QUICKSTART.md): no CI and no labels. The approval is the
+// matching flag on verify before a merge, given by you, so a person step says so (`who`).
+const ACCEPT_FLAG = { [APPROVE_TESTS_LABEL]: 'accept-test-change', [APPROVE_POLICY_LABEL]: 'accept-policy-change', [APPROVE_INCONCLUSIVE_LABEL]: 'accept-inconclusive' };
+export const LOCAL_WHO = 'you, before merging (local mode)';
+const localStep = (label) => `in local mode you approve it before merging, after reading it: pocp verify --require-coverage --rerun <base>..HEAD --${ACCEPT_FLAG[label]} <head sha>`;
+
+/** The step that approves `label`: a maintainer adds it (CI), or, in local mode, you pass verify's flag. `how` reads "a maintainer <how>adds…". */
+export function approvalStep(label, { local = false, how = '' } = {}) {
+  return local ? localStep(label) : `a maintainer ${how}${labelStep(label)}`;
+}
+
+/** Who takes a step, as printed: local-mode approvals say you, everything else WHO[by]. */
+export const whoOf = (x) => x.who || WHO[x.by] || x.by;
+
 export const DONT_REWRITE = 'Do not squash, force-push, rewrite history or commit with --no-verify to get past this: push the commit as it is and ask for the approval.';
 
 /**
@@ -122,7 +136,7 @@ export function gateRemedies(r) {
         what: `${p.id}: the test-change check did not pass: ${g.detail || g.status}`,
         why: 'existing tests changed and POCP could not show they still catch what they caught before; changed tests can hide a bug instead of fixing it.',
         next: block
-          ? `pocp fix (hands it to CI, where a maintainer approves it with the \`${APPROVE_TESTS_LABEL}\` label; the author can't sign off on its own test change)`
+          ? (r.local_mode ? `pocp fix (lets the commit go ahead; ${laterApproval(r, APPROVE_TESTS_LABEL)})` : `pocp fix (hands it to CI, where a maintainer approves it with the \`${APPROVE_TESTS_LABEL}\` label; the author can't sign off on its own test change)`)
           : `a person who reviewed the test change runs: pocp attest ${p.id} ${g.id} --by <their name>`,
         by: block ? 'pocp fix' : 'person',
       });
@@ -141,6 +155,11 @@ export function gateRemedies(r) {
   return out;
 }
 
+/** What the gate says about an approval it leaves for later: CI asks a maintainer, or, in local mode, you approve it before merging. */
+export function laterApproval(r, label) {
+  return r?.local_mode ? localStep(label) : 'CI will ask a maintainer to approve it';
+}
+
 /** Notes for a passing gate that CI will still need a person for (block mode). */
 export function pendingApprovals(r) {
   return (r.warnings || []).filter((w) => w.code === 'awaiting_test_approval' || w.code === 'awaiting_policy_approval').map((w) => (w.code === 'awaiting_test_approval'
@@ -148,15 +167,17 @@ export function pendingApprovals(r) {
         code: 'test_change',
         what: w.detail,
         why: 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
-        next: `a maintainer ${labelStep(APPROVE_TESTS_LABEL)}`,
+        next: approvalStep(APPROVE_TESTS_LABEL, { local: r.local_mode }),
         by: 'person',
+        ...(r.local_mode ? { who: LOCAL_WHO } : {}),
       }
     : {
         code: 'policy_change',
         what: w.detail,
         why: 'a change cannot approve a loosening of the rules that judge it.',
-        next: `a maintainer ${labelStep(APPROVE_POLICY_LABEL)}`,
+        next: approvalStep(APPROVE_POLICY_LABEL, { local: r.local_mode }),
         by: 'person',
+        ...(r.local_mode ? { who: LOCAL_WHO } : {}),
       }));
 }
 
@@ -165,18 +186,19 @@ export function pendingApprovals(r) {
  * (decision.js decides). `finding.unfinished`, when the caller has it, says whether a
  * rerun_failed didn't finish; without it the detail text picks the wording.
  */
-export function verifyRemedy(code, detail = '', finding = {}) {
+export function verifyRemedy(code, detail = '', finding = {}, { local = false } = {}) {
+  const person = local ? { by: 'person', who: LOCAL_WHO } : { by: 'person' };
   const { variant } = factsOf(finding);
   switch (code) {
     case 'test_change':
       if (variant === 'local_only') return { why: 'a local pass can be faked; CI must see the check pass itself.', next: 'run verify with --rerun or --rerun-unsigned (the Action does by default)', by: 'agent' };
       if (variant === 'packet_checks') return { why: 'the check must run tests a rule requires, not ones the change picked.', next: 'add a requirement in .proof/rules.json covering these tests (a policy change a maintainer approves)', by: 'person' };
-      return { why: 'existing tests changed and POCP could not show they still catch what they caught before.', next: `a maintainer reviews the test change and ${labelStep(APPROVE_TESTS_LABEL)}`, by: 'person' };
+      return { why: 'existing tests changed and POCP could not show they still catch what they caught before.', next: approvalStep(APPROVE_TESTS_LABEL, { local, how: 'reviews the test change and ' }), ...person };
     case 'test_inconclusive':
-      return { why: 'existing tests changed and the check that judges them didn\'t finish (a timeout, a kill or a failed start), so nothing is known about them yet. A test approval doesn\'t cover this.', next: `re-run the job; if it still can't finish, fix the hang or the time limit, or a maintainer who has read why ${labelStep(APPROVE_INCONCLUSIVE_LABEL)}`, by: 'person' };
+      return { why: 'existing tests changed and the check that judges them didn\'t finish (a timeout, a kill or a failed start), so nothing is known about them yet. A test approval doesn\'t cover this.', next: `re-run the job; if it still can't finish, fix the hang or the time limit, or ${approvalStep(APPROVE_INCONCLUSIVE_LABEL, { local, how: 'who has read why ' })}`, ...person };
     case 'policy_loosened':
     case 'ci_config_changed':
-      return { why: 'this change loosens the rules or CI that judge every later change; the change cannot approve itself.', next: `a maintainer reviews it and ${labelStep(APPROVE_POLICY_LABEL)}`, by: 'person' };
+      return { why: 'this change loosens the rules or CI that judge every later change; the change cannot approve itself.', next: approvalStep(APPROVE_POLICY_LABEL, { local, how: 'reviews it and ' }), ...person };
     case 'invalid_policy':
       return { why: 'POCP cannot judge anything under an invalid policy.', next: 'fix .proof/rules.json or .proof/config.json until "pocp rules check" passes, in a new commit', by: 'agent' };
     case 'ci_unfinished':
@@ -215,7 +237,7 @@ export function verifyRemedy(code, detail = '', finding = {}) {
 export function remedyLines(remedies, indent = '  ') {
   const lines = [];
   for (const r of remedies) {
-    lines.push(`${indent}[${WHO[r.by] || r.by}] ${r.what}`);
+    lines.push(`${indent}[${whoOf(r)}] ${r.what}`);
     if (r.why) lines.push(`${indent}  why: ${r.why}`);
     lines.push(`${indent}  next: ${r.next}`);
   }
