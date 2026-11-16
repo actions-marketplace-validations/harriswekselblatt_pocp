@@ -149,14 +149,6 @@ test('green never depends on the code output: only the verify step\'s own outcom
   }
 });
 
-test('the labels workflows read label names as data, never through printf escapes', () => {
-  for (const f of ['.github/workflows/pocp-labels.yml', 'examples/github/pocp-labels.yml']) {
-    const yaml = read(f);
-    assert.doesNotMatch(yaml, /printf '%b/, f);
-    assert.match(yaml, /toJSON\(github\.event\.pull_request\.labels\.\*\.name\)/, f);
-  }
-});
-
 test('test.yml: required Linux cells unchanged, one macOS cell per pull request, the full matrix nightly', () => {
   const yaml = read('.github/workflows/test.yml');
   assert.match(yaml, /os: \[ubuntu-latest\]\n\s+node: \[20, 22, 24\]/);
@@ -215,8 +207,12 @@ test('package.json: publishable metadata and a runtime-only file list', () => {
 });
 
 test('verify and the reporter both run when a pull request is retargeted (edited)', () => {
-  for (const rel of ['.github/workflows/pocp.yml', 'examples/github/pocp.yml', '.github/workflows/pocp-status.yml', 'examples/github/pocp-status.yml']) {
+  for (const rel of ['.github/workflows/pocp.yml', 'examples/github/pocp.yml']) {
     const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
     assert.match(text, /types: \[[^\]]*\bedited\b[^\]]*\]/, rel);
+  }
+  // The reporter follows every verify run.
+  for (const rel of ['.github/workflows/pocp-status.yml', 'examples/github/pocp-status.yml']) {
+    assert.match(fs.readFileSync(path.join(ROOT, rel), 'utf8'), /\n {2}workflow_run:\n {4}workflows: \[pocp\]\n {4}types: \[completed\]\n/, rel);
   }
 });

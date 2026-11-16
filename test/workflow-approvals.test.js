@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
-const LABELS = ['pocp-approve-tests', 'pocp-approve-policy', 'pocp-approve-coverage'];
 
 /** The `run: |` block that contains `marker`, unindented. */
 function runBlock(yaml, marker) {
@@ -81,64 +80,14 @@ test("this repository's verifier supports the coverage approval it is wired for"
   assert.match(r.stdout + r.stderr, /--accept-uncovered=<sha>/);
 });
 
-test('each approval label counts only on label events, for the head at that moment', () => {
+test('each approval label is passed with the head at that moment, and verify checks it still counts', () => {
   const wf = read('.github/workflows/pocp.yml');
-  for (const [env, label] of [['APPROVE_POLICY', 'pocp-approve-policy'], ['APPROVE_TESTS', 'pocp-approve-tests'], ['APPROVE_COVERAGE', 'pocp-approve-coverage']]) {
+  for (const [env, label] of [['APPROVE_POLICY', 'pocp-approve-policy'], ['APPROVE_TESTS', 'pocp-approve-tests'], ['APPROVE_COVERAGE', 'pocp-approve-coverage'], ['APPROVE_INCONCLUSIVE', 'pocp-approve-inconclusive']]) {
     const line = wf.split('\n').find((l) => l.trim().startsWith(`${env}:`));
     assert.ok(line, env);
-    assert.match(line, /github\.event\.action == 'labeled' \|\| github\.event\.action == 'unlabeled'/);
-    assert.ok(line.includes(`'${label}'`) && line.includes('github.event.pull_request.head.sha') && line.trim().endsWith("|| 'false' }}"), line);
+    assert.equal(line.trim(), `${env}: \${{ contains(github.event.pull_request.labels.*.name, '${label}') && github.event.pull_request.head.sha || 'false' }}`);
   }
-});
-
-test('every push and reopen removes every approval label, and nothing else', () => {
-  const wf = read('.github/workflows/pocp-labels.yml');
-  assert.match(wf, /pull_request_target:\s*\n\s*types: \[synchronize, reopened\]/);
-  assert.doesNotMatch(wf, /actions\/checkout/, "never checks out the pull request's code");
-  const dir = tmp();
-  fs.mkdirSync(path.join(dir, 'bin'));
-  fs.writeFileSync(path.join(dir, 'bin', 'gh'), `#!/bin/sh\necho "$@" >> "${path.join(dir, 'calls')}"\n`, { mode: 0o755 });
-  const r = spawnSync('bash', ['-e', '-c', runBlock(wf, 'gh api')], {
-    encoding: 'utf8',
-    env: { PATH: `${path.join(dir, 'bin')}:${process.env.PATH}`, REPO: 'o/r', PR: '7', GH_TOKEN: 'x', LABELS: JSON.stringify([...LABELS, 'bug', 'odd \\c label']) },
-  });
-  assert.equal(r.status, 0, r.stderr);
-  const calls = fs.readFileSync(path.join(dir, 'calls'), 'utf8').trim().split('\n');
-  assert.deepEqual(calls.sort(), LABELS.map((l) => `api -X DELETE repos/o/r/issues/7/labels/${l} --silent`).sort());
-  fs.rmSync(dir, { recursive: true, force: true });
-});
-
-test('live mode: a push that merges the base into the previous head keeps only the content approvals', () => {
-  for (const file of ['.github/workflows/pocp-labels.yml', 'examples/github/pocp-labels.yml']) {
-    const wf = read(file);
-    const all = [...LABELS, 'pocp-approve-inconclusive', 'pocp-approve-workflow'];
-    const run = ({ live, parents }) => {
-      const dir = tmp();
-      fs.mkdirSync(path.join(dir, 'bin'));
-      // A fake gh: answers the commit's parents and the pull request's base, records deletions.
-      fs.writeFileSync(path.join(dir, 'bin', 'gh'), `#!/bin/sh
-case "$*" in
-  *commits/after*) echo "${parents}" ;;
-  *pulls/7*) echo "base" ;;
-  *) echo "$@" >> "${path.join(dir, 'calls')}" ;;
-esac
-`, { mode: 0o755 });
-      const r = spawnSync('bash', ['-e', '-c', runBlock(wf, 'gh api')], {
-        encoding: 'utf8',
-        env: { PATH: `${path.join(dir, 'bin')}:${process.env.PATH}`, REPO: 'o/r', PR: '7', GH_TOKEN: 'x', LABELS: JSON.stringify(all), LIVE: live, BEFORE: 'before', AFTER: 'after' },
-      });
-      assert.equal(r.status, 0, r.stderr);
-      const calls = fs.existsSync(path.join(dir, 'calls')) ? fs.readFileSync(path.join(dir, 'calls'), 'utf8').trim().split('\n') : [];
-      fs.rmSync(dir, { recursive: true, force: true });
-      return calls.map((c) => c.split('/labels/')[1].split(' ')[0]).sort();
-    };
-    assert.deepEqual(run({ live: 'true', parents: 'before base' }), ['pocp-approve-inconclusive', 'pocp-approve-workflow'], file);
-    for (const [live, parents] of [['false', 'before base'], ['true', 'before other'], ['true', 'before'], ['true', 'base before']]) {
-      assert.deepEqual(run({ live, parents }), [...all].sort(), `${file}: ${live} ${parents}`);
-    }
-    // Only on a push, only with the status live.
-    assert.match(wf, /LIVE: \$\{\{ vars\.POCP_STATUS_LIVE == 'true' && github\.event\.action == 'synchronize' && 'true' \|\| 'false' \}\}/, file);
-  }
+  assert.match(wf, /--label-freshness=github --repo="\$GITHUB_REPOSITORY" --pull-request="\$PR_NUMBER"/);
 });
 
 test('events that cannot change the result are skipped, so they use no Actions minutes', () => {
@@ -146,9 +95,8 @@ test('events that cannot change the result are skipped, so they use no Actions m
     const verify = read(`${dir}/pocp.yml`);
     // Live: an edit that doesn't change the base is ignored like a non-approval label.
     assert.match(verify, /\n {4}if: vars\.POCP_STATUS_LIVE != 'true' \|\| .*\(github\.event\.action != 'edited' \|\| github\.event\.changes\.base\)\n/, dir);
+    // The reporter runs only when a verify run finishes, so a skipped verify costs nothing more.
     const status = read(`${dir}/pocp-status.yml`);
-    assert.match(status, /\n {4}if: github\.event_name != 'pull_request_target' \|\| .*startsWith\(github\.event\.label\.name, 'pocp-approve-'\).*\(github\.event\.action != 'edited' \|\| github\.event\.changes\.base\)\n/, dir);
-    const labels = read(`${dir}/pocp-labels.yml`);
-    assert.match(labels, /\n {4}if: contains\(toJSON\(github\.event\.pull_request\.labels\.\*\.name\), '"pocp-approve-'\)\n/, dir);
+    assert.doesNotMatch(status, /\n {4}if: /, dir);
   }
 });

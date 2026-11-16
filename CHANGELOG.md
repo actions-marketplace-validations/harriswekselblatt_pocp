@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+Upgrading: re-run `pocp init --github --force`, which rewrites `pocp.yml` and `pocp-status.yml`
+and removes `pocp-labels.yml`, then commit `.github/workflows`. Until then your workflows work
+as in 1.3.0, and the verify action warns on each run that passes an approval.
+
+### Changed
+
+- **No more `pull_request_target`.** From December 2, 2026, GitHub blocks `pull_request_target`
+  workflows by default in public repositories, and `pocp-labels.yml`, which removed approval
+  labels on every push, ran on it. Now one rule (`src/label-freshness.js`) decides whether a
+  label counts for a head: its last application is by someone with write access, after the
+  head's first run and after the latest force-push, or it carries over to a clean merge of the
+  base ("Update branch"). verify applies it when `pocp.yml` passes `label-freshness: github`
+  (the job needs `actions: read` and `pull-requests: read`; the token reaches verify's process
+  only, never a check), so a label left on from before a push no longer passes verify, whether a
+  push or another label starts the run, and whether or not the `pocp` status is live. The
+  reporter applies the same rule, and removes the labels it finds stale with `github.token`
+  (`pull-requests: write`). `pocp-status.yml` runs on `workflow_run` only, and
+  `pocp-labels.yml` is gone: nothing to allow in the repository's Actions settings.
+- `pocp.yml` passes every approval label on every event, with the head's sha; verify decides
+  whether it counts. "Update branch" keeps its approvals without the `pocp` status live too.
+- `pocp doctor` flags a `pocp.yml` without `label-freshness` and a leftover `pocp-labels.yml`
+  (a problem while `verify` is the required check, a warning with the status live), in place of
+  1.3.0's check for blocked `pull_request_target` runs. `init --github --force` removes
+  `pocp-labels.yml`; `ci off` / `on` still switch it while it's there.
+
 ## 1.3.0 (2026-11-16)
 
 Upgrading: re-run `pocp init --github --force` to get the new `pocp-status.yml` (the reporter

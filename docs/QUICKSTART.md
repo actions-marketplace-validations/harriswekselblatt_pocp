@@ -109,7 +109,7 @@ a maintainer's label on GitHub.
 
 `pocp init --local` sets `ci.mode: "local"` in `.proof/config.json` and installs the hooks. On a
 repository that already has POCP's workflows, `pocp ci off` disables them on GitHub (`pocp.yml`,
-`pocp-status.yml`, `pocp-labels.yml`) and sets the mode; `pocp ci on` enables them again and
+`pocp-status.yml`) and sets the mode; `pocp ci on` enables them again and
 removes it. Neither touches the workflow files, so there is nothing to commit under
 `.github/`; commit the change to `.proof/config.json`. Switching to local mode is a policy
 loosening, so verify asks for `--accept-policy-change` on that commit. `ci off` lists your
@@ -148,12 +148,11 @@ GitHub doesn't start for billing reasons.
 
 Before `pocp init --github`: the repository exists on GitHub, `origin` points at it, and `gh` is
 logged in with the `workflow` permission (`gh auth refresh -s workflow`), which pushing workflow
-files needs. `init --github` writes three workflows, with the POCP actions pinned to your POCP
+files needs. `init --github` writes two workflows, with the POCP actions pinned to your POCP
 release:
 
 - **`pocp.yml`** runs verify on every pull request.
 - **`pocp-status.yml`** is the trusted reporter: it sets one commit status, **`pocp`**. It's green when verified, yellow while waiting for a maintainer or when a check didn't finish, and red on a real failure. It never runs pull request code.
-- **`pocp-labels.yml`** removes every approval label on each push, so an approval covers only the code reviewed.
 
 Through your `gh` login it also creates the approval labels and turns the `pocp` status on
 (the repository variable `POCP_STATUS_LIVE`), so a pull request waiting for approval shows
@@ -169,11 +168,11 @@ the status on.
 
 If your repository has a second maintainer, keep the default `"ci": { "workflow_approver": "independent" }`: then the author of a CI change can't approve it themselves. See [STATUS.md](STATUS.md) for that, and for the limits of the `pocp` status.
 
-**Public repositories, from December 2, 2026:** GitHub blocks `pull_request_target` workflows by
-default, and then approval labels are no longer removed on push. With the `pocp` status live
-this is only untidy; without it, allow `pull_request_target` in the repository's Actions settings
-([STATUS.md](STATUS.md#githubs-pull_request_target-block-public-repositories-from-december-2-2026)).
-`pocp doctor` says when it is blocked.
+An approval covers only the code reviewed: a label added before the latest push doesn't count,
+and the reporter removes it, so add it again after reviewing the new commits. Neither workflow
+uses `pull_request_target` (which GitHub blocks by default in public repositories from
+December 2, 2026). Upgrading from 1.3.0 or earlier: `pocp init --github --force` regenerates
+the workflows and removes the old `pocp-labels.yml`; `pocp doctor` says when that's needed.
 
 **If agents push branches with your token,** a workflow on such a branch can post its own
 `pocp: success`. Give the reporter its own GitHub App and require `pocp` from it:

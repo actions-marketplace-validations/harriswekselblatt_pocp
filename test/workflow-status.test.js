@@ -128,7 +128,7 @@ test('each approval marker step runs exactly when that approval reaches verify',
     assert.equal(stepIf(wf, step), `env.${env} != 'false'`, step);
     const label = APPROVAL_MARKERS[step];
     const line = wf.split('\n').find((l) => l.trim().startsWith(`${env}:`));
-    assert.ok(line.includes(`'${label}'`) && line.includes("github.event.action == 'labeled'"), line);
+    assert.ok(line.includes(`'${label}'`) && line.includes('github.event.pull_request.head.sha'), line);
   }
 });
 
@@ -145,7 +145,7 @@ test('label events are filtered only once the pocp status is live (a skipped req
 test('the reporter never checks out or runs pull request code', () => {
   const wf = read('.github/workflows/pocp-status.yml');
   assert.match(wf, /workflow_run:\s*\n\s*workflows: \[pocp\]\s*\n\s*types: \[completed\]/);
-  assert.match(wf, /pull_request_target:/);
+  assert.doesNotMatch(wf.replace(/(^|\s)#.*$/gm, ''), /pull_request_target/);
   const checkouts = wf.split('\n').filter((l) => l.includes('actions/checkout'));
   assert.equal(checkouts.length, 1);
   assert.match(wf, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/);
@@ -154,14 +154,10 @@ test('the reporter never checks out or runs pull request code', () => {
   // Event data reaches the script only through env, never interpolated into the command.
   assert.doesNotMatch(stepRunLine(wf), /\$\{\{/);
   assert.match(wf, /statuses: write/);
-  assert.doesNotMatch(wf, /contents: write|pull-requests: write|issues: write/);
+  assert.doesNotMatch(wf, /contents: write|issues: write/);
 });
 
 function stepRunLine(wf) {
   return wf.split('\n').find((l) => l.trim().startsWith('run: node bin/pocp.js status-report'));
 }
 
-test('every push removes the new approval labels too', () => {
-  const wf = read('.github/workflows/pocp-labels.yml');
-  for (const label of ['pocp-approve-tests', 'pocp-approve-policy', 'pocp-approve-coverage', 'pocp-approve-inconclusive', 'pocp-approve-workflow']) assert.ok(wf.includes(label), label);
-});

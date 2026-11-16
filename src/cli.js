@@ -152,6 +152,8 @@ Checking
                                      didn't finish (re-run it), 1 for any other failure
                                      --isolate: each check runs as a fresh unprivileged user (Linux, sudo); if
                                      that can't be set up, verify fails. --install <cmd>: dependencies too
+                                     --label-freshness=github --repo <o/r> --pull-request <n>: an approval's label
+                                     must be added after this head first ran (token in POCP_GITHUB_TOKEN)
   blame <file>                       packets that changed a file
 
 Misses

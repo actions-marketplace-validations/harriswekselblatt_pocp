@@ -49,7 +49,7 @@ export class IsolationError extends PocpBaseError {
 // files, whatever run.env_allow lists.
 const SAFE_ENV = ['PATH', 'LANG', 'LANGUAGE', 'TZ', 'TERM', 'CI', 'GITHUB_ACTIONS', 'NODE_ENV', 'POCP', 'POCP_OBLIGATION'];
 const NEVER_ENV = (k) => k.startsWith('ACTIONS_') || k.startsWith('RUNNER_') || CI_STEP_VARS.includes(k)
-  || ['GITHUB_TOKEN', 'GITHUB_EVENT_PATH', 'SSH_AUTH_SOCK', 'GIT_ASKPASS', 'SSH_ASKPASS'].includes(k) || k.startsWith('POCP_SIGN');
+  || ['GITHUB_TOKEN', 'GH_TOKEN', 'POCP_GITHUB_TOKEN', 'GITHUB_EVENT_PATH', 'SSH_AUTH_SOCK', 'GIT_ASKPASS', 'SSH_ASKPASS'].includes(k) || k.startsWith('POCP_SIGN');
 
 /** The environment a worker gets: an allowlist of `env`, plus its own home and temp folders. */
 export function workerEnv(env = {}, allow = [], sandbox = {}) {

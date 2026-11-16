@@ -1,6 +1,6 @@
 // `pocp status-report`: the trusted reporter (docs/STATUS.md). It runs in a privileged workflow
-// (workflow_run / pull_request_target) from the default branch's code, never the pull request's,
-// and sets one commit status, `pocp`, on a pull request's current head.
+// (workflow_run) from the default branch's code, never the pull request's, and sets one commit
+// status, `pocp`, on a pull request's current head. It removes the approval labels it finds stale.
 //
 // It never takes a run's word for anything it could have been made to say. A pull_request
 // workflow runs the pull request's own copy of the workflow file, so a run's step results are
@@ -9,6 +9,10 @@
 
 import { matchGlob } from './glob.js';
 import { DEFAULT_CI_FILES } from './store.js';
+import { approvedByWriter, CARRYABLE, carriedOver, COMPARE_FILES_CAP, gatherCarry, gatherLabelEvents, labelFreshness, listAll, MARKER_PREFIX } from './label-freshness.js';
+
+// The label rule lives in label-freshness.js, shared with verify.
+export { CARRYABLE, carriedOver, COMPARE_FILES_CAP };
 
 export const STATUS_CONTEXT = 'pocp';
 export const WORKFLOW_PATH = '.github/workflows/pocp.yml';
@@ -21,7 +25,6 @@ export const APPROVAL_MARKERS = Object.freeze({
   'approval-inconclusive': 'pocp-approve-inconclusive',
   'approval-coverage': 'pocp-approve-coverage',
 });
-const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
 // GitHub's "list pull request files" returns at most this many files. A list that reaches it may
 // be missing the rest, so it never shows that no CI file changed.
 export const FILES_CAP = 3000;
@@ -32,7 +35,6 @@ export const FILES_CAP = 3000;
  * rules, so a run counts only for the pull request and base it names.
  */
 export const runMarker = (number, baseSha) => `pocp-run pr-${number} base-${baseSha}`;
-const MARKER_PREFIX = 'pocp-run ';
 
 export const TEXT = Object.freeze({
   verified: 'Verified: required checks passed on this code.',
@@ -50,16 +52,6 @@ export const TEXT = Object.freeze({
   approvalUnverified: 'An approval label was added before this commit, or by someone without write access: re-apply it after reviewing the new commits.',
 });
 
-// Approvals of content (not of one run's outcome, and not of a workflow, which can run any file)
-// that may carry over to a clean merge of the base branch into the approved head.
-export const CARRYABLE = Object.freeze(['pocp-approve-tests', 'pocp-approve-policy', 'pocp-approve-coverage']);
-// GitHub's compare API lists at most this many files: a list that reaches it may be missing some.
-export const COMPARE_FILES_CAP = 300;
-const POLICY_PREFIX = '.proof/';
-// Proof records: nearly every merged pull request adds one, and none is policy. Packets the
-// pull request itself changes are still covered by the checks on its own files below.
-const PROOF_RECORDS = '.proof/packets/';
-const isPolicy = (f) => f.startsWith(POLICY_PREFIX) && !f.startsWith(PROOF_RECORDS);
 
 /** The CI files a pull request may not change without a maintainer (the base's ci.files, defaults always included). */
 export function workflowFiles(baseConfig) {
@@ -274,9 +266,9 @@ export function decideStatus(facts) {
     // A label is only as good as who put it there: GitHub lets roles without write access
     // (triage) manage labels. Each approval the run used must have been applied last by a
     // writer, after this head's first run (so it was given for this code).
-    const unauthorized = approvals.filter((l) => !approvedByWriter(facts, l, sha) && !carriedOver(facts, l).ok);
+    const unauthorized = approvals.filter((l) => !labelFreshness(facts, l, sha).ok);
     if (unauthorized.length) return status('pending', TEXT.approvalUnverified, `run ${newest.id} relied on ${unauthorized.join(', ')}, last applied by someone without write access, before this head's first run, before a force-push, or not readable${via}`, newest);
-    const carried = approvals.filter((l) => !approvedByWriter(facts, l, sha));
+    const carried = approvals.filter((l) => labelFreshness(facts, l, sha).how === 'carried');
     const how = carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : '';
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
   }
@@ -285,79 +277,6 @@ export function decideStatus(facts) {
 }
 
 const short = (sha) => (sha ? String(sha).slice(0, 12) : '(none)');
-
-/**
- * Whether a force-push came after the label's last application. Then the label was given for a
- * head the pull request no longer has, even when the head now is one that ran before it: H1 runs,
- * H2 is force-pushed and labelled, H1 is force-pushed back. A normal push can't go back to an
- * older head, so the force-pushes are the only way. Only the reporter checks this, from the pull
- * request's issue events (head_ref_force_pushed), not pocp-labels.yml's removal.
- */
-function labelOutlived(facts, last) {
-  return (facts.force_pushes || []).some((t) => String(t) > String(last.created_at));
-}
-
-/**
- * Whether the label's current application is a writer's, given for this head: its most recent
- * "labeled" event is by someone with write access, after the head's first run of the workflow,
- * and no force-push came after it.
- * Needs the whole event list (facts.label_events_complete): a list cut short could hide a later
- * application by someone else.
- */
-function approvedByWriter(facts, label, sha) {
-  if (!facts.label_events_complete) return false;
-  const firstRunAt = (facts.runs || []).filter((r) => r.head_sha === sha).map((r) => String(r.created_at)).sort()[0] || null;
-  const last = (facts.label_events || []).filter((e) => e.label === label).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).at(-1);
-  return Boolean(last && WRITE_PERMISSIONS.has(last.permission) && firstRunAt && String(last.created_at) > firstRunAt && !labelOutlived(facts, last));
-}
-
-/**
- * Whether an approval given for the previous head still applies to this one. Only in one narrow
- * case: the new head is a merge of the approved head with the current base, and that merge
- * changed nothing the pull request changes, and no policy file. Then what the person approved
- * (the pull request's own changes) is byte-for-byte what is there now. The approval is kept, not
- * any result: the new head is verified again on the new base, and goes green only from that run.
- * Never for an inconclusive or workflow approval. facts.carry comes from gather(), from GitHub's
- * API only.
- */
-export function carriedOver(facts, label) {
-  const c = facts.carry;
-  const no = (why) => ({ ok: false, why });
-  if (!CARRYABLE.includes(label)) return no(`${label} never carries over`);
-  if (!c) return no('the head is not a merge of the base into an approved head');
-  if (!c.complete) return no(`GitHub's data for the merge was incomplete${c.reason ? ` (${c.reason})` : ''}`);
-  if (!c.from_sha || !c.merged_sha || c.merged_sha !== facts.base_sha) return no('the head is not a merge of the current base into the previous head');
-  if (!facts.label_events_complete) return no('the label events were incomplete');
-  // The approval was given by a writer while the previous head was the pull request's head:
-  // after that head's first run for this pull request.
-  const mine = (r) => r.head_sha === c.from_sha && (r.job?.steps || []).some((st) => String(st.name || '').startsWith(`${MARKER_PREFIX}pr-${facts.pr.number} base-`) && st.conclusion === 'success');
-  const firstRunAt = (c.runs || []).filter(mine).map((r) => String(r.created_at)).sort()[0] || null;
-  const last = (facts.label_events || []).filter((e) => e.label === label).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).at(-1);
-  if (!last || !WRITE_PERMISSIONS.has(last.permission)) return no(`${label} was last applied by someone without write access`);
-  if (!firstRunAt || String(last.created_at) <= firstRunAt) return no(`${label} was not given for ${short(c.from_sha)}`);
-  if (labelOutlived(facts, last)) return no(`${label} was applied before a force-push, so it was given for another head`);
-  const merged = new Set(c.merge_files || []);
-  const touched = (c.pr_files || []).filter((f) => merged.has(f));
-  if (touched.length) return no(`the merge changed files the pull request changes: ${touched.slice(0, 3).join(', ')}`);
-  // Every file the pull request now changes must be one the approved head already changed. A
-  // merge that keeps an old version of a file the base changed (undoing a fix, a new test, a
-  // tighter rule) leaves it out of the merge's own list, but adds it to the pull request's.
-  const approved = new Set(c.approved_files || []);
-  const added = (c.pr_files || []).filter((f) => !approved.has(f));
-  if (added.length) return no(`the merge adds changes the approval didn't cover: ${added.slice(0, 3).join(', ')}`);
-  const policy = [...merged].filter(isPolicy);
-  if (policy.length) return no(`the merge changed policy files: ${policy.slice(0, 3).join(', ')}`);
-  // What the base branch changed since the approved head branched off. A merge can keep the
-  // pull request's own version of a file, so the merge's file list never shows that the base
-  // changed it: the base must not have changed the policy (the authority the approval was judged
-  // by) or any file the approval covers (the side the person compared against).
-  if (!Array.isArray(c.base_files)) return no("GitHub's data for the base branch's changes was missing");
-  const basePolicy = c.base_files.filter(isPolicy);
-  if (basePolicy.length) return no(`the base branch changed policy files since the approval: ${basePolicy.slice(0, 3).join(', ')}`);
-  const baseTouched = c.base_files.filter((f) => approved.has(f));
-  if (baseTouched.length) return no(`the base branch changed files the approval covers: ${baseTouched.slice(0, 3).join(', ')}`);
-  return { ok: true };
-}
 
 /** A minimal GitHub REST client over fetch. */
 export function githubClient({ token, api = 'https://api.github.com', fetchImpl = globalThis.fetch } = {}) {
@@ -376,6 +295,7 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
   return {
     get: async (url) => (await call('GET', url)).data,
     post: async (url, body) => (await call('POST', url, body)).data,
+    delete: async (url) => (await call('DELETE', url)).data,
     /**
      * Every page of a list endpoint (an array, or the array under `key`), and whether that is
      * all of it: { items, complete, reason }. Never throws; an error, a page that isn't a list,
@@ -413,15 +333,6 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
       return out;
     },
   };
-}
-
-/**
- * A whole list from `gh`: { items, complete, reason }. githubClient's list() says whether it got
- * every page; a client with only all() (a test double) is taken at its word.
- */
-async function listAll(gh, url, key, max) {
-  if (gh.list) return gh.list(url, key, max);
-  return { items: await gh.all(url, key, max), complete: true, reason: null };
 }
 
 /** Fetch every fact decideStatus needs, fresh. */
@@ -463,66 +374,17 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
   const approvalLabels = new Set([APPROVE_WORKFLOW_LABEL, ...Object.values(APPROVAL_MARKERS)]);
   facts.label_events_complete = true;
   if (facts.pr.labels.some((l) => approvalLabels.has(l))) {
-    const listed = await listAll(gh, `${repo}/issues/${pr.number}/events?per_page=100`);
-    facts.label_events_complete = listed.complete;
-    const permissions = new Map();
-    for (const e of listed.items.filter((x) => x.event === 'labeled' && approvalLabels.has(x.label?.name))) {
-      const login = e.actor?.login;
-      if (login && !permissions.has(login)) {
-        let permission = null;
-        try {
-          permission = (await gh.get(`${repo}/collaborators/${encodeURIComponent(login)}/permission`)).permission;
-        } catch { /* unknown permission never approves */ }
-        permissions.set(login, permission);
-      }
-      facts.label_events.push({ label: e.label.name, actor: login, permission: permissions.get(login) ?? null, created_at: e.created_at });
-    }
-    // A force-push can bring back a head that was replaced: a label applied before it was given
-    // for another head (labelOutlived).
-    facts.force_pushes = listed.items.filter((x) => x.event === 'head_ref_force_pushed').map((x) => String(x.created_at));
+    Object.assign(facts, await gatherLabelEvents(gh, repo, pr.number, approvalLabels));
   }
-  if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow);
+  if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow, VERIFY_JOB);
   return facts;
-}
-
-/**
- * What carriedOver() needs, when the head is a merge commit: its parents, the files the merge
- * changed (first parent to head), the files the pull request changes against the merged-in
- * parent, the files the approved head changed, and the previous head's runs. Every list must be whole, or nothing carries.
- */
-async function gatherCarry(gh, repo, head, workflow) {
-  const commit = await gh.get(`${repo}/commits/${head}`);
-  const parents = (commit.parents || []).map((p) => p.sha);
-  if (parents.length !== 2) return null;
-  const [from, merged] = parents;
-  const carry = { from_sha: from, merged_sha: merged, complete: true, reason: null, merge_files: [], pr_files: [], approved_files: [], base_files: [], runs: [] };
-  const filesOf = async (a, b) => {
-    const cmp = await gh.get(`${repo}/compare/${a}...${b}`);
-    const files = (cmp.files || []).flatMap((f) => [f.filename, f.previous_filename].filter(Boolean));
-    if ((cmp.files || []).length >= COMPARE_FILES_CAP) { carry.complete = false; carry.reason = 'a file list was cut short'; }
-    return files;
-  };
-  carry.merge_files = await filesOf(from, head);
-  carry.pr_files = await filesOf(merged, head);
-  // What the approved head changed against its merge base with the base branch (three dots).
-  carry.approved_files = await filesOf(merged, from);
-  // What the base changed since the approved head branched off (three dots: from their merge base).
-  carry.base_files = await filesOf(from, merged);
-  const runs = await listAll(gh, `${repo}/actions/workflows/${workflow.id}/runs?head_sha=${from}&per_page=100`, 'workflow_runs', 5);
-  if (!runs.complete) { carry.complete = false; carry.reason = runs.reason || 'a list was cut short'; }
-  for (const r of runs.items.filter((x) => x.event === 'pull_request' && x.path === workflow.path)) {
-    const jobs = await listAll(gh, `${repo}/actions/runs/${r.id}/jobs?per_page=100`, 'jobs', 3);
-    const job = jobs.complete ? jobs.items.find((j) => j.name === VERIFY_JOB) : null;
-    carry.runs.push({ head_sha: r.head_sha, created_at: r.created_at, job: job ? { steps: (job.steps || []).map((st) => ({ name: st.name, conclusion: st.conclusion })) } : null });
-  }
-  return carry;
 }
 
 /**
  * Decide, re-check the head right before writing, then write the status (unless dryRun). When
  * the newest run's steps aren't readable yet, fetch again a few times before settling on pending.
  */
-export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH, dryRun = false, retries = 3, waitMs = 10_000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH, dryRun = false, retries = 3, waitMs = 10_000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), labelGh = null }) {
   let facts;
   let decision;
   try {
@@ -543,7 +405,7 @@ export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, 
     }
     throw e;
   }
-  if (!decision.write || dryRun) return { decision, written: false };
+  if (!decision.write || dryRun) return { decision, written: false, removed: [] };
   // The pull request can change while this runs. A moved head: the old head's status no longer
   // matters, write nothing. Anything else this decision rested on (base, labels, another open
   // pull request on the same head): never write green, and replace whatever is there with
@@ -551,7 +413,7 @@ export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, 
   // the reporter again, after this one (same concurrency group).
   if (facts.pr) {
     const now = await gh.get(`/repos/${repository}/pulls/${facts.pr.number}`);
-    if (now.head?.sha !== decision.sha || now.state !== 'open') return { decision: { write: false, reason: `pull request #${facts.pr.number} changed while deciding` }, written: false };
+    if (now.head?.sha !== decision.sha || now.state !== 'open') return { decision: { write: false, reason: `pull request #${facts.pr.number} changed while deciding` }, written: false, removed: [] };
     // Only approval labels decide anything; another label changing doesn't make this stale (and
     // the workflow skips the reporter for such label events, so nothing would correct it).
     const approvalLabels = new Set([APPROVE_WORKFLOW_LABEL, ...Object.values(APPROVAL_MARKERS)]);
@@ -571,5 +433,26 @@ export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, 
   await gh.post(`/repos/${repository}/statuses/${decision.sha}`, {
     state: decision.state, context: STATUS_CONTEXT, description: decision.description.slice(0, 140), ...(decision.target_url ? { target_url: decision.target_url } : {}),
   });
-  return { decision, written: true };
+  return { decision, written: true, removed: await removeStale(labelGh, repository, facts, decision) };
+}
+
+/**
+ * After the status is written: remove the approval labels GitHub's data shows don't count for
+ * this head (labelFreshness: stale), so a maintainer sees they need to approve again. Never one
+ * the data can't settle, and never when the pull request changed while deciding (a label may
+ * have just been re-applied). With github.token (labelGh), whose removal starts no new run: the
+ * status just written already refuses the label.
+ */
+async function removeStale(labelGh, repository, facts, decision) {
+  if (!labelGh || !facts?.pr || decision.sha !== facts.pr.head_sha || decision.description === TEXT.stale) return [];
+  const approvalLabels = new Set([APPROVE_WORKFLOW_LABEL, ...Object.values(APPROVAL_MARKERS)]);
+  const removed = [];
+  for (const label of facts.pr.labels.filter((l) => approvalLabels.has(l))) {
+    if (labelFreshness(facts, label, facts.pr.head_sha).stale !== true) continue;
+    try {
+      await labelGh.delete(`/repos/${repository}/issues/${facts.pr.number}/labels/${encodeURIComponent(label)}`);
+      removed.push(label);
+    } catch { /* already gone, or no permission: the status still refuses it */ }
+  }
+  return removed;
 }

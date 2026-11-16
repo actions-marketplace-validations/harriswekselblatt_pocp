@@ -1,6 +1,6 @@
 # .github/workflows/pocp.yml
 # POCP on GitHub Actions, for a project in any language. `pocp init --github` writes this file,
-# pocp-status.yml and pocp-labels.yml, pinned to your POCP version. docs/STATUS.md explains the
+# and pocp-status.yml, pinned to your POCP version. docs/STATUS.md explains the
 # "pocp" status these produce; docs/QUICKSTART.md, how to turn it on.
 #
 # verify judges the pull request by the base branch's rules and re-runs every required check
@@ -32,6 +32,8 @@ on:
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]   # edited: a retarget changes the base that judges it
 permissions:
   contents: read
+  actions: read          # label-freshness: when this head first ran
+  pull-requests: read    # label-freshness: who applied each approval label, and when
 jobs:
   verify:
     if: vars.POCP_STATUS_LIVE != 'true' || ((github.event.action != 'labeled' && github.event.action != 'unlabeled') || startsWith(github.event.label.name, 'pocp-approve-')) && (github.event.action != 'edited' || github.event.changes.base)
@@ -45,13 +47,14 @@ jobs:
     # number of commits in a typical pull request, with margin.
     timeout-minutes: 60
     env:
-      # Each approval is a label only maintainers apply. A label isn't tied to a commit, so it
-      # counts only on the event that changed labels, and only for the head at that moment (the
-      # sha is passed, so verify checks it). pocp-labels.yml removes every approval on each push.
-      APPROVE_POLICY: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-policy') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_TESTS: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-tests') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_INCONCLUSIVE: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && contains(github.event.pull_request.labels.*.name, 'pocp-approve-inconclusive') && github.event.pull_request.head.sha || 'false' }}
-      APPROVE_COVERAGE: ${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled' || (vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'synchronize')) && contains(github.event.pull_request.labels.*.name, 'pocp-approve-coverage') && github.event.pull_request.head.sha || 'false' }}
+      # Each approval is a label only maintainers apply. A label isn't tied to a commit, so the
+      # head's sha is passed with it and verify (label-freshness, below) asks GitHub whether the
+      # label was applied by a writer after this head first ran: a label left on from before a
+      # push doesn't count, except through "Update branch" (a clean merge of the base).
+      APPROVE_POLICY: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-policy') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_TESTS: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-tests') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_INCONCLUSIVE: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-inconclusive') && github.event.pull_request.head.sha || 'false' }}
+      APPROVE_COVERAGE: ${{ contains(github.event.pull_request.labels.*.name, 'pocp-approve-coverage') && github.event.pull_request.head.sha || 'false' }}
       WAIT_EXIT: ${{ vars.POCP_STATUS_LIVE == 'true' && '0' || '1' }}
     steps:
       # Which pull request and base this run evaluated. A head commit can belong to several pull
@@ -74,6 +77,8 @@ jobs:
         id: verify
         continue-on-error: true    # the step fails unless verified; the steps below report why
         with:
+          label-freshness: github  # an approval's label must be given after this head first ran
+          github-token: ${{ github.token }}   # read-only (permissions above); verify's process only
           rerun: all
           isolate: true              # each check runs as a fresh unprivileged user (Linux runners)
           # install: npm ci          # ▶ your install command: runs isolated, before the checks
