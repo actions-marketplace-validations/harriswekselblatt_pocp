@@ -33,17 +33,18 @@ const HOLD = 5; // seconds the finished screen stays before the loop restarts
 const total = Math.max(...lines.map((l) => l.end)) + HOLD;
 const FONT = 14, LH = 21, CW = 8.43, PADX = 20, TOP = 52;
 const cols = Math.max(...lines.map((l) => l.text.length));
-const W = Math.ceil(PADX * 2 + cols * CW), H = TOP + lines.length * LH + 18;
+// A little spare width: some monospace fonts run wider than CW.
+const W = Math.ceil(PADX * 2 + cols * CW * 1.04), H = TOP + lines.length * LH + 18;
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const kt = (t) => Math.min(1, Math.max(0, t / total)).toFixed(4);
 
 function color(text) {
   if (text.startsWith('# ')) return '#8b949e';
   if (/^(✗|NOT verified|\s+BAD|\s+behavior changed)/.test(text)) return '#ff7b72';
-  if (/^(✓|\s+rerun passed)/.test(text)) return '#7ee787';
-  if (/^\s+next:/.test(text)) return '#e3b341';
-  if (/^[-]\s/.test(text)) return '#ffa198';
-  if (/^[+]\s/.test(text)) return '#aff5b4';
+  if (/^(✓|verified:|\s+rerun passed)/.test(text)) return '#7ee787';
+  if (/^\s+((\[\w+\] )?next:|and adds )/.test(text)) return '#e3b341';
+  if (/^-(?!-)/.test(text)) return '#ffa198';
+  if (/^\+(?!\+)/.test(text)) return '#aff5b4';
   return '#e6edf3';
 }
 
@@ -66,8 +67,8 @@ const body = lines.map((l, i) => {
   return `<text x="${PADX}" y="${y}" fill="${color(l.text)}"${italic} opacity="0" xml:space="preserve">${show}${esc(l.text)}</text>`;
 }).join('\n');
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Demo: an agent breaks add(), edits the test until it passes, plain tests go green, and pocp verify reports that the old test fails on the new code">
-<title>POCP demo: an edited test passes, the old test fails on the new code</title>
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Demo: an agent breaks add() and edits the test until it passes; pocp verify runs the old test on the new code and holds the change for a maintainer; the agent puts the test back and fixes add(), and verify passes">
+<title>POCP demo: an agent edits a test to pass; POCP holds it until the code is fixed</title>
 <rect width="${W}" height="${H}" rx="10" fill="#0d1117"/>
 <circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="42" cy="20" r="6" fill="#febc2e"/><circle cx="62" cy="20" r="6" fill="#28c840"/>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="${FONT}" xml:space="preserve">
