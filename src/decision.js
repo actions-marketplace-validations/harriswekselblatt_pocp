@@ -2,6 +2,7 @@
 // The library and the CLI both use decideVerify, so they classify a result the same way, and
 // no remedy or detail text can change the outcome.
 import { factsOf } from './finding.js';
+import { explainFinding } from './explain.js';
 import { APPROVE_INCONCLUSIVE_LABEL, APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL } from './remedies.js';
 
 /** The label a maintainer adds for each kind of approval. */
@@ -34,7 +35,8 @@ export function resolutionOf(finding) {
 
 /**
  * Summarize blocking findings and re-run failures.
- * Returns { only, needs: [{ label, kind, reasons, files }], outcome, unfinished_reruns }.
+ * Returns { only, needs: [{ label, kind, reasons, files, plain }], outcome, unfinished_reruns }.
+ * `plain`: what the label approves, in words for a maintainer who doesn't read code.
  * The outcome follows one precedence: 'failed' when anything needs a fix (or nothing explains
  * the failure), else 'inconclusive' when anything didn't finish or needs an inconclusive
  * approval, else 'waiting' for the listed approvals. An approval never hides a failure, and an
@@ -55,8 +57,11 @@ export function summarizeFindings(findings = [], rerunFailures = []) {
       continue;
     }
     const label = APPROVAL_LABEL[r.approval];
-    const n = needs.get(label) || { label, kind: r.approval, reasons: [], files: [] };
+    const n = needs.get(label) || { label, kind: r.approval, reasons: [], files: [], plain: [] };
     if (!n.reasons.includes(f.detail)) n.reasons.push(f.detail);
+    // Words for the maintainer (explain.js); they never change the decision.
+    const plain = explainFinding(f);
+    if (plain && !n.plain.includes(plain)) n.plain.push(plain);
     for (const file of r.files) if (!n.files.includes(file)) n.files.push(file);
     needs.set(label, n);
   }

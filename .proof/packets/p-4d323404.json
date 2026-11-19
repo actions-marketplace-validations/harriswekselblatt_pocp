@@ -1,0 +1,677 @@
+{
+  "pocp": 1,
+  "id": "p-4d323404",
+  "intent": "POCP 1.4: plain-English holds, one command for every label, ci.files_except",
+  "touches": [
+    ".github/workflows/pocp.yml",
+    ".proof/config.json",
+    "src/approvals.js",
+    "src/cli/shared.js",
+    "src/commands/verify.js",
+    "src/decision.js",
+    "src/engine/policy-at.js",
+    "src/engine/range.js",
+    "src/engine/verify.js",
+    "src/explain.js",
+    "src/finding.js",
+    "src/schema.js",
+    "src/status-report.js",
+    "src/store.js",
+    "test/approval-friction.test.js",
+    "test/demo.test.js",
+    "test/golden/ci-file-changed.json",
+    "test/golden/invalid-policy.json",
+    "test/golden/policy-loosened.json",
+    "test/golden/test-added.json",
+    "test/golden/test-edit-fast.json",
+    "test/golden/test-edit-old-tests-fail-deep.json",
+    "test/status-report.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/approval-friction.test.js",
+        "test/demo.test.js",
+        "test/golden/ci-file-changed.json",
+        "test/golden/invalid-policy.json",
+        "test/golden/policy-loosened.json",
+        "test/golden/test-added.json",
+        "test/golden/test-edit-fast.json",
+        "test/golden/test-edit-old-tests-fail-deep.json",
+        "test/status-report.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/approval-friction.test.js, test/demo.test.js, test/golden/ci-file-changed.json, test/golden/invalid-policy.json, test/golden/policy-loosened.json, test/golden/test-added.json, test/golden/test-edit-fast.json, test/golden/test-edit-old-tests-fail-deep.json and 1 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-19T05:04:35.653Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T05:04:36.502Z",
+      "duration_ms": 5267,
+      "stdout_sha256": "2ec2c3d76a9ad23e919682cf9d1be534cb5c4300847d3e451cd22233691779f6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9d86ee67",
+      "runner": {
+        "pocp": "1.3.1",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T05:04:41.889Z",
+      "duration_ms": 62542,
+      "stdout_sha256": "41f00786d6be07f38c985431b8abe027d33a6b4e4641ae9eb4e3ffe8fd08cca8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-c7e42372",
+      "runner": {
+        "pocp": "1.3.1",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-19T05:05:44.504Z",
+      "duration_ms": 600029,
+      "stdout_sha256": "55bca300fc1dfa9ba69c44920fcf665e9133b3f1bba80d10c4120b21afeec0f3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-ef6a823e",
+      "runner": {
+        "pocp": "1.3.1",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb3f0d9dbecbb897303e7b18a26154e3da861e2e8cdadfa0a8beecb6b0ff5057",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T05:15:44.776Z",
+      "duration_ms": 1483946,
+      "runner": {
+        "pocp": "1.3.1",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the demo: verify holds the edited test, then passes once the agent fixes the code; golden: test-edit-old-tests-fail-deep; golden: test-edit-fast; golden: test-added; golden: policy-loosened; golden: invalid-policy; golden: ci-file-changed; spoof: a PR that edits the workflow gets no green from its own run, whatever its steps say; pocp-approve-workflow must come from someone other than the author, unless the base allows any writer; carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head: behavior changed, so a person must approve it",
+        "base": "235c4ca84157c70f209de653a6baf0f37c4f355e",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/approval-friction.test.js",
+            "test/demo.test.js",
+            "test/golden/ci-file-changed.json",
+            "test/golden/invalid-policy.json",
+            "test/golden/policy-loosened.json",
+            "test/golden/test-added.json",
+            "test/golden/test-edit-fast.json",
+            "test/golden/test-edit-old-tests-fail-deep.json",
+            "test/status-report.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2756
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 57635
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 444232,
+              "failed_tests": [
+                "the demo: verify holds the edited test, then passes once the agent fixes the code",
+                "golden: test-edit-old-tests-fail-deep",
+                "golden: test-edit-fast",
+                "golden: test-added",
+                "golden: policy-loosened",
+                "golden: invalid-policy",
+                "golden: ci-file-changed",
+                "spoof: a PR that edits the workflow gets no green from its own run, whatever its steps say",
+                "pocp-approve-workflow must come from someone other than the author, unless the base allows any writer",
+                "carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/approval-friction.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/approval-friction.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 589189
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 386493
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 1483946,
+        "timings": {
+          "setup_ms": 1404,
+          "new_baseline": {
+            "wall_ms": 589735,
+            "run_ms": 589189,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 505574,
+            "run_ms": 504623,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 387109,
+            "run_ms": 386493,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 830,
+            "count": 2
+          },
+          "copy": {
+            "ms": 1529,
+            "count": 6
+          },
+          "cleanup": {
+            "ms": 887,
+            "count": 8
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T05:41:00.048Z",
+      "duration_ms": 2376,
+      "stdout_sha256": "1f660767db5148cb138887b884901804028ff900969dbdac7cac3267e2a84e97",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9b9b095f",
+      "runner": {
+        "pocp": "1.3.2",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T05:41:02.489Z",
+      "duration_ms": 78365,
+      "stdout_sha256": "0c983b2877f494cc35a0d462f6d93cfce09665bf20d23bde9e858e67bbe23f8a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-ef5716fc",
+      "runner": {
+        "pocp": "1.3.2",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T05:42:20.985Z",
+      "duration_ms": 399594,
+      "stdout_sha256": "21dfdcfaa86449c0a31ff2ab42f9bfa3c811763ba5f712fc57e80a95e0e34924",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-4072cfff",
+      "runner": {
+        "pocp": "1.3.2",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb3f0d9dbecbb897303e7b18a26154e3da861e2e8cdadfa0a8beecb6b0ff5057",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T05:49:00.720Z",
+      "duration_ms": 1177602,
+      "runner": {
+        "pocp": "1.3.2",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the old tests fail on the new code, and on the base the same checks didn't finish normally (\"npm test --silent\" exit null, timed out), so it can't be told whether they were already failing: a person must approve it",
+        "base": "9f452f9b2984ab69cba1f99baa785e1b641e99a8",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/approval-friction.test.js",
+            "test/demo.test.js",
+            "test/golden/ci-file-changed.json",
+            "test/golden/invalid-policy.json",
+            "test/golden/policy-loosened.json",
+            "test/golden/test-added.json",
+            "test/golden/test-edit-fast.json",
+            "test/golden/test-edit-old-tests-fail-deep.json",
+            "test/status-report.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2455
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 94338
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 476991,
+              "failed_tests": [
+                "the demo: verify holds the edited test, then passes once the agent fixes the code",
+                "golden: test-edit-old-tests-fail-deep",
+                "golden: test-edit-fast",
+                "golden: test-added",
+                "golden: policy-loosened",
+                "golden: invalid-policy",
+                "golden: ci-file-changed",
+                "spoof: a PR that edits the workflow gets no green from its own run, whatever its steps say",
+                "pocp-approve-workflow must come from someone other than the author, unless the base allows any writer",
+                "carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/approval-friction.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/approval-friction.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": null,
+              "timed_out": true,
+              "signal": "SIGTERM",
+              "duration_ms": 600036
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 1177602,
+        "timings": {
+          "setup_ms": 557,
+          "new_baseline": {
+            "wall_ms": 1,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 575896,
+            "run_ms": 573784,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 600909,
+            "run_ms": 600036,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 612,
+            "count": 2
+          },
+          "copy": {
+            "ms": 1982,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 1728,
+            "count": 7
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-19T05:04:35.653Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T05:04:35.653Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-19T05:15:44.648Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9"
+    },
+    {
+      "at": "2026-11-19T05:40:29.025Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9"
+    },
+    {
+      "at": "2026-11-19T05:40:29.102Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9"
+    },
+    {
+      "at": "2026-11-19T05:40:29.617Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9"
+    },
+    {
+      "at": "2026-11-19T06:08:39.352Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48"
+    },
+    {
+      "at": "2026-11-19T06:08:39.547Z",
+      "event": "state",
+      "from": "failed",
+      "to": "open",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48"
+    },
+    {
+      "at": "2026-11-19T06:08:40.988Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb3f0d9dbecbb897303e7b18a26154e3da861e2e8cdadfa0a8beecb6b0ff5057",
+      "subject": "sha256:a6d44c1ca3088bca541fe799f54fa7b9c84c4b046bd553d0cfdb0fc93eac25a9",
+      "by": "harriswekselblatt",
+      "at": "2026-11-19T05:40:29.617Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the demo: verify holds the edited test, then passes once the agent fixes the code; golden: test-edit-old-tests-fail-deep; golden: test-edit-fast; golden: test-added; golden: policy-loosened; golden: invalid-policy; golden: ci-file-changed; spoof: a PR that edits the workflow gets no green from its own run, whatever its steps say; pocp-approve-workflow must come from someone other than the author, unless the base allows any writer; carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head: behavior changed, so a person must approve it"
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb3f0d9dbecbb897303e7b18a26154e3da861e2e8cdadfa0a8beecb6b0ff5057",
+      "subject": "sha256:40663e814449d7a7f7fc0241234b159d4a1d128cfe81fcd2a8f9671ddb73ed48",
+      "by": "harriswekselblatt",
+      "at": "2026-11-19T06:08:40.988Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code, and on the base the same checks didn't finish normally (\"npm test --silent\" exit null, timed out), so it can't be told whether they were already failing: a person must approve it"
+    }
+  ]
+}

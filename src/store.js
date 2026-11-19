@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PROOF_DIR } from './git.js';
 import { DEFAULT_GUARD_MODE, DEFAULT_GUARD_MUTANTS, DEFAULT_GUARD_SEED, effectiveGuardGlobs } from './guard.js';
-import { globProblem } from './glob.js';
+import { globProblem, matchGlob } from './glob.js';
 import { PocpBaseError } from './errors.js';
 import { packetProblem } from './records.js';
 
@@ -24,6 +24,23 @@ export const DEFAULT_CI_FILES = Object.freeze([
   'bitbucket-pipelines.yml', '.buildkite/**', '.drone.yml', '.woodpecker/**', '.woodpecker.yml',
 ]);
 
+/**
+ * Whether ci.files protects `file`: it matches a ci.files glob and no ci.files_except glob.
+ * files_except narrows what a repository chose to protect (say, the READMEs in a protected
+ * folder); it never exempts a CI definition (DEFAULT_CI_FILES), which can switch POCP off.
+ * `withDefaults`: CI definitions count even when ci.files leaves them out (the reporter's rule).
+ */
+export function ciProtects(file, ci, { withDefaults: defaults = false } = {}) {
+  if (!file) return false;
+  const globs = (list) => (Array.isArray(list) ? list.filter((gl) => typeof gl === 'string') : []);
+  // A GitHub Action's definition anywhere (a composite action a workflow uses, like
+  // status/action.yml) counts as a CI definition too, so no exemption reaches it.
+  const definition = DEFAULT_CI_FILES.some((gl) => matchGlob(file, gl)) || /(^|\/)action\.ya?ml$/.test(file);
+  if (defaults && DEFAULT_CI_FILES.some((gl) => matchGlob(file, gl))) return true;
+  if (!globs(ci?.files).some((gl) => matchGlob(file, gl))) return false;
+  return definition || !globs(ci?.files_except).some((gl) => matchGlob(file, gl));
+}
+
 export const DEFAULT_CONFIG = Object.freeze({
   pocp: 1,
   packet_ttl_days: 14,
@@ -42,7 +59,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   sign: { key: null, principal: null },
   guard: { tests: DEFAULT_GUARD_MODE, test_globs: null, runner_globs: null, mutants: DEFAULT_GUARD_MUTANTS, seed: DEFAULT_GUARD_SEED },
   verify: { fail_on: [...FINDING_CODES], require_ci: [] },
-  ci: { files: [...DEFAULT_CI_FILES], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent', mode: 'github' },
+  ci: { files: [...DEFAULT_CI_FILES], files_except: [], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent', mode: 'github' },
 });
 
 // Calibrated on real history: counting only code and config, these thresholds asked for
@@ -391,6 +408,7 @@ export function validateConfig(config) {
   if (!isStrArray(v.require_ci)) problems.push('verify.require_ci must be an array of commands');
   const ci = c.ci || {};
   if (!isStrArray(ci.files)) problems.push('ci.files must be an array of globs');
+  if (ci.files_except !== undefined && !isStrArray(ci.files_except)) problems.push('ci.files_except must be an array of globs');
   if (ci.branch !== null && typeof ci.branch !== 'string') problems.push('ci.branch must be a branch name or null');
   if (!isStrArray(ci.required_checks)) problems.push('ci.required_checks must be an array of check names');
   for (const k of ['require_pull_request', 'enforce_admins']) if (typeof ci[k] !== 'boolean') problems.push(`ci.${k} must be true or false`);
@@ -398,7 +416,7 @@ export function validateConfig(config) {
   if (ci.reporter_app_id != null && !(Number.isInteger(ci.reporter_app_id) && ci.reporter_app_id > 0)) problems.push('ci.reporter_app_id must be a GitHub App id (a positive whole number)');
   if (!['independent', 'any-writer'].includes(ci.workflow_approver)) problems.push('ci.workflow_approver must be "independent" or "any-writer"');
   if (!['github', 'local'].includes(ci.mode)) problems.push('ci.mode must be "github" (CI checks every pull request) or "local" (the git hooks only)');
-  const globLists = { 'guard.test_globs': guard.test_globs, 'guard.runner_globs': guard.runner_globs, 'guard.extra_test_globs': guard.extra_test_globs, 'guard.extra_runner_globs': guard.extra_runner_globs, 'ci.files': ci.files, 'eval.exclude': c.eval?.exclude };
+  const globLists = { 'guard.test_globs': guard.test_globs, 'guard.runner_globs': guard.runner_globs, 'guard.extra_test_globs': guard.extra_test_globs, 'guard.extra_runner_globs': guard.extra_runner_globs, 'ci.files': ci.files, 'ci.files_except': ci.files_except, 'eval.exclude': c.eval?.exclude };
   for (const [k, list] of Object.entries(globLists)) {
     if (!isStrArray(list)) continue;
     for (const gl of list) if (globProblem(gl)) problems.push(`${k}: ${globProblem(gl)}`);
@@ -423,6 +441,8 @@ export function configWeakening(base, head) {
   // Local mode turns off what doctor checks of CI and makes you the approver: a change can't choose it for itself.
   if ((base.ci?.mode ?? 'github') !== 'local' && head.ci?.mode === 'local') out.push('ci.mode switched to "local" (no CI)');
   for (const gl of base.ci?.files || []) if (!(head.ci?.files || []).includes(gl)) out.push(`ci.files no longer protects "${gl}"`);
+  const exempt = (c) => (Array.isArray(c?.ci?.files_except) ? c.ci.files_except : []);
+  for (const gl of exempt(head)) if (!exempt(base).includes(gl)) out.push(`ci.files_except now exempts "${gl}"`);
   for (const check of base.ci?.required_checks || []) {
     if (!(head.ci?.required_checks || []).includes(check)) out.push(`ci.required_checks no longer requires "${check}"`);
   }
@@ -458,6 +478,9 @@ export function strictConfig(base, head) {
   if (Number.isInteger(base.guard?.mutants) && !(out.guard.mutants >= base.guard.mutants)) out.guard.mutants = base.guard.mutants;
   if (Number.isInteger(base.guard?.seed)) out.guard.seed = base.guard.seed;
   out.ci.files = [...new Set([...(base.ci?.files || []), ...(head.ci?.files || [])])];
+  // An exemption counts only once both sides have it.
+  const list = (x) => (Array.isArray(x) ? x : []);
+  out.ci.files_except = list(head.ci?.files_except).filter((gl) => list(base.ci?.files_except).includes(gl));
   out.ci.required_checks = [...new Set([...(base.ci?.required_checks || []), ...(head.ci?.required_checks || [])])];
   out.ci.require_pull_request = base.ci?.require_pull_request === true || head.ci?.require_pull_request === true;
   out.ci.enforce_admins = base.ci?.enforce_admins === true || head.ci?.enforce_admins === true;

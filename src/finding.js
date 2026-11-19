@@ -7,6 +7,7 @@
 //   files     the exact files it is about (repository paths)
 //   variant   which case of a code it is, where the remedy differs (e.g. 'local_only')
 //   errorCode the code of the error that caused a problem (e.g. 'clean_mode_refused')
+//   guard     the test guard's result behind a test_change (guard-check.js), for plain words (explain.js)
 //
 // They are kept under a symbol, so they are not part of the JSON output or of a result's
 // enumerable keys.

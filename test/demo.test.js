@@ -27,7 +27,7 @@ test('the demo: verify holds the edited test, then passes once the agent fixes t
   assert.match(out, /✗ 1 test failed: 2 !== 0/);
   assert.match(out, /✓ 1 test passed/);
   assert.match(out, /pocp fix: committable now; CI requires human approval of the test change/);
-  assert.match(out, /NOT verified: 1 commit/);
+  assert.match(out, /NOT verified yet: waiting for a maintainer's approval: 1 commit/);
   assert.match(out, /rerun passed {3}npm test --silent/);
   assert.match(out, /BAD: the old tests fail on the new code/);
   assert.match(out, /\[maintainer\] next: .*\n\s+and adds the `pocp-approve-tests` label/);

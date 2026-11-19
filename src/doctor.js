@@ -156,7 +156,8 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
         : 'the existing hook hands over to another program (or exits) before reaching pocp, so the gate is silently off',
       fix: `pocp hooks install (it moves the original hook to <hook>.pre-pocp and chains it: the original runs first, then pocp)`,
     });
-  } else if (h.problems.length) add({ id: 'hooks', status: 'problem', what: h.problems.join('; '), why: 'git skips a hook that is missing or not executable', fix: 'pocp hooks install' });
+  } else if (h.problems.length) add({ id: 'hooks', status: 'problem', what: h.problems.join('; '), why: 'git skips a hook that is missing or not executable', fix: h.managedBy === 'pre-commit' ? 'add the missing pocp hook ids to .pre-commit-config.yaml, then pre-commit install' : 'pocp hooks install' });
+  else if (h.managedBy === 'pre-commit') add({ id: 'hooks', status: 'ok', what: 'hooks run through the pre-commit framework (pocp-gate, pocp-trailer, pocp-land), which installs pocp for them' });
   else {
     // The order the hooks use: POCP_BIN, the project's own copy, PATH, then the pocp that installed them.
     const local = fs.existsSync(path.join(root, 'node_modules', '.bin', 'pocp')) ? 'node_modules/.bin/pocp' : '';

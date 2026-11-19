@@ -1,0 +1,12 @@
+{
+  "name": "pocp",
+  "description": "POCP (Proof of Change Protocol) for Claude Code: keeps coding agents working with POCP's checks instead of around them.",
+  "owner": { "name": "Harris Wekselblatt", "url": "https://github.com/harriswekselblatt" },
+  "plugins": [
+    {
+      "name": "pocp",
+      "source": "./plugins/pocp",
+      "description": "Stops Claude from skipping POCP's gate (--no-verify, hooksPath), force-pushing proven commits, or approving its own test and policy changes, and teaches it the POCP workflow."
+    }
+  ]
+}

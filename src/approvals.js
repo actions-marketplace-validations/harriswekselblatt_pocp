@@ -4,7 +4,7 @@ import { summarizeFindings } from './decision.js';
 import { withFacts } from './finding.js';
 import { POLICY_FILES } from './policy.js';
 import { PocpBaseError } from './errors.js';
-import { STATUS_CONTEXT, TEXT } from './status-report.js';
+import { isWaitingText, STATUS_CONTEXT, TEXT } from './status-report.js';
 
 // `pocp approvals`: every open pull request whose POCP verify fails only because it waits for
 // a maintainer's label, in one list, and a deliberate way for that maintainer to give each one.
@@ -244,7 +244,7 @@ export async function approvePr({ ref, repo, label, interactive, ask, say }) {
   if (!st) {
     // Never "nothing to approve" while the pocp status waits for a maintainer.
     const wait = reporterStatus(r, pr.headRefOid);
-    if (wait?.state === 'pending' && wait.description === TEXT.waiting) throw new ApprovalsError(`${r}#${number}: the "${STATUS_CONTEXT}" status waits for a maintainer's approval, but no verify run on this head says which; open ${wait.target_url || pr.url}`);
+    if (wait?.state === 'pending' && isWaitingText(wait.description)) throw new ApprovalsError(`${r}#${number}: the "${STATUS_CONTEXT}" status waits for a maintainer's approval, but no verify run on this head says which; open ${wait.target_url || pr.url}`);
     throw new ApprovalsError(`${r}#${number}: POCP verify is not failing on this pull request's head, so there is nothing to approve`);
   }
   if (st.state === 'blocked') throw new ApprovalsError(`${r}#${number}: verify fails for more than an approval (${st.check}); a label would not fix it. Open ${st.check_url || st.url}`);

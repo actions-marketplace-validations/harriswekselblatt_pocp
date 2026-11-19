@@ -23,7 +23,7 @@ pocp() {
     # package.json, .npmrc or node_modules supplies.
     [ -x "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" ] ||
       npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts \
-        "github:harriswekselblatt/pocp#${POCP_REF:?set POCP_REF to the POCP release or commit to run, e.g. v1.3.2}" >&2
+        "github:harriswekselblatt/pocp#${POCP_REF:?set POCP_REF to the POCP release or commit to run, e.g. v1.4.0}" >&2
     node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" "$@"
   fi
 }

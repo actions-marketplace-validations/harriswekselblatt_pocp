@@ -376,7 +376,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     // Attest mode with no packet: nothing can carry a sign-off, so a rules check that didn't
     // pass needs the approval, as on a range's net change.
     if (commitGuard.mode === 'attest' && rulesRun && !(rulesRun.passed && rulesRun.checks_from !== 'packet') && !acceptTestChange) {
-      commitFinding('test_change', `existing tests or test setup changed (${notInJobs.join(', ')}); ${rulesRun.checks_from === 'packet' ? 'no rule requires a check covering these files, so nothing independent can run the old tests (add a requirement covering them)' : `the mechanical check did not pass: ${rulesRun.summary}`}. Re-run with --accept-test-change once a person approves`, { approval: 'tests', files: notInJobs });
+      commitFinding('test_change', `existing tests or test setup changed (${notInJobs.join(', ')}); ${rulesRun.checks_from === 'packet' ? 'no rule requires a check covering these files, so nothing independent can run the old tests (add a requirement covering them)' : `the mechanical check did not pass: ${rulesRun.summary}`}. Re-run with --accept-test-change once a person approves`, { approval: 'tests', files: notInJobs, ...(rulesRun.result ? { guard: rulesRun.result } : {}) });
     }
     if (commitGuard.mode !== 'block') return;
     // Independent: re-run here or signed by a trusted key, with checks the rules chose.
@@ -409,7 +409,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
         : results.some((r) => r.passed)
         ? ['the mechanical check passed only locally (re-run verify with --rerun to check it here)', 'local_only']
         : ['no mechanical check covers them'];
-    commitFinding('test_change', `existing tests or test setup changed (${toReview.join(', ')}); ${why}. Re-run with --accept-test-change once a person approves`, { files: toReview, ...(variant ? { variant } : { approval: 'tests' }) });
+    commitFinding('test_change', `existing tests or test setup changed (${toReview.join(', ')}); ${why}. Re-run with --accept-test-change once a person approves`, { files: toReview, ...(variant ? { variant } : { approval: 'tests' }), ...(failed?.result ? { guard: failed.result } : {}) });
   }
 
   return { verify, findingSink, reportPolicy };

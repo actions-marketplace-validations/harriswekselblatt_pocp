@@ -129,12 +129,30 @@
               ],
               "files": [
                 ".github/workflows/ci.yml"
+              ],
+              "plain": [
+                "The CI setup that checks pull requests changed (.github/workflows/ci.yml). Approve only if you meant to change how CI checks code."
               ]
             }
           ],
           "outcome": "waiting",
           "unfinished_reruns": 0
         },
+        "approval_request": {
+          "items": [
+            {
+              "label": "pocp-approve-policy",
+              "plain": [
+                "The CI setup that checks pull requests changed (.github/workflows/ci.yml). Approve only if you meant to change how CI checks code."
+              ],
+              "means": "I accept this change to the rules or protected files"
+            }
+          ],
+          "command": "gh pr edit <number> --add-label pocp-approve-policy"
+        },
+        "labels_needed": [
+          "pocp-approve-policy"
+        ],
         "next_steps": [
           {
             "by": "person",

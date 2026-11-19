@@ -1,0 +1,10 @@
+{
+  "name": "pocp",
+  "version": "1.4.0",
+  "description": "Keeps Claude working with POCP instead of around it: blocks skipping the gate, force-pushing proven commits and self-approving test or policy changes, and teaches the POCP workflow.",
+  "author": { "name": "Harris Wekselblatt", "url": "https://github.com/harriswekselblatt" },
+  "homepage": "https://github.com/harriswekselblatt/pocp",
+  "repository": "https://github.com/harriswekselblatt/pocp",
+  "license": "MIT",
+  "keywords": ["pocp", "proof-of-change", "tests", "ci", "test-integrity", "coding-agents"]
+}
