@@ -16,10 +16,23 @@ inputs:
     description: "Token that removes the approval labels the reporter finds stale (given before the head): github.token, with pull-requests: write on the job. Empty: none are removed (the status still refuses them)."
     required: false
     default: ${{ github.token }}
+  config-dir:
+    description: "Folder (relative to the workspace) holding the .proof/config.json to judge by. Default: the workspace. pocp.yml's prediction passes the default branch's checkout."
+    required: false
+    default: ''
+  predict-approval:
+    description: "'true' in pocp.yml's approval job (examples/github/pocp.yml), on a pull_request label event: write no status; only predict whether verify needn't run (the `skip` output): the reporter would turn the status green from the run already waiting for approvals now given, or the pull request has moved past this head."
+    required: false
+    default: 'false'
+outputs:
+  skip:
+    description: "With predict-approval: 'true' when verify needn't run (the status would turn green without a new verify run, or the pull request has moved past this head), else 'false'."
+    value: ${{ steps.report.outputs.skip }}
 runs:
   using: composite
   steps:
     - name: Report
+      id: report
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -28,5 +41,15 @@ runs:
         HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
         PR_NUMBER: ${{ github.event.pull_request.number || '' }}
         WORKFLOW: ${{ inputs.workflow }}
+        PREDICT: ${{ inputs.predict-approval }}
+        CONFIG_DIR: ${{ inputs.config-dir }}
+        POCP_ACTION_REF: ${{ github.action_ref }}
+        POCP_AS_ACTION: 'true'
       # Event data reaches the command only through env, never interpolated into it.
-      run: node "$GITHUB_ACTION_PATH/../bin/pocp.js" status-report --workflow "$WORKFLOW"
+      run: |
+        if [ -n "$CONFIG_DIR" ]; then cd "$GITHUB_WORKSPACE/$CONFIG_DIR"; fi
+        if [ "$PREDICT" = "true" ]; then
+          node "$GITHUB_ACTION_PATH/../bin/pocp.js" status-report --workflow "$WORKFLOW" --predict-approval
+        else
+          node "$GITHUB_ACTION_PATH/../bin/pocp.js" status-report --workflow "$WORKFLOW"
+        fi

@@ -45,7 +45,14 @@ function stepKey(yaml, name, key) {
   const line = stepLines(yaml, name).find((l) => l.trim().replace(/^- /, '').startsWith(`${key}:`));
   return line ? line.trim().replace(/^- /, '').slice(key.length + 1).trim() : null;
 }
-const stepIf = (yaml, name) => stepKey(yaml, name, 'if');
+// Every step after the prediction runs only when it didn't skip verify (pocp.yml's
+// approved-without-run): stepIf returns the condition within that guard, which
+// 'the prediction's skip guards every step after it' checks is there.
+const SKIP_GUARD = "steps.predict.outputs.skip != 'true' && (";
+const stepIf = (yaml, name) => {
+  const c = stepKey(yaml, name, 'if');
+  return c && c.startsWith(SKIP_GUARD) && c.endsWith(')') ? c.slice(SKIP_GUARD.length, -1) : c;
+};
 
 /** Run the verify step with a stand-in verifier that exits `exit` and lists `helpFlags`. */
 function runVerify({ exit = 0, helpFlags = ['--exit-detail', '--accept-inconclusive', '--accept-uncovered'], env = {} } = {}) {
@@ -161,3 +168,22 @@ function stepRunLine(wf) {
   return wf.split('\n').find((l) => l.trim().startsWith('run: node bin/pocp.js status-report'));
 }
 
+
+test("the prediction's skip guards every step after it, so a skipped run reports no result", () => {
+  for (const rel of ['.github/workflows/pocp.yml', 'examples/github/pocp.yml']) {
+    const wf = read(rel);
+    const lines = wf.split('\n');
+    const at = lines.findIndex((l) => l.trim() === '- name: approved-without-run');
+    assert.ok(at > 0, `${rel}: approved-without-run`);
+    assert.equal(stepKey(wf, 'approved-without-run', 'if'), "steps.predict.outputs.skip == 'true'", rel);
+    // Every later step (each starts at "      - ") carries the guard, alone or around its own condition.
+    const rest = lines.slice(at + 1);
+    const firstNext = rest.findIndex((l) => /^ {6}- /.test(l));
+    const later = rest.slice(firstNext).join('\n').split(/\n(?= {6}- )/);
+    assert.ok(later.length >= 10, rel);
+    for (const block of later) {
+      const cond = (/\n {6,8}(?:- )?if: (.*)/.exec(`\n${block}`) || [])[1] || '';
+      assert.ok(cond === "steps.predict.outputs.skip != 'true'" || (cond.startsWith(SKIP_GUARD) && cond.endsWith(')')), `${rel}: ${block.split('\n')[0].trim()} is not guarded: ${cond}`);
+    }
+  }
+});

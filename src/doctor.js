@@ -68,7 +68,13 @@ export function scanWorkflows(root) {
       mentions: Object.keys(APPROVAL_LABELS).filter((l) => text.includes(l)),
       exit_detail: /exit-detail:\s*true|--exit-detail/.test(text),
       label_freshness: codeLines.some((l) => /^\s*label-freshness:\s*['"]?github\b|--label-freshness/.test(l)),
-      reporter: /\bstatus-report\b|\/pocp\/status@/.test(text),
+      // Sets the status: runs status-report, or uses the status action, other than to predict
+      // (pocp.yml's approval job uses them too, with --predict-approval / predict-approval).
+      reporter: codeLines.some((l) => /\bstatus-report\b/.test(l) && !/--predict-approval/.test(l))
+        || codeLines.filter((l) => /\/pocp\/status@/.test(l)).length > codeLines.filter((l) => /^\s*predict-approval:\s*['"]?true/.test(l)).length,
+      // The status action's refs: in pocp-status.yml (the reporter) and in pocp.yml (the approval
+      // job's prediction).
+      status_refs: [...new Set([...text.matchAll(/^\s*-?\s*uses:\s*['"]?[\w.-]+\/[\w.-]*pocp[\w.-]*\/status@([^\s'"#]+)/gim)].map((m) => m[1]))],
     });
   }
   return out;
@@ -212,6 +218,14 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
     if (wf.exit_detail && !reporter) add({ id: 'reporter', status: 'problem', what: `${wf.file} reports verify's result, but no workflow sets the "pocp" status`, why: 'without the reporter, nothing turns a wait or a pass into a status a branch can require', fix: 'add .github/workflows/pocp-status.yml (pocp init --github writes it)' });
     else if (!wf.exit_detail) add({ id: 'reporter', status: 'warning', what: `${wf.file} makes verify fail on every wait for approval`, why: 'each push that needs an approval shows a red ✗ and sends a failure email', fix: 'use the "pocp" status instead: pocp init --github --force writes the workflows (docs/STATUS.md)' });
     else add({ id: 'reporter', status: 'ok', what: 'a trusted reporter sets the "pocp" status' });
+    // pocp.yml's approval job predicts what the reporter will decide, to skip a verify run that
+    // would change nothing. Different versions could disagree: a prediction that verify needn't
+    // run, from a reporter that can't then turn the wait green, leaves the status pending.
+    const reporterRefs = new Set(workflows.filter((w) => w.reporter && w !== wf).flatMap((w) => w.status_refs));
+    const predictRefs = wf.status_refs || [];
+    if (predictRefs.length && reporterRefs.size && predictRefs.some((r) => !reporterRefs.has(r))) {
+      add({ id: 'status-refs', status: 'problem', what: `${wf.file} predicts with the status action at ${predictRefs.join(', ')}, but the reporter runs ${[...reporterRefs].join(', ')}`, why: 'when they disagree, an approval can skip verify while the reporter never turns the wait green, so the status stays pending', fix: 'use the same ref in both (pocp init --github --force writes them together)' });
+    }
   }
   // Workflows from before 1.3.1: approval labels taken as given, removed on push by
   // pocp-labels.yml, which runs on pull_request_target (blocked by default in public
