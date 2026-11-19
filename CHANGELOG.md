@@ -1,5 +1,50 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`npx pocp verify` no longer hands the checkout's npm setup to the checks.** npm, npx and
+  pnpm pass the program they start the config they read, a pull request's `.npmrc` included
+  (`npm_config_*`, and `node-options` as `NODE_OPTIONS`), and put the checkout's
+  `node_modules/.bin` in front of `PATH`. Every check inherited them, including the old tests
+  the guard runs. So a pull request could break the code and still verify by adding
+  `node-options=--test-skip-pattern=…` (deep mode) or committing a `node_modules/.bin/npm` that
+  exits 0 (both modes). Checks now get what they would if pocp were started with `node`: no
+  `npm_config_*`/`pnpm_config_*`, no `NODE_OPTIONS` npm set from config, and no `PATH` entries
+  npm put in front; a check that runs npm reads its own copy's `.npmrc`. A `NODE_OPTIONS` or
+  `NPM_CONFIG_*` the caller set stays, except under pnpm, which doesn't say where
+  `NODE_OPTIONS` came from, so it (and `NODE_PATH`) is dropped there. The GitHub Action, which
+  runs `node …/bin/pocp.js`, wasn't affected; the GitLab and any-CI examples, which use npx,
+  were. Tested with npm 10 and pnpm 10. yarn and bun aren't covered: they may not set
+  `npm_command`, which is how pocp tells it was started this way.
+- A rule that runs a package's binary by its bare name (`vitest run`, `tsc`) worked under
+  `npx pocp …` only because npx put `node_modules/.bin` on `PATH`. It now fails there, as it
+  always did when pocp was started with `node`: write `npx vitest run`, or `npm test`.
+- **The other-CI recipes no longer run the verifier from inside the checkout.** The README's
+  and QUICKSTART's `npx pocp verify …`, and the GitLab and any-CI examples' `npx --yes …`, ran
+  in the pull request's checkout, where its `package.json`, `.npmrc` and `node_modules` decide
+  what npx runs: a pull request that committed `node_modules/.bin/pocp` printing "verified"
+  passed. They now install the verifier with `npm install --prefix "$HOME/.pocp"` and run it
+  with `node`, as the GitHub workflow always has. If you copied one of them, update it.
+- **`*-test.js` is a test name.** `node --test` runs `a-test.js` by default, but POCP read it as
+  source, so in fast mode a new `src/a-test.js` passed without review. It is now guarded and
+  kept out of the planted-bug sample, like `a.test.js` (JavaScript and TypeScript extensions).
+  A source file named that way (`ab-test.ts`) is now read as a test: its edits go to a person
+  in fast mode, and it isn't mutated.
+
+### Docs
+
+- The README and the 1.2.3 evaluation say how the 48 harmful cases were built (four scripted
+  edits, each on top of a planted bug), that no harmful case reached deep mode's planted bugs,
+  that the second reviewers were AI agents, that the preregistration is self-attested, and that
+  fast mode's honest-change rate matches a rule holding every test edit. A README section
+  answers "why not just require review of test files?".
+- `eval/PREREG.md` and `docs/EVAL-PLAN.md` are marked as the unfinished plan for the agent
+  experiments, not the reported evaluation. Stale lines fixed in HOW-IT-WORKS (the reporter's
+  GitHub App shipped in 1.3.0), REVIEWING (fast mode, file paths) and QUICKSTART (approved
+  output).
+
 ## 1.3.1 (2026-11-16)
 
 Upgrading: re-run `pocp init --github --force`, which rewrites `pocp.yml` and `pocp-status.yml`

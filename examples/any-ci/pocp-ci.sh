@@ -18,7 +18,14 @@ set -eu
 base="$1"; head="$2"
 pocp() {
   if [ -n "${POCP_CMD:-}" ]; then $POCP_CMD "$@"   # e.g. a verifier you installed yourself
-  else npx --yes "github:harriswekselblatt/pocp#${POCP_REF:?set POCP_REF to the POCP release or commit to run, e.g. v1.1.2}" "$@"; fi
+  else
+    # Installed outside the checkout: npx in it would run whatever pocp the change's
+    # package.json, .npmrc or node_modules supplies.
+    [ -x "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" ] ||
+      npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts \
+        "github:harriswekselblatt/pocp#${POCP_REF:?set POCP_REF to the POCP release or commit to run, e.g. v1.3.1}" >&2
+    node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" "$@"
+  fi
 }
 pocp verify "$base..$head" --require-coverage --rerun \
   --accept-policy-change="${POCP_ACCEPT_POLICY:-false}" --accept-test-change="${POCP_ACCEPT_TESTS:-false}"

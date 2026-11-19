@@ -320,7 +320,8 @@ treats these changes as guarded:
 - test files added, modified, deleted or renamed (an added test file runs with the old ones
   and can change their outcome). The default
   test patterns cover the common layouts of JavaScript/TypeScript (`test/`, `spec/`,
-  `__tests__/`, `*.test.*`, `*.spec.*`, `*_spec.*`, snapshots, `__mocks__/`), Python
+  `__tests__/`, `*.test.*`, `*.spec.*`, `*_spec.*`, the standalone names `node --test` runs (`test.js`,
+  `test-*.js`, `*-test.js`), snapshots, `__mocks__/`), Python
   (`tests/`, `test_*.py`, `*_test.py`), Ruby (`spec/`, `*_spec.rb`, `*_test.rb`), Go
   (`*_test.go`, `testdata/`), Rust (`tests/`), Java/Kotlin/Scala (`src/test/`,
   `src/androidTest/` and the other `src/*Test/` source sets, `*Test.java`, `*IT.java`), C#

@@ -1,5 +1,7 @@
 # Pre-registration: POCP evaluation
 
+> **Not the evaluation the README reports.** This is the unfinished pre-registration for the experiments of [docs/EVAL-PLAN.md](../docs/EVAL-PLAN.md) (E1–E7), which haven't had a counted run. The evaluation the README reports, of POCP 1.2.3, is a separate design with its own protocol: [campaign-123/PREREGISTRATION.md](campaign-123/PREREGISTRATION.md). It reports rates and sets no pass bars, so the bars below don't apply to it.
+
 Status: **skeleton, not yet registered.** It is registered when the maintainer fills in every `TBD (maintainer)` and commits this file with the line "Registered" below. The commit timestamp proves the order. Counted runs (`phase: "counted"`) may only start after that commit.
 
 Registered: no
