@@ -21,44 +21,6 @@
   },
   "requirements": [
     {
-      "id": "unit-tests",
-      "globs": [
-        "src/**",
-        "bin/**",
-        "test/**",
-        "package.json"
-      ],
-      "obligation": {
-        "kind": "test",
-        "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
-        "changed_test_command": [
-          "node",
-          "--test",
-          "{tests}"
-        ]
-      },
-      "source": "author"
-    },
-    {
-      "id": "engine-tests",
-      "globs": [
-        "src/**",
-        "bin/**",
-        "test/**",
-        "package.json"
-      ],
-      "obligation": {
-        "kind": "test",
-        "run": "node --test test/engine.test.js",
-        "changed_test_command": [
-          "node",
-          "--test",
-          "{tests}"
-        ]
-      },
-      "source": "author"
-    },
-    {
       "id": "test-suite",
       "globs": [
         "src/**",
