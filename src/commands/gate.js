@@ -3,8 +3,10 @@ import { EXIT } from '../errors.js';
 import { formatGate, localizeCommands, out } from '../cli/shared.js';
 
 export async function run({ engine, flags, json }) {
-  // The pre-commit hook sets POCP_GATE_SOURCE=hook. Drop it so checks don't inherit it.
-  const source = process.env.POCP_GATE_SOURCE === 'hook' ? 'hook' : 'gate';
+  // pocp's pre-commit hook sets POCP_GATE_SOURCE=hook, and the pre-commit framework sets
+  // PRE_COMMIT=1 for the hooks it runs (.pre-commit-hooks.yaml). Drop pocp's own variable so
+  // checks don't inherit it.
+  const source = process.env.POCP_GATE_SOURCE === 'hook' || process.env.PRE_COMMIT === '1' ? 'hook' : 'gate';
   delete process.env.POCP_GATE_SOURCE;
   const r = await engine.gate({ prove: Boolean(flags.prove), mode: flags.mode, source });
   if (json) out(true, r);

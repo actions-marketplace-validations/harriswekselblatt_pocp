@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A Claude Code plugin** (`plugins/pocp`, installed with `/plugin marketplace add
+  harriswekselblatt/pocp` and `/plugin install pocp@pocp`). In a repository that uses POCP it
+  refuses the Bash commands that go around it: `git commit --no-verify`, a `core.hooksPath`
+  change, a force-push, adding a `pocp-approve-*` label, `pocp approve`, the `--accept-*` flags,
+  `gh pr merge --admin` and `pocp hooks uninstall`. Each refusal says what to do instead. Its
+  skill teaches the workflow in `examples/agent-instructions.md`. It replaces
+  `examples/claude-code/`, whose hook blocked file edits until a packet was open.
+- **pre-commit framework hooks** (`.pre-commit-hooks.yaml`): `pocp-gate`, `pocp-trailer` and
+  `pocp-land` do the jobs of pocp's own three git hooks, run with the installed Node.
+  `pocp trailer` reads the commit source pre-commit passes in `PRE_COMMIT_COMMIT_MSG_SOURCE`
+  (merges and squashes get no trailer), `pocp gate` under pre-commit is logged as a commit
+  attempt, and `pocp doctor` recognises hooks pre-commit installed.
+- README: setup for Claude Code, Codex, Cursor and pre-commit. npm keywords for Claude Code,
+  Codex, coding agents, test integrity and GitHub Actions.
+
 ## 1.3.2 (2026-11-18)
 
 Upgrading: if you copied the README's other-CI recipe, the GitLab example or the any-CI

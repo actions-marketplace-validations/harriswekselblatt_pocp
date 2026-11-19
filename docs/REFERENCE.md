@@ -169,7 +169,7 @@ Anything that can run a command can use POCP. Two useful places:
 - **Giving those approvals:** `pocp approvals` lists every open PR across your repositories whose verify fails only for a maintainer's label, with what each label approves (the reason and the test or CI/policy files, with line counts). `pocp approve owner/repo#12` (also `pocp approvals --approve`) shows every approval the PR waits for, each with its diff, and adds all of them only after you type the PR's number once; it refuses to run without a person at a terminal, has no flag that skips the question, and adds nothing if the PR got new commits while you read it. An agent may list what is waiting; it never approves.
 - **Adopting:** `pocp doctor` checks hooks, policy, the CI workflow and its approval labels, Actions access to a private POCP action, branch protection against `ci.required_checks`, and that the first adoption PR carries only `.proof/` and CI files. It only reads.
 
-[`examples/claude-code/`](../examples/claude-code/) has a working PreToolUse hook. The same two calls work from any harness. [`examples/agent-instructions.md`](../examples/agent-instructions.md) is a block to paste into your agent's instructions file so it works with POCP instead of around it.
+The Claude Code plugin ([`plugins/pocp/`](../plugins/pocp/), README "With Claude Code, Codex, Cursor and pre-commit") refuses the commands that go around POCP and teaches the workflow; `pocp check-edit` and `pocp gate --json` work from any harness. [`examples/agent-instructions.md`](../examples/agent-instructions.md) is a block to paste into your agent's instructions file so it works with POCP instead of around it.
 
 ## Misses and the ratchet
 

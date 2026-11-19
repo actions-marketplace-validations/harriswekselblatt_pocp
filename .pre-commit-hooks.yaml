@@ -1,0 +1,37 @@
+# POCP for the pre-commit framework (https://pre-commit.com). Use all three, as pocp's own
+# hooks do: the gate checks the commit, the trailer adds its Proof-Of-Change line, and land
+# records it. In your .pre-commit-config.yaml:
+#
+#   default_install_hook_types: [pre-commit, prepare-commit-msg, post-commit]
+#   repos:
+#     - repo: https://github.com/harriswekselblatt/pocp
+#       rev: v1.4.0
+#       hooks: [{ id: pocp-gate }, { id: pocp-trailer }, { id: pocp-land }]
+#
+# Then `pre-commit install`. Run `pocp init` (without --hooks) for the .proof/ setup.
+- id: pocp-gate
+  name: POCP gate
+  description: Blocks a commit until the checks POCP's rules require have passed on the staged code.
+  entry: pocp gate
+  language: node
+  language_version: system
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]
+- id: pocp-trailer
+  name: POCP proof trailer
+  description: Adds the Proof-Of-Change trailer that points CI at the commit's proof.
+  entry: pocp trailer
+  language: node
+  language_version: system
+  always_run: true
+  stages: [prepare-commit-msg]
+- id: pocp-land
+  name: POCP land
+  description: Records that the commit landed.
+  entry: pocp land --quiet
+  language: node
+  language_version: system
+  pass_filenames: false
+  always_run: true
+  stages: [post-commit]

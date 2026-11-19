@@ -47,6 +47,31 @@ Install the verifier outside the checkout and run it with `node`, as the GitHub 
 
 [docs/QUICKSTART.md](docs/QUICKSTART.md) walks through all of this on a non-JavaScript project.
 
+## With Claude Code, Codex, Cursor and pre-commit
+
+**Claude Code.** Install the plugin:
+
+```text
+/plugin marketplace add harriswekselblatt/pocp
+/plugin install pocp@pocp
+```
+
+In a repository that uses POCP, it stops Claude from going around it: no `git commit --no-verify` or `core.hooksPath` change to skip the gate, no force-push over proven commits, and no approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`). Each refusal tells Claude what to do instead. It also teaches Claude the POCP workflow. It guards against an agent cutting corners, not one set on hiding what it does; CI is still the check.
+
+**Codex, Cursor and other agents.** Paste [examples/agent-instructions.md](examples/agent-instructions.md) into the agent's instructions: `AGENTS.md` for Codex, a file in `.cursor/rules/` for Cursor. Instructions guide the agent; the git hooks and CI enforce.
+
+**pre-commit.** If you manage hooks with [pre-commit](https://pre-commit.com), use POCP's hooks instead of `pocp init --hooks`:
+
+```yaml
+default_install_hook_types: [pre-commit, prepare-commit-msg, post-commit]
+repos:
+  - repo: https://github.com/harriswekselblatt/pocp
+    rev: v1.4.0
+    hooks: [{ id: pocp-gate }, { id: pocp-trailer }, { id: pocp-land }]
+```
+
+Then `pre-commit install`. `pocp doctor` recognises them.
+
 ## Evaluation
 
 A benchmark of POCP 1.2.3 on p-map (JS), boltons (Python) and gjson (Go): 180 cases and 1,260 runs, 68 of the cases held out until the scoring script was locked ([full report](eval/campaign-123/README.md)). The protocol was frozen by hash before the runs. The freeze record isn't public, so that order rests on my account. The raw records and the scripts that score them are public in [pocp-eval](https://github.com/harriswekselblatt/pocp-eval).
