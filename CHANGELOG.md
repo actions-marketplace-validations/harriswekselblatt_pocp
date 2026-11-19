@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.3.2 (2026-11-18)
+
+Upgrading: if you copied the README's other-CI recipe, the GitLab example or the any-CI
+script, replace it: they now install the verifier outside the checkout. `pocp init --github
+--force` pins v1.3.2.
 
 ### Fixed
 
