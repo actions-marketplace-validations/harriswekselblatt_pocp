@@ -1,0 +1,1012 @@
+{
+  "pocp": 1,
+  "id": "p-6c4f0573",
+  "intent": "An approval turns the pocp status green without re-running verify (isolated waits only); approval signal via a private file; inert printed workflow commands; action outputs needs; doctor status-ref check; fix notes checks near their time limit",
+  "touches": [
+    ".github/workflows/pocp.yml",
+    ".proof/config.json",
+    "action.yml",
+    "bin/pocp.js",
+    "src/cli-args.js",
+    "src/cli/shared.js",
+    "src/commands/status-report.js",
+    "src/commands/verify.js",
+    "src/doctor.js",
+    "src/fix.js",
+    "src/status-report.js",
+    "status/action.yml",
+    "test/adopter-workflows.test.js",
+    "test/approval-friction.test.js",
+    "test/e2e-doctor.test.js",
+    "test/fix-near-timeout.test.js",
+    "test/label-freshness.test.js",
+    "test/status-report-approved-wait.test.js",
+    "test/status-report-integrity.test.js",
+    "test/workflow-approvals.test.js",
+    "test/workflow-status.test.js",
+    "test/workflows-hardening.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/adopter-workflows.test.js",
+        "test/approval-friction.test.js",
+        "test/e2e-doctor.test.js",
+        "test/fix-near-timeout.test.js",
+        "test/label-freshness.test.js",
+        "test/status-report-approved-wait.test.js",
+        "test/status-report-integrity.test.js",
+        "test/workflow-status.test.js",
+        "test/workflows-hardening.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/adopter-workflows.test.js, test/approval-friction.test.js, test/e2e-doctor.test.js, test/fix-near-timeout.test.js, test/label-freshness.test.js, test/status-report-approved-wait.test.js, test/status-report-integrity.test.js, test/workflow-status.test.js and 1 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-19T19:51:47.098Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T19:51:48.007Z",
+      "duration_ms": 5352,
+      "stdout_sha256": "5ac773a4f8f978b461ffeb124ab979614cfa6effe08262e740d787d2b5852493",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-2eb7c46c",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T19:51:53.477Z",
+      "duration_ms": 64303,
+      "stdout_sha256": "1b97cb0a87723ed11419c5412509bcaff31cac4fe598c7e672c7832b3b6c3a73",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-a69c60ba",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T19:52:57.898Z",
+      "duration_ms": 382697,
+      "stdout_sha256": "c097f890c9de6da69bf21a55d202f221cd7b349b6034596edc027954261b7b56",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-e3df8e67",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:b93a5edf2f0cf0ca1386092e12de62266aaaf2a15329841576a4eb26dea876a6",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T19:59:20.806Z",
+      "duration_ms": 735676,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; pocp.yml and the example run the identity marker first, named as the reporter expects; events that cannot change the result are skipped, so they use no Actions minutes; label events are filtered only once the pocp status is live (a skipped required check counts as passing): behavior changed, so a person must approve it",
+        "base": "884e305b1cef398b8bd7be9a9859231bde5f4a8a",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/adopter-workflows.test.js",
+            "test/approval-friction.test.js",
+            "test/e2e-doctor.test.js",
+            "-test/fix-near-timeout.test.js",
+            "test/label-freshness.test.js",
+            "-test/status-report-approved-wait.test.js",
+            "test/status-report-integrity.test.js",
+            "test/workflow-approvals.test.js",
+            "test/workflow-status.test.js",
+            "test/workflows-hardening.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 4527
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 42631
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 351089,
+              "failed_tests": [
+                "the example reporter never checks out or runs pull request code",
+                "pocp.yml asks verify to check label freshness, with a read-only token for verify alone",
+                "pocp.yml and the example run the identity marker first, named as the reporter expects",
+                "events that cannot change the result are skipped, so they use no Actions minutes",
+                "label events are filtered only once the pocp status is live (a skipped required check counts as passing)"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/fix-near-timeout.test.js",
+            "test/status-report-approved-wait.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/fix-near-timeout.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 334968
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 735676,
+        "timings": {
+          "setup_ms": 742,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 399162,
+            "run_ms": 398247,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 335657,
+            "run_ms": 334968,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 755,
+            "count": 2
+          },
+          "copy": {
+            "ms": 973,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 747,
+            "count": 7
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T21:14:32.638Z",
+      "duration_ms": 8278,
+      "stdout_sha256": "78551ca1516a93fbbd635c65b7532d7c1166accbb25757f51c5b4d6e2adbfbae",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-b4ec4788",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T21:14:41.133Z",
+      "duration_ms": 98835,
+      "stdout_sha256": "c24caee0bcd6beeee02e19f1b3051281da17f7a3dd424964ca2841cc758cbcff",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-bc4fc55d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-19T21:16:20.123Z",
+      "duration_ms": 600029,
+      "stdout_sha256": "bb91eb172a65a94540fe18a0cc34478de5dabe6fda1c3789a0dc3c12e052c2b9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-298e78d9",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:74ba9acfec2bbaf0f5546734a33ce84a314a6cacdac7c1933d07a10b28f2343b",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T21:26:20.315Z",
+      "duration_ms": 1384505,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green; each approval marker step runs exactly when that approval reaches verify; green never depends on the code output: only the verify step's own outcome: behavior changed, so a person must approve it",
+        "base": "884e305b1cef398b8bd7be9a9859231bde5f4a8a",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/adopter-workflows.test.js",
+            "test/approval-friction.test.js",
+            "test/e2e-doctor.test.js",
+            "-test/fix-near-timeout.test.js",
+            "test/label-freshness.test.js",
+            "-test/status-report-approved-wait.test.js",
+            "test/status-report-integrity.test.js",
+            "test/workflow-status.test.js",
+            "test/workflows-hardening.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2531
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 45605
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 477454,
+              "failed_tests": [
+                "the example reporter never checks out or runs pull request code",
+                "pocp.yml asks verify to check label freshness, with a read-only token for verify alone",
+                "exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green",
+                "each approval marker step runs exactly when that approval reaches verify",
+                "green never depends on the code output: only the verify step's own outcome"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/fix-near-timeout.test.js",
+            "test/status-report-approved-wait.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/fix-near-timeout.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 349805
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 506030
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 1384505,
+        "timings": {
+          "setup_ms": 705,
+          "new_baseline": {
+            "wall_ms": 350061,
+            "run_ms": 349805,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 526597,
+            "run_ms": 525590,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 506992,
+            "run_ms": 506030,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 951,
+            "count": 2
+          },
+          "copy": {
+            "ms": 1199,
+            "count": 6
+          },
+          "cleanup": {
+            "ms": 1039,
+            "count": 8
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-19T21:49:40.003Z",
+      "duration_ms": 600055,
+      "stdout_sha256": "d057cc28747e6323e47c35bb3b2a5c8d98515cd930e9f689db1f60004f000f55",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-66246024",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T22:06:37.748Z",
+      "duration_ms": 5324,
+      "stdout_sha256": "b3b300eb61296c46dfaeb48ba534e8754fb4d32bbd2bc1a473df65d4fe4db22b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-faea42df",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T22:06:43.237Z",
+      "duration_ms": 88444,
+      "stdout_sha256": "44d0b60f66fdb172c1e48abaeb2e6267a2fd41ee3c638a4bb63b276d8f8250db",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-5c6cf3b2",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T22:08:11.828Z",
+      "duration_ms": 648446,
+      "stdout_sha256": "530cd51d6ab425f63342000d5a0cefe86222b9802bec39e67200279f02a22925",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-fc734236",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:74ba9acfec2bbaf0f5546734a33ce84a314a6cacdac7c1933d07a10b28f2343b",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T22:19:00.438Z",
+      "duration_ms": 1060795,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "baseline-red",
+        "passed": false,
+        "summary": "the old tests already fail at the base (\"npm test --silent\" exit 1), so the guard can't tell whether this change altered behavior: a person must approve it. Different tests fail: at the base a command that exits before the limit is not timed out even when cleanup runs past the limit, but on the new code with the old tests the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green; each approval marker step runs exactly when that approval reaches verify; green never depends on the code output: only the verify step's own outcome, which the base's failure doesn't explain. The guard compares whole checks, not single tests, so it can't decide this automatically: a person must review the tests that fail only on the new code",
+        "base": "884e305b1cef398b8bd7be9a9859231bde5f4a8a",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/adopter-workflows.test.js",
+            "test/approval-friction.test.js",
+            "test/e2e-doctor.test.js",
+            "-test/fix-near-timeout.test.js",
+            "test/label-freshness.test.js",
+            "-test/status-report-approved-wait.test.js",
+            "test/status-report-integrity.test.js",
+            "test/workflow-status.test.js",
+            "test/workflows-hardening.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2642
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 55057
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 426472,
+              "failed_tests": [
+                "the example reporter never checks out or runs pull request code",
+                "pocp.yml asks verify to check label freshness, with a read-only token for verify alone",
+                "exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green",
+                "each approval marker step runs exactly when that approval reaches verify",
+                "green never depends on the code output: only the verify step's own outcome"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/fix-near-timeout.test.js",
+            "test/status-report-approved-wait.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/fix-near-timeout.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 573689,
+              "failed_tests": [
+                "a command that exits before the limit is not timed out even when cleanup runs past the limit"
+              ]
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "adjudication": {
+          "automatic": false,
+          "reason": "baseline-red",
+          "failing_on_new_code": [
+            "the example reporter never checks out or runs pull request code",
+            "pocp.yml asks verify to check label freshness, with a read-only token for verify alone",
+            "exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green",
+            "each approval marker step runs exactly when that approval reaches verify",
+            "green never depends on the code output: only the verify step's own outcome"
+          ],
+          "failing_at_base": [
+            "a command that exits before the limit is not timed out even when cleanup runs past the limit"
+          ],
+          "same_tests": false
+        },
+        "duration_ms": 1060795,
+        "timings": {
+          "setup_ms": 639,
+          "new_baseline": {
+            "wall_ms": 1,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 485166,
+            "run_ms": 484171,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 574604,
+            "run_ms": 573689,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 685,
+            "count": 2
+          },
+          "copy": {
+            "ms": 898,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 1665,
+            "count": 7
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-19T19:51:47.098Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T19:51:47.098Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-19T20:11:36.718Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566"
+    },
+    {
+      "at": "2026-11-19T20:11:37.124Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566"
+    },
+    {
+      "at": "2026-11-19T21:14:31.357Z",
+      "event": "touches_widened",
+      "added": [
+        "bin/pocp.js"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T21:14:31.357Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
+    },
+    {
+      "at": "2026-11-19T21:14:31.357Z",
+      "event": "requirements_synced",
+      "added": [
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-19T21:26:20.245Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5"
+    },
+    {
+      "at": "2026-11-19T21:49:25.150Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5"
+    },
+    {
+      "at": "2026-11-19T21:49:25.210Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5"
+    },
+    {
+      "at": "2026-11-19T21:49:25.672Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5"
+    },
+    {
+      "at": "2026-11-19T21:59:40.151Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5"
+    },
+    {
+      "at": "2026-11-19T22:06:37.090Z",
+      "event": "touches_widened",
+      "added": [
+        ".proof/config.json"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T22:36:42.235Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191"
+    },
+    {
+      "at": "2026-11-19T22:36:42.399Z",
+      "event": "state",
+      "from": "failed",
+      "to": "open",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191"
+    },
+    {
+      "at": "2026-11-19T22:36:43.394Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:b93a5edf2f0cf0ca1386092e12de62266aaaf2a15329841576a4eb26dea876a6",
+      "subject": "sha256:c64d1556f438e418903adced8b104b2f8790355d55e2f939b11d09642f05b566",
+      "by": "harriswekselblatt",
+      "at": "2026-11-19T20:11:37.124Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; pocp.yml and the example run the identity marker first, named as the reporter expects; events that cannot change the result are skipped, so they use no Actions minutes; label events are filtered only once the pocp status is live (a skipped required check counts as passing): behavior changed, so a person must approve it"
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:74ba9acfec2bbaf0f5546734a33ce84a314a6cacdac7c1933d07a10b28f2343b",
+      "subject": "sha256:e165238ab65f1148a3c43817258fe4fd388b939f9f1bd28c87ea6bc4c95485e5",
+      "by": "harriswekselblatt",
+      "at": "2026-11-19T21:49:25.672Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green; each approval marker step runs exactly when that approval reaches verify; green never depends on the code output: only the verify step's own outcome: behavior changed, so a person must approve it"
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:74ba9acfec2bbaf0f5546734a33ce84a314a6cacdac7c1933d07a10b28f2343b",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "by": "harriswekselblatt",
+      "at": "2026-11-19T22:36:43.394Z",
+      "to": "ci-approval",
+      "reason": "the old tests already fail at the base (\"npm test --silent\" exit 1), so the guard can't tell whether this change altered behavior: a person must approve it. Different tests fail: at the base a command that exits before the limit is not timed out even when cleanup runs past the limit, but on the new code with the old tests the example reporter never checks out or runs pull request code; pocp.yml asks verify to check label freshness, with a read-only token for verify alone; exactly one of verified / waiting / inconclusive / failed runs, and only the step's own success is green; each approval marker step runs exactly when that approval reaches verify; green never depends on the code output: only the verify step's own outcome, which the base's failure doesn't explain. The guard compares whole checks, not single tests, so it can't decide this automatically: a person must review the tests that fail only on the new code"
+    }
+  ]
+}

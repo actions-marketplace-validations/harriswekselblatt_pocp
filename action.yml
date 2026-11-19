@@ -64,6 +64,15 @@ outputs:
   code:
     description: "verify's exit code, with exit-detail: 4 waiting for approval, 5 inconclusive, anything else failed. Not proof of verified: only the step's outcome is."
     value: ${{ steps.verify.outputs.code }}
+  needs:
+    description: "The approval labels verify waits for, comma-separated (empty when it waits for none). For the pocp status's text only: a line printed during the step can also set it. approvable_needs is the list that decides."
+    value: ${{ steps.verify.outputs.needs }}
+  approvable:
+    description: "'true' when verify waits for approvals only and `approvable_needs` lists every one, so those labels, all given, make the pocp status green without running verify again (the approvable step in examples/github/pocp.yml). Only with isolate 'true' and the bundled pocp: verify writes it to a file in the runner's temp folder, which isolated checks can't reach, and a separate step reads it, so nothing printed during verify can set it. Otherwise empty."
+    value: ${{ steps.mark.outputs.approvable }}
+  approvable_needs:
+    description: "With approvable: the labels the wait needs, from the same file (comma-separated)."
+    value: ${{ steps.mark.outputs.needs }}
 runs:
   using: composite
   steps:
@@ -89,7 +98,9 @@ runs:
         LABEL_FRESHNESS: ${{ inputs.label-freshness }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         POCP_GITHUB_TOKEN: ${{ inputs.label-freshness == 'github' && inputs.github-token || '' }}
+        APPROVAL_FILE: ${{ runner.temp }}/pocp-approvable
       run: |
+        rm -f "$APPROVAL_FILE"
         if [ -n "$RANGE_INPUT" ]; then RANGE=$RANGE_INPUT
         elif [ -n "$PR_BASE" ] && [ -n "$PR_HEAD" ]; then RANGE="$PR_BASE..$PR_HEAD"
         else
@@ -125,6 +136,8 @@ runs:
         # pocp-command is split into words, without globbing or any other shell expansion.
         cmd=()
         if [ -n "$POCP_CMD" ]; then read -r -a cmd <<< "$POCP_CMD"; fi
+        # The approval file (read by the Approval file step below): only the bundled pocp, isolated.
+        if [ "$ISOLATE" = "true" ] && [ "${#cmd[@]}" -eq 0 ]; then args+=("--approval-file=$APPROVAL_FILE"); fi
         run_verify() {
           if [ "${#cmd[@]}" -gt 0 ]; then "${cmd[@]}" "$@"
           else node "$GITHUB_ACTION_PATH/bin/pocp.js" "$@"; fi
@@ -141,4 +154,21 @@ runs:
           exit "$code"
         else
           run_verify "${args[@]}"
+        fi
+    # What verify's approval file says: written by verify only when the checks ran isolated and
+    # the wait is for approvals only, in the runner's temp folder, which isolated checks can't
+    # reach. This step prints nothing of the pull request's, so nothing printed during the
+    # Verify step can set its outputs.
+    - name: Approval file
+      id: mark
+      if: always() && inputs.isolate == 'true'
+      shell: bash
+      env:
+        APPROVAL_FILE: ${{ runner.temp }}/pocp-approvable
+      run: |
+        if [ -f "$APPROVAL_FILE" ]; then
+          labels=$(head -n 1 "$APPROVAL_FILE")
+          if printf '%s' "$labels" | grep -Eqx 'pocp-approve-[a-z]+(,pocp-approve-[a-z]+)*'; then
+            { echo "approvable=true"; echo "needs=$labels"; } >> "$GITHUB_OUTPUT"
+          fi
         fi

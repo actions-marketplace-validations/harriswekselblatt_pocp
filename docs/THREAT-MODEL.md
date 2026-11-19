@@ -110,8 +110,10 @@ What POCP does in every mode:
   its id must hold exactly the expected content.
 - The example workflows check out with `persist-credentials: false`, so no token is left in
   `.git/config`, and run with read-only permissions and no secrets.
-- "Verified" comes only from verify's exit status, never from a step output (see "How the job
-  reports the verdict").
+- "Verified" comes only from verify's exit status, never from a step output, with one exception:
+  a wait for a test-change approval only, in a run whose checks were isolated, turns green once
+  the label is given by a writer. That comes from a file verify writes where isolated checks
+  can't reach, never from a step output (see "How the job reports the verdict").
 
 ### The isolated worker (`verify --isolate`, the hosted secure profile)
 
@@ -224,6 +226,26 @@ Under isolation a check can't reach them; without it, it can. Either way, the ex
 and POCP's own never take "verified" from a step output. The verify step exits with verify's
 exit code, and a `verified` step runs only when that step succeeded; the `code` output only
 chooses between waiting, inconclusive and failed.
+
+One more thing counts toward green, and only under isolation: a wait for `pocp-approve-tests`
+only (plus `pocp-approve-workflow`, which the reporter checks itself). verify
+(`--approval-file`) then writes the labels to a file in the runner's temp folder, which an
+isolated check can't reach: the isolation probe fails verify if it could, and verify never
+falls back to running unisolated. A separate step (`mark`, or the action's "Approval file"
+step) reads the file and sets the `approvable` and `needs-*` steps from it. It prints nothing
+of the pull request's, so nothing printed during verify can set its outputs. (A step's outputs
+can also be set by a line the step prints, `::set-output`, and verify prints what a pull request
+wrote, file names included, which may hold newlines. So the verify step's own outputs never
+decide this, and pocp makes every printed line that would start with "::" inert.) In POCP's own
+workflow the `plan` step decides isolation from the base's verifier before any pull-request code
+runs; in the example, the action's `isolate` input does. Once the label is given by a writer
+after the head's first run, the reporter turns the wait green without running verify again
+(docs/STATUS.md). The label accepts exactly the test-change findings that run listed, so a
+re-run with it would find the same checks passing on the same code. A policy approval is not
+taken this way (it changes which rules and signers judge the run), nor an inconclusive one (a
+check that didn't finish is decided by one that does). Without isolation, with `--ci-results`
+(which trusts what ran before verify), or with a custom `pocp-command`, there is no file, and an
+approval re-runs verify as before.
 
 **Faster, trusting mode.** Running the tests first with `pocp ci-run` and passing
 `--ci-results` to verify skips the re-run of any check with a passing record. The tests run
