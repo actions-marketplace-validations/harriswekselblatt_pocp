@@ -181,7 +181,7 @@ test('the pocp status names every label and the one command, and stays pending',
   const d = decideStatus(facts({ runs: [job('waiting', ['pocp-approve-tests', 'pocp-approve-policy'])] }));
   assert.equal(d.state, 'pending');
   assert.equal(d.description, 'Waiting for approval. Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-policy');
-  // A changed workflow: its label and everything verify asked for, at once (lx_ef440d1e).
+  // A changed workflow: its label and everything verify asked for, at once.
   const wf = decideStatus(facts({ files: [{ filename: '.github/workflows/pocp.yml' }], runs: [job('waiting', ['pocp-approve-tests'])] }));
   assert.equal(wf.state, 'pending');
   assert.equal(wf.description, 'Waiting for approval. Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-workflow');
