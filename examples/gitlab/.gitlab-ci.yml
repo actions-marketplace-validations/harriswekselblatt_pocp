@@ -14,8 +14,11 @@ pocp:
     POCP_REF: "v1.3.1"                # the POCP release (or commit) you run, pinned
   script:
     # ▶ Install your toolchain and dependencies (without running install scripts where you can).
+    # The verifier is installed outside the checkout: npx in it would run whatever pocp the
+    # merge request's package.json, .npmrc or node_modules supplies.
+    - npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts "github:harriswekselblatt/pocp#${POCP_REF}"
     - >
-      npx --yes "github:harriswekselblatt/pocp#${POCP_REF}" verify --rerun --require-coverage
+      node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify --rerun --require-coverage
       "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
       --accept-policy-change="${POCP_ACCEPT_POLICY:-false}" --accept-test-change="${POCP_ACCEPT_TESTS:-false}"
 # Approvals: after reviewing a change that loosens rules or edits existing tests, a maintainer

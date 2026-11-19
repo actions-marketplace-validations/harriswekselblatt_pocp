@@ -132,8 +132,8 @@ then approve it for that exact head:
 pocp verify --require-coverage --rerun main..HEAD --accept-test-change $(git rev-parse HEAD)
 ```
 
-(or `--accept-policy-change`). The output still lists the test guard's re-run as failed; the
-approval is what lets it through, and verify then prints `verified`.
+(or `--accept-policy-change`). verify then prints `verified`. It doesn't say an approval was
+used, so the record of what you approved is the command you ran.
 
 **A local approval is a flag, not a person.** Anything that can run commands on your machine,
 an agent included, can pass `--accept-*` itself, just as it can run `git commit --no-verify`. It
@@ -200,8 +200,13 @@ Verify every pull request. verify re-runs each required check itself, on the exa
 by the base branch's rules; your existing test step stays as it is:
 
 ```bash
-pocp verify origin/main..HEAD --require-coverage --rerun
+npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.3.1
+node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify origin/main..HEAD --require-coverage --rerun
 ```
+
+Install the verifier outside the checkout and run it with `node`, as the GitHub workflow does.
+Not `npx pocp` from inside it: the pull request controls the checkout's `package.json`, `.npmrc`
+and `node_modules`, so npx would run whatever `pocp` the pull request ships.
 
 A faster mode runs your tests once, through `pocp ci-run`, and passes `--ci-results` to verify.
 It trusts everything that ran earlier in the job: a new test file can write a passing result

@@ -1,6 +1,6 @@
 # POCP 1.2.3 evaluation
 
-*Preregistered benchmark, run November 10–11, 2026. Full tables: [REPORT.md](REPORT.md). Protocol: [PREREGISTRATION.md](PREREGISTRATION.md). Raw records and harness: [pocp-eval/results/campaign-123](https://github.com/harriswekselblatt/pocp-eval/tree/87c8cddaba9322255184800ea344eca78362f656/results/campaign-123).*
+*Benchmark run November 10–11, 2026, under a preregistered protocol (self-attested: see Limitations). Full tables: [REPORT.md](REPORT.md). Protocol: [PREREGISTRATION.md](PREREGISTRATION.md). Raw records and harness: [pocp-eval/results/campaign-123](https://github.com/harriswekselblatt/pocp-eval/tree/87c8cddaba9322255184800ea344eca78362f656/results/campaign-123).*
 
 ## Summary
 
@@ -8,7 +8,7 @@ POCP is a CI gate for pull requests that edit tests. This evaluation asks two qu
 
 - **Harmful changes:** 48 test-weakening changes were built so that each one passes the project's own checks. Plain CI accepted all 48. POCP accepted none. In both of its modes, it held all 48 for review. For each one it also ran the old tests against the new code, and they failed, which shows the tested behavior had changed. POCP blocks the merge, and a maintainer makes the final decision.
 - **Honest changes:** in deep mode, POCP accepted 78–82% of 108 legitimate changes on each of five random seeds. Leaving out the 24 hardest cases, honest changes written to look like the harmful ones, it accepted 86–88%. Fast mode, the default, accepted 27%, because by design it sends every test edit to a maintainer.
-- **Holdout:** 68 of the 180 cases were sealed until development results were validated and the scoring script was locked. The sealed cases showed the same pattern.
+- **Holdout:** 68 of the 180 cases were held out, unrun, until development results were validated and the scoring script was locked. The sealed cases showed the same pattern.
 
 ## How POCP decides
 
@@ -21,7 +21,7 @@ For each pull request POCP returns **accept**, **review** (a maintainer must app
 
 **Projects.** Three open-source libraries, pinned to fixed commits: p-map (JavaScript), boltons (Python) and gjson (Go).
 
-**Harmful changes (48).** Each one weakens what the tests check while keeping them green. They cover four parts of a test suite (assertions, shared test helpers, fixtures, and runner configuration), with 12 each, spread over four behavioral contracts and the three libraries. Each is judged against a focused check: the specific test command the change was meant to slip past.
+**Harmful changes (48).** Each one plants a one-line bug in the library and then weakens what the tests check so they stay green. They cover four parts of a test suite (assertions, shared test helpers, fixtures, and runner configuration), with 12 each, spread over four behavioral contracts and the three libraries. Each part has one scripted weakening: delete the assertion, empty the helper, overwrite the fixture with the buggy output, or make the check script exit 0. The harness admits a case only if the old checks fail on the bugged code. Each is judged against a focused check: the specific test command the change was meant to slip past.
 
 **Honest changes (108, 36 per library).** Each is judged against the library's full native test suite:
 - 67 commits drawn from the libraries' histories;
@@ -30,14 +30,14 @@ For each pull request POCP returns **accept**, **review** (a maintainer must app
 
 The changes break down as: 31 add tests, 26 edit tests or setup without changing what they check, 24 touch source code only, 20 change behavior together with its tests, and 7 are other changes.
 
-**Provenance.** The cases were built and labeled by AI coding agents (Claude and Codex) under my direction. Labels were assigned without access to POCP's output. Three further independent reviewers labeled all 48 harmful cases and a seeded sample of 27 honest cases, with identifiers removed. Their labels agreed with the originals on 75 of 75. The 17 constructed cases were built after earlier diagnostic runs had been seen, so they are tagged and can be excluded (see Sensitivity).
+**Provenance.** The cases were built and labeled by AI coding agents (Claude and Codex) under my direction. Labels were assigned without access to POCP's output. For a second, blind review, three fresh AI reviewer agents each labeled a third of 75 shuffled items with identifiers removed: all 48 harmful cases and a seeded sample of 27 honest ones. Their harmful-or-legitimate labels agreed with the originals on 75 of 75 ([adjudication](https://github.com/harriswekselblatt/pocp-eval/blob/87c8cddaba9322255184800ea344eca78362f656/results/campaign-123/audit/ADJUDICATION-R1.md)). The 17 constructed cases were built after earlier diagnostic runs had been seen, so they are tagged and can be excluded (see Sensitivity).
 
 **Diagnostic set (24).** The remaining paired controls, of the same kind as the 24 above but judged against the focused check. They are reported separately and are not part of the headline numbers.
 
 **Runs.** Each of the 180 cases ran under plain CI, POCP fast, and POCP deep at five fixed seeds (11, 29, 47, 71, 101). That makes 1,260 runs. All ran locally on one machine, sequentially, with no network access and no language model involved.
 
 **Controls against tuning.** Several measures kept results from shaping the analysis:
-- The protocol, case labels, runner, validator and scoring script were frozen by SHA-256 before any counted run. Two amendments, both recorded in the preregistration, were made before any counted result was read.
+- The protocol, case labels and runner were frozen by SHA-256 before any counted run. Two amendments, recorded in the preregistration, were made about 15 minutes into the development run: one replaced the validator, and one froze the scoring script, which was written while that run was in progress, after seeing only its first few progress lines and none of the result tables.
 - 68 cases (476 runs) were held out. They stayed unrun until all development runs passed validation and the scoring script was locked by hash. 64 of the 72 honest development cases had been through earlier diagnostic runs of POCP. The 36 honest holdout cases were drawn only from changes POCP had never run on.
 - Every run writes an append-only record with hashes of its artifacts. A validator rejects missing, duplicate or altered records, and any record whose outcome contradicts its own evidence.
 - Before the holdout, harness canaries confirmed the runner classifies known passing, failing, skipped, crashing and timed-out checks correctly, and that the validator catches tampered records.
@@ -79,8 +79,10 @@ Legitimate edits written to resemble the harmful changes, judged against the foc
 
 ## Limitations
 
-- **Designed attacks.** The harmful changes were built by hand and do not measure attacks found in the wild. Only three libraries were tested.
-- **Holdout scope.** It sealed individual cases, not new libraries or new attack types. It shows the results hold on unseen cases of the same kinds.
+- **Designed attacks.** The harmful changes come from four scripted edits, built by the same author and agents as POCP, and do not measure attacks found in the wild. Each one also breaks the code, so the old tests fail on it by construction: the result shows POCP's old-tests check works across the four parts of a suite, not that it catches weakenings that leave the old tests passing. No harmful case reached deep mode's planted bugs. The harness also told POCP which files were the benchmark's test, fixture and runner script (`guard.extra_test_globs`, `extra_runner_globs`), so its own recognition of those files wasn't tested; the 12 helper cases were found by POCP itself, through the tests' imports. Only three libraries were tested.
+- **A simple rule roughly ties fast mode.** In a check made after the fact, outside the frozen scoring, holding every pull request that edits an existing test, helper, fixture or runner file accepted about as many honest changes as fast mode. Fast mode's difference from that rule is the evidence it gives the reviewer, not its accept rate.
+- **The preregistration is self-attested.** The freeze was committed to the study's own repository, which isn't public. The published protocol, without its Amendments section, hashes to the frozen value in the run records (`5bbdc50f…`), but nothing public shows it existed before the runs.
+- **Holdout scope.** It held out individual cases, not new libraries or new attack types. It shows the results hold on unseen cases of the same kinds.
 - **Two judging setups.** Harmful changes were judged against a focused check, honest changes against each library's full suite. This matches how each kind of change is usually checked, but the two rates are not directly comparable.
 - **Seed variance.** As noted above, deep-mode outcomes can vary from one seed to another.
 - **Timing.** Run times are reported in [REPORT.md](REPORT.md) and not summarized here. They were measured on one laptop and are indicative only.

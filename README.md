@@ -2,7 +2,7 @@
 
 POCP checks that the tests a pull request was supposed to pass actually ran, on the exact code being merged, under rules the pull request can't change. When a pull request edits existing tests, it runs the old tests on the new code and holds risky test edits for a maintainer. It works with any test command and any language, and needs only Node 20 or later, git and a POSIX shell.
 
-It doesn't prove your code is correct. It has one preregistered evaluation so far ([below](#evaluation)).
+It doesn't prove your code is correct. It has one evaluation so far ([below](#evaluation)).
 
 ![Terminal demo: an agent breaks add() and edits the test so npm test passes; pocp verify reports that the old test fails on the new code and holds the change for a maintainer; the agent puts the test back, fixes add(), and verify passes](docs/demo.svg)
 
@@ -39,22 +39,29 @@ npx pocp init --hooks --github
 **On another CI** (GitLab, Jenkins, plain shell). In CI: keep your existing test step, and add:
 
 ```bash
-npx pocp verify origin/main..HEAD --require-coverage --rerun
+npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.3.1
+node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify origin/main..HEAD --require-coverage --rerun
 ```
+
+Install the verifier outside the checkout and run it with `node`, as the GitHub workflow does. Not `npx pocp` from inside it: the pull request controls the checkout's `package.json`, `.npmrc` and `node_modules`, so npx would run whatever `pocp` the pull request ships.
 
 [docs/QUICKSTART.md](docs/QUICKSTART.md) walks through all of this on a non-JavaScript project.
 
 ## Evaluation
 
-A preregistered benchmark of POCP 1.2.3 across p-map (JS), boltons (Python) and gjson (Go): 180 cases and 1,260 runs, with a sealed holdout ([full report](eval/campaign-123/README.md)).
+A benchmark of POCP 1.2.3 on p-map (JS), boltons (Python) and gjson (Go): 180 cases and 1,260 runs, 68 of the cases held out until the scoring script was locked ([full report](eval/campaign-123/README.md)). The protocol was frozen by hash before the runs. The freeze record isn't public, so that order rests on my account. The raw records and the scripts that score them are public in [pocp-eval](https://github.com/harriswekselblatt/pocp-eval).
 
-- **Harmful changes:** plain CI accepted all 48 designed test-cheats. POCP accepted none. In both modes it held every one for a person's review, each with a completed check showing the tested behavior changed. This was measured against corner-cutting changes; deliberate deception across pull requests is out of scope ([threat model](docs/THREAT-MODEL.md)).
-- **Honest changes:** deep mode accepts 78–82% of 108 legitimate changes per seed, and 86–88% without the 24 paired controls built to resemble cheating. It sends the rest to review. Fast mode reviews every test edit by design, so it accepts 27%. Reducing that friction is the next piece of work.
+- **Harmful changes (48):** each breaks the code, then hides it with one of four scripted edits to the test that caught it: delete the assertion, empty the assertion helper, overwrite the expected-value fixture, or make the check script exit 0. Plain CI accepted all 48. POCP accepted none: in both modes it held each one for a person, with the old tests failing on the new code. That shows the old-tests check works on each part of a suite in three languages. It doesn't measure cheats that leave the old tests passing (no harmful case reached deep mode's planted bugs), or deliberate deception across pull requests ([threat model](docs/THREAT-MODEL.md)).
+- **Honest changes (108):** deep mode accepts 78–82% per seed, and 86–88% without the 24 paired controls built to resemble cheating. It sends the rest to review. Fast mode reviews every test edit by design, so it accepts 27%, about what a rule holding every test-file edit would. Reducing that friction is the next piece of work.
+
+## Why not just require review of test files?
+
+Fast mode is close to that rule, with two differences. The reviewer gets evidence, not just a diff: POCP runs the old tests on the new code and names any that now fail. And what must pass is set by the base branch, so a pull request can't get green by changing its rules, its check command, its test script or its runner config. Deep mode goes further: its planted bugs let most honest test edits through with no person.
 
 ## Documentation
 
 - [How it works](docs/HOW-IT-WORKS.md): what it catches, fast and deep modes, and what it doesn't do.
-- [Evaluation of 1.2.3](eval/campaign-123/README.md): the preregistered benchmark. [Earlier results](docs/RESULTS.md): scripted suites and pilots.
+- [Evaluation of 1.2.3](eval/campaign-123/README.md): the benchmark. [Earlier results](docs/RESULTS.md): scripted suites and pilots.
 - [Reference](docs/REFERENCE.md): rules, checks, CI options, approvals, signed proofs.
 - [Threat model](docs/THREAT-MODEL.md): what each record does and doesn't prove.
 - [SPEC.md](SPEC.md): the protocol. [Reviewing POCP](docs/REVIEWING.md): a guide for reviewers.

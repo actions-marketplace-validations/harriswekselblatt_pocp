@@ -32,9 +32,36 @@ export function buildEnv({ mode = 'inherit', allow = [], extra = {}, keepCiFiles
   // repository, index or config. Git sets GIT_INDEX_FILE (and sometimes GIT_DIR) for the commit
   // hooks, so a check run from a hook that runs git in a temporary repository would otherwise
   // write into the committer's index.
+  dropNpmLaunch(env);
   const out = { ...env, ...extra };
   for (const k of Object.keys(out)) if (isGitRedirectVar(k)) delete out[k];
   return out;
+}
+
+// Started by npm or npx (`npx pocp verify`), pocp inherits what npm sets up for the program it
+// starts, and in a pull request's checkout that is the pull request's: the config npm read, the
+// project's .npmrc included, as npm_config_* and its node-options as NODE_OPTIONS; and, in front
+// of PATH, the checkout's node_modules/.bin (and each one above it). Passed on, a node-options
+// or a committed node_modules/.bin/npm would reach every check, the old tests the guard puts
+// back included. Checks get what they would if pocp were started with node directly: a check
+// that runs npm reads its own copy's .npmrc and puts its own node_modules/.bin on PATH. A
+// NODE_OPTIONS or PATH the caller set stays, except under pnpm, which sets NODE_OPTIONS from
+// .npmrc without saying so (and NODE_PATH): there neither can be told apart, so both go.
+function dropNpmLaunch(env, launcher = process.env) {
+  if (launcher.npm_command === undefined) return;
+  const fromConfig = launcher.npm_config_node_options;
+  if (/^pnpm\//.test(launcher.npm_config_user_agent || '')) {
+    delete env.NODE_OPTIONS;
+    delete env.NODE_PATH;
+  } else if (fromConfig !== undefined && env.NODE_OPTIONS === fromConfig) delete env.NODE_OPTIONS;
+  for (const k of Object.keys(env)) if (k.startsWith('npm_config_') || k.startsWith('pnpm_config_')) delete env[k];
+  if (env.PATH) {
+    const dirs = env.PATH.split(':');
+    const npmAdded = (d) => /\/node_modules\/\.bin\/?$/.test(d) || /\/node-gyp-bin\/?$/.test(d);
+    let i = 0;
+    while (i < dirs.length && npmAdded(dirs[i])) i++;
+    env.PATH = dirs.slice(i).join(':');
+  }
 }
 
 // Environment variables that point git at another repository, index, object store or config
