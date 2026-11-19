@@ -39,7 +39,7 @@ npx pocp init --hooks --github
 **On another CI** (GitLab, Jenkins, plain shell). In CI: keep your existing test step, and add:
 
 ```bash
-npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.3.1
+npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.3.2
 node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify origin/main..HEAD --require-coverage --rerun
 ```
 
