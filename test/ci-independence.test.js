@@ -129,9 +129,13 @@ function snippetAfter(file, marker) {
   assert.ok(at !== -1, `${file}: "${marker}" not found`);
   const m = /```(?:bash|sh)\n([\s\S]*?)```/.exec(text.slice(at));
   assert.ok(m, `${file}: no shell block after "${marker}"`);
-  // A project-local install runs "npx pocp"; here pocp is provided on PATH, and npx would
-  // look it up on the npm registry instead.
-  return m[1].replace(/\bnpx pocp\b/g, 'pocp');
+  // The recipe installs a released pocp from npm and runs it with node; here the pocp under
+  // test is provided on PATH instead, so the test never runs a published version (or one not
+  // yet published) and never writes outside its own folders.
+  return m[1]
+    .replace(/^npm install --prefix "\$HOME\/\.pocp"[^\n]*\n/m, '')
+    .replace(/node "\$HOME\/\.pocp\/node_modules\/proof-of-change\/bin\/pocp\.js"/g, 'pocp')
+    .replace(/\bnpx pocp\b/g, 'pocp');
 }
 
 const codeLines = (text) => text.split('\n').filter((l) => !/^\s*#/.test(l)).map((l) => l.replace(/\s#.*$/, ''));
