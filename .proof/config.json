@@ -33,6 +33,7 @@
       ".github/actions/**",
       "action.yml",
       "action.yaml",
+      "status/action.yml",
       ".gitlab-ci.yml",
       ".gitlab/ci/**",
       ".circleci/**",

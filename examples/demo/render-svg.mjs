@@ -40,6 +40,8 @@ const kt = (t) => Math.min(1, Math.max(0, t / total)).toFixed(4);
 
 function color(text) {
   if (text.startsWith('# ')) return '#8b949e';
+  // A wait for a maintainer's label is yellow, not red: nothing failed.
+  if (text.startsWith('NOT verified yet: waiting')) return '#e3b341';
   if (/^(✗|NOT verified|\s+BAD|\s+behavior changed)/.test(text)) return '#ff7b72';
   if (/^(✓|verified:|\s+rerun passed)/.test(text)) return '#7ee787';
   if (/^\s+((\[\w+\] )?next:|and adds )/.test(text)) return '#e3b341';

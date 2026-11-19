@@ -258,7 +258,7 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
           ? 'no rule requires a check covering these files, so nothing independent can run the old tests (add a requirement covering them)'
           : `the mechanical check did not pass: ${r.summary}`;
       const detail = `existing tests or test setup changed (${guard.files.join(', ')}) in the pull request's net change ${span}; ${why}. Re-run with --accept-test-change once a person approves`;
-      const testApproval = { approval: 'tests', files: guard.files };
+      const testApproval = { approval: 'tests', files: guard.files, ...(r?.result ? { guard: r.result } : {}) };
       const netUnfinished = Boolean(guardRerun && r && !r.passed && r.result?.unfinished);
       if (guard.mode === 'block' && !independent && netUnfinished) {
         if (!options.acceptInconclusive) finding('test_inconclusive', `existing tests or test setup changed (${guard.files.join(', ')}) in the pull request's net change ${span} and the check didn't finish: ${r.summary}. Re-run verify, or re-run with --accept-inconclusive once a person approves`, { files: guard.files });

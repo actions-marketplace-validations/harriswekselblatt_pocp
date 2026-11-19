@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+Fewer, plainer approvals for a maintainer who doesn't read code. Nothing POCP checks on its
+own changed: the re-runs, the test guard, the base branch's rules and the trusted reporter
+decide exactly as before.
+
+### Changed
+
+- **Every hold says what changed, in plain words, and what the label means.** When verify
+  waits for a label, its output and the job summary say, per label, what happened in
+  behaviour terms, from the test guard's own data: `The old test "add returns 5 for 2+3" now
+  fails on the new code … Approve only if that change in behaviour is intended.`, a planted
+  bug the edited tests miss (file, line, the change), protected files, a CI change, a rules
+  loosening. Each label says what adding it means (`pocp-approve-tests`: "I accept this change
+  in what the code does, or in what its tests check"), and that it does not mean "I reviewed
+  the code". `verify --json` has it as `approval.needs[].plain` and `approval_request`.
+- **One line, every label, one command.** verify ends a wait with the one command that adds
+  every label the pull request needs (`gh pr edit N -R owner/repo --add-label
+  pocp-approve-tests,pocp-approve-policy`), including `pocp-approve-workflow` when the pull
+  request changes CI files and the base runs the reporter (`labels_needed` in `--json`). The
+  `pocp` status says the same (`Waiting for approval. Run: gh pr edit …`), and a CI change no
+  longer hides the other labels until its own is added: they are listed together. This needs
+  the new `needs-*` steps in `pocp.yml` (`pocp init --github --force`); they choose the status
+  text only, never its state. A run that only waits for labels says "NOT verified yet: waiting
+  for a maintainer's approval" and leaves warnings, not errors, on GitHub.
+- **`ci.files_except`: protect a folder but not its docs.** New config key: globs taken out of
+  `ci.files`. It never exempts a CI definition (the defaults, or any `action.yml`/`action.yaml`),
+  adding an exemption is a loosening a maintainer approves, and only exemptions the base already
+  has count. This repository uses none: its evaluation's READMEs and plan state published
+  numbers and the evaluation's rules, so a change there still asks the maintainer, now in plain
+  words. It now protects `status/action.yml` explicitly (`action.yml` in `ci.files` matches only
+  at the root).
+
 ## 1.3.2 (2026-11-18)
 
 Upgrading: if you copied the README's other-CI recipe, the GitLab example or the any-CI
