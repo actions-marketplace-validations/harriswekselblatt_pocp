@@ -7,6 +7,7 @@ import { createPocp } from '../engine.js';
 import { loadHost } from '../host.js';
 import { remedyLines, whoOf } from '../remedies.js';
 import { shortDigest } from '../hash.js';
+import { approvalMarkdown } from '../explain.js';
 
 export const list = (v) => (v === undefined ? [] : [].concat(v));
 
@@ -89,12 +90,15 @@ export function formatGate(r) {
 }
 
 /** On GitHub Actions, add a results table to the job summary and error annotations. */
-export function writeGithubSummary(result, rows, commitProblems, ms, { annotations = true } = {}) {
+export function writeGithubSummary(result, rows, commitProblems, ms, { annotations = true, approvalPlan = null } = {}) {
   const file = process.env.GITHUB_STEP_SUMMARY;
   // Annotations are printed to stdout, so never in --json mode: machine output stays pure JSON.
   if (annotations && process.env.GITHUB_ACTIONS === 'true') {
+    // A result that only waits for a label isn't an error: it is said as a warning, and the
+    // approval annotation below is what "pocp approvals" reads.
+    const level = result.approval?.only ? 'warning' : 'error';
     for (const c of rows) {
-      if (!c.ok) process.stdout.write(`::error title=POCP::${c.kind === 'net' ? 'net change ' : ''}${c.commit.slice(0, 12)} ${commitProblems(c).join(' | ').replace(/\r?\n/g, ' ')}\n`);
+      if (!c.ok) process.stdout.write(`::${level} title=POCP::${c.kind === 'net' ? 'net change ' : ''}${c.commit.slice(0, 12)} ${commitProblems(c).join(' | ').replace(/\r?\n/g, ' ')}\n`);
     }
     for (const f of result.rerun_failures || []) process.stdout.write(`::error title=POCP rerun::${f.packet}: ${f.problem}\n`);
     // Machine-readable, for "pocp approvals": what a maintainer's label would clear.
@@ -116,6 +120,8 @@ export function writeGithubSummary(result, rows, commitProblems, ms, { annotatio
   ];
   if (result.isolation) lines.push('', result.isolation.secure ? 'Checks ran isolated: each as a fresh unprivileged user.' : 'Checks ran as the job\'s own user (cooperative runner): not the hosted secure profile.');
   if (result.approval?.only) lines.push('', `Waiting only for a maintainer: ${result.approval.needs.map((n) => `\`${n.label}\``).join(' and ')} (see \`pocp approvals\`).`);
+  // In plain words: what each label approves, what adding it means, and one command for all.
+  if (approvalPlan) lines.push('', `**${result.ok ? 'The `pocp` status also waits for a maintainer' : 'For the maintainer'}**`, '', ...approvalMarkdown(approvalPlan, esc));
   // What to do, who acts first (verify's next steps).
   if (result.next_steps?.length) lines.push('', '**What to do**', '', ...result.next_steps.map((x) => `- **${whoOf(x)}** · \`${x.code}\`: ${esc(x.next)}`));
   const reruns = [...(result.reruns || []), ...(result.net?.reruns || [])];

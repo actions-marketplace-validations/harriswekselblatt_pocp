@@ -200,7 +200,7 @@ Verify every pull request. verify re-runs each required check itself, on the exa
 by the base branch's rules; your existing test step stays as it is:
 
 ```bash
-npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.3.2
+npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.4.0
 node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify origin/main..HEAD --require-coverage --rerun
 ```
 

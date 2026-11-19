@@ -279,12 +279,30 @@
               ],
               "files": [
                 "test/extra.check.mjs"
+              ],
+              "plain": [
+                "Tests or test setup changed (test/extra.check.mjs). The old tests still pass on the new code, but fast mode plants no bugs, so POCP can't show the edited tests still catch what they caught (test/extra.check.mjs: a test file was added (it runs with the others and can change their outcome)). Approve only if you accept the test edits."
               ]
             }
           ],
           "outcome": "waiting",
           "unfinished_reruns": 0
         },
+        "approval_request": {
+          "items": [
+            {
+              "label": "pocp-approve-tests",
+              "plain": [
+                "Tests or test setup changed (test/extra.check.mjs). The old tests still pass on the new code, but fast mode plants no bugs, so POCP can't show the edited tests still catch what they caught (test/extra.check.mjs: a test file was added (it runs with the others and can change their outcome)). Approve only if you accept the test edits."
+              ],
+              "means": "I accept this change in what the code does, or in what its tests check"
+            }
+          ],
+          "command": "gh pr edit <number> --add-label pocp-approve-tests"
+        },
+        "labels_needed": [
+          "pocp-approve-tests"
+        ],
         "next_steps": [
           {
             "by": "person",

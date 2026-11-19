@@ -117,6 +117,9 @@
                 ".proof/config.json",
                 ".proof/allowed_signers",
                 ".proof/exceptions.json"
+              ],
+              "plain": [
+                "This change loosens POCP's own rules (requirement \"math-tests\" removed or changed; broad_files raised from 6; cross_area loosened), so later changes are checked less strictly. Approve only if you want that."
               ]
             }
           ],

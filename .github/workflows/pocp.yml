@@ -142,6 +142,17 @@ jobs:
       - name: approval-coverage
         if: env.APPROVE_COVERAGE != 'false'
         run: 'true'
+      # Which labels verify says it waits for (its `needs` output), so the pocp status can name
+      # them all, with one command to add them. They change only that text, never the result.
+      - name: needs-tests
+        if: contains(steps.verify.outputs.needs, 'pocp-approve-tests')
+        run: 'true'
+      - name: needs-policy
+        if: contains(steps.verify.outputs.needs, 'pocp-approve-policy')
+        run: 'true'
+      - name: needs-inconclusive
+        if: contains(steps.verify.outputs.needs, 'pocp-approve-inconclusive')
+        run: 'true'
       # Exactly one of verified / waiting / inconclusive / failed runs. "verified" needs the
       # verify step's own exit status; the code output can only turn a result into a wait
       # (yellow) or a failure (red). Only "failed" means red once POCP_STATUS_LIVE is on; a

@@ -7,8 +7,8 @@
 // trusted only when the pull request's diff changes no CI file. Everything is fetched fresh from
 // GitHub's API on each call, so the order events arrive in doesn't matter.
 
-import { matchGlob } from './glob.js';
-import { DEFAULT_CI_FILES } from './store.js';
+import { ciProtects, DEFAULT_CI_FILES } from './store.js';
+import { addLabelsCommand, APPROVE_WORKFLOW_LABEL, sortLabels } from './explain.js';
 import { approvedByWriter, CARRYABLE, carriedOver, COMPARE_FILES_CAP, gatherCarry, gatherLabelEvents, labelFreshness, listAll, MARKER_PREFIX } from './label-freshness.js';
 
 // The label rule lives in label-freshness.js, shared with verify.
@@ -17,13 +17,23 @@ export { CARRYABLE, carriedOver, COMPARE_FILES_CAP };
 export const STATUS_CONTEXT = 'pocp';
 export const WORKFLOW_PATH = '.github/workflows/pocp.yml';
 export const VERIFY_JOB = 'verify';
-export const APPROVE_WORKFLOW_LABEL = 'pocp-approve-workflow';
+// The label that approves a change to the CI files (explain.js names what it means).
+export { APPROVE_WORKFLOW_LABEL };
 // Marker steps the trusted workflow runs only when it passed that approval to verify.
 export const APPROVAL_MARKERS = Object.freeze({
   'approval-tests': 'pocp-approve-tests',
   'approval-policy': 'pocp-approve-policy',
   'approval-inconclusive': 'pocp-approve-inconclusive',
   'approval-coverage': 'pocp-approve-coverage',
+});
+// Steps the trusted workflow runs for each label verify says it waits for (verify's `needs`
+// output). They choose the pending text only, never the state: a pull request's own workflow can
+// run any step it likes, and a wrong list only names the wrong labels on a status that stays
+// pending. A workflow without them gets the generic text.
+export const NEEDS_MARKERS = Object.freeze({
+  'needs-tests': 'pocp-approve-tests',
+  'needs-policy': 'pocp-approve-policy',
+  'needs-inconclusive': 'pocp-approve-inconclusive',
 });
 // GitHub's "list pull request files" returns at most this many files. A list that reaches it may
 // be missing the rest, so it never shows that no CI file changed.
@@ -42,7 +52,6 @@ export const TEXT = Object.freeze({
   inconclusive: "Inconclusive: a check didn't finish. Re-run it, or a maintainer approves.",
   failed: 'Not verified: see the verify run.',
   pending: 'Waiting for verify.',
-  workflow: 'CI workflow changed: a maintainer reviews it and adds pocp-approve-workflow.',
   approvalGone: 'An approval this result relied on was removed: approve again.',
   incomplete: "Not verified: GitHub's data for this pull request was incomplete. Re-run, or split a very large pull request.",
   sharedHead: 'Another open pull request has this same head commit, and a status is per commit: close all but one.',
@@ -53,15 +62,40 @@ export const TEXT = Object.freeze({
 });
 
 
+/**
+ * The pending text for a pull request that waits only for labels: every label, and the one
+ * command that adds them all when it fits GitHub's 140 characters, else the labels alone.
+ */
+export function waitingText(labels, { number, repository } = {}) {
+  if (!labels?.length) return TEXT.waiting;
+  const sorted = sortLabels(labels);
+  const run = `Waiting for approval. Run: ${addLabelsCommand(sorted, { number, repository })}`;
+  if (run.length <= 140) return run;
+  const named = `Waiting for approval: add ${sorted.join(', ')} (command in the verify run)`;
+  return named.length <= 140 ? named : `Waiting for approval: add ${sorted.join(', ')}`.slice(0, 140);
+}
+
+/** Whether a status description is a wait for labels (either wording). */
+export const isWaitingText = (d) => d === TEXT.waiting || String(d || '').startsWith('Waiting for approval');
+
+/** The labels a run's needs-* steps say verify waits for. */
+export function runNeeds(job) {
+  return Object.entries(NEEDS_MARKERS).filter(([step]) => stepOf(job, step)?.conclusion === 'success').map(([, label]) => label);
+}
+
 /** The CI files a pull request may not change without a maintainer (the base's ci.files, defaults always included). */
 export function workflowFiles(baseConfig) {
   return [...new Set([...DEFAULT_CI_FILES, ...(baseConfig?.ci?.files || [])])];
 }
 
-/** Changed paths (including the old path of a rename) that are CI files. */
-export function changedWorkflowFiles(files, globs) {
+/**
+ * Changed paths (including the old path of a rename) that are CI files: they match `globs` and
+ * no `except` glob (the base's ci.files_except), which never exempts a CI definition (ciProtects).
+ */
+export function changedWorkflowFiles(files, globs, except = []) {
   const hit = new Set();
-  for (const f of files || []) for (const p of [f.filename, f.previous_filename]) if (p && globs.some((g) => matchGlob(p, g))) hit.add(p);
+  const ci = { files: globs, files_except: except };
+  for (const f of files || []) for (const p of [f.filename, f.previous_filename]) if (p && ciProtects(p, ci, { withDefaults: true })) hit.add(p);
   return [...hit].sort();
 }
 
@@ -123,7 +157,7 @@ export function runIdentity(job, number, baseSha) {
 }
 
 // Every step the trusted workflow runs to evaluate a pull request.
-const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', ...Object.keys(APPROVAL_MARKERS)]);
+const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS)]);
 const isPocpStep = (s) => POCP_STEPS.has(s.name) || String(s.name || '').startsWith(MARKER_PREFIX);
 
 /**
@@ -169,6 +203,7 @@ export function filesIncomplete(files, changedFiles) {
  *   repository,                    "owner/name"
  *   files: [{ filename, previous_filename }],  the pull request's diff from its merge base
  *   ci_globs,                      workflowFiles(base config)
+ *   ci_except,                     the base's ci.files_except (never exempts a CI definition)
  *   runs: [{ id, workflow_id, path, event, head_sha, repository, status, conclusion, created_at, run_started_at, run_attempt, html_url, job }],
  *   label_events: [{ label, actor, permission, created_at }],  "labeled" events of approval labels
  *   label_events_complete,         whether every event was read (approvals need it)
@@ -229,7 +264,7 @@ export function decideStatus(facts) {
     break;
   }
 
-  const changed = changedWorkflowFiles(facts.files, facts.ci_globs || workflowFiles(null));
+  const changed = changedWorkflowFiles(facts.files, facts.ci_globs || workflowFiles(null), facts.ci_except || []);
   let via = '';
   if (changed.length) {
     // The run's steps come from the pull request's own workflow: not evidence until a
@@ -241,7 +276,10 @@ export function decideStatus(facts) {
     const approved = pr.labels.includes(APPROVE_WORKFLOW_LABEL) && approvedByWriter(facts, APPROVE_WORKFLOW_LABEL, sha)
       && (!independent || (lastWorkflowLabel?.actor && pr.author && lastWorkflowLabel.actor !== pr.author));
     if (!approved) {
-      return status('pending', TEXT.workflow, `CI files changed (${changed.join(', ')}), so the run's results aren't trusted until ${independent ? 'a writer other than the author' : 'a writer'} adds ${APPROVE_WORKFLOW_LABEL} after this head's first run`, newest);
+      // Every label at once: the workflow label, and whatever the newest run says verify waits
+      // for (text only: this run's steps aren't trusted, and the status stays pending).
+      const also = newest || unknown ? runNeeds((newest || unknown).job) : [];
+      return status('pending', waitingText([APPROVE_WORKFLOW_LABEL, ...also], { number: pr.number, repository: facts.repository }), `CI files changed (${changed.join(', ')}), so the run's results aren't trusted until ${independent ? 'a writer other than the author' : 'a writer'} adds ${APPROVE_WORKFLOW_LABEL} after this head's first run`, newest);
     }
     via = `; CI files changed (${changed.join(', ')}), workflow approved with ${APPROVE_WORKFLOW_LABEL}`;
   }
@@ -273,6 +311,7 @@ export function decideStatus(facts) {
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
   }
   if (outcome === 'failed') return status('failure', TEXT.failed, `run ${newest.id} failed (${stepSummary(newest.job)})${via}`, newest);
+  if (outcome === 'waiting') return status('pending', waitingText(runNeeds(newest.job), { number: pr.number, repository: facts.repository }), `run ${newest.id} is waiting${via}`, newest);
   return status('pending', TEXT[outcome], `run ${newest.id} is ${outcome}${via}`, newest);
 }
 
@@ -338,7 +377,7 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
 /** Fetch every fact decideStatus needs, fresh. */
 export async function gather(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH }) {
   const repo = `/repos/${repository}`;
-  const facts = { event_sha: sha, repository, ci_globs: workflowFiles(baseConfig), workflow_approver: baseConfig?.ci?.workflow_approver || 'independent', pr: null, base_sha: null, changed_files: null, head_prs: [], incomplete: [], files: [], runs: [], label_events: [], force_pushes: [] };
+  const facts = { event_sha: sha, repository, ci_globs: workflowFiles(baseConfig), ci_except: baseConfig?.ci?.files_except || [], workflow_approver: baseConfig?.ci?.workflow_approver || 'independent', pr: null, base_sha: null, changed_files: null, head_prs: [], incomplete: [], files: [], runs: [], label_events: [], force_pushes: [] };
   const need = (r) => {
     if (!r.complete) facts.incomplete.push(r.reason || 'a list was cut short');
     return r.items;

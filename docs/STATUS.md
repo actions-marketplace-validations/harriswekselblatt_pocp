@@ -5,9 +5,9 @@ POCP reports its result on a pull request as one commit status, **`pocp`**, on t
 | `pocp` | Means | What clears it |
 |---|---|---|
 | ✅ success | verified: the required checks passed on this exact code | nothing; it's done |
-| 🟡 pending: waiting for a maintainer | only an approval is missing (a test change, a policy loosening, commits without proof) | a maintainer reviews and adds the label the verify run names |
+| 🟡 pending: waiting for approval | only approvals are missing (a test change, a policy loosening, protected files, a CI change) | the status names every label needed and, when it fits, the one command that adds them all (`gh pr edit N -R owner/repo --add-label pocp-approve-tests,pocp-approve-policy`); the verify run says in plain words what each approves |
 | 🟡 pending: inconclusive | a check didn't finish: it timed out, was killed or didn't start | re-run the job; or fix the hang or the time limit; or, for a test change, a maintainer adds `pocp-approve-inconclusive` |
-| 🟡 pending: CI workflow changed | the pull request changes a CI file, so its own run can't be trusted | a maintainer reviews the workflow change and adds `pocp-approve-workflow` |
+| 🟡 pending: waiting for approval, CI changed | the pull request changes a CI file, so its own run can't be trusted until a maintainer adds `pocp-approve-workflow` | the same one command: it lists `pocp-approve-workflow` together with every label the run asked for, so nothing turns up one at a time |
 | 🟡 pending: waiting for verify | no finished run for this pull request, its base and its head yet, or a newer run or re-run is still going | wait; after the base branch moves, re-run |
 | 🟡 pending: data incomplete | GitHub's answers about the pull request were incomplete or didn't add up (for example, more files than GitHub lists, or an API error) | re-run the reporter; split a very large pull request |
 | 🟡 pending: shared head | another open pull request has the same head commit | close all but one |
@@ -78,7 +78,7 @@ Two workflows:
 
 If your `pocp.yml` was written before the `pocp-run` step existed, add it (`pocp init --github --force` rewrites the example): without it no run counts, and the status stays pending.
 
-The status text is generic. What the run asks for is in the run's summary, which the status links to.
+The status text is built from fixed words only: nothing a pull request writes reaches it. A waiting run's `needs-tests`, `needs-policy` and `needs-inconclusive` steps (from verify's `needs` output, since 1.4) pick which of the fixed label names it lists, with the pull request's number and repository, as `Waiting for approval. Run: gh pr edit N -R owner/repo --add-label …` (or the labels alone when the command doesn't fit GitHub's 140 characters). Those steps choose text only: the state comes from the rules above, and a pull request that lists the wrong labels only names the wrong labels on a status that stays pending. A `pocp.yml` without them gets the generic "Waiting for a maintainer's approval" text. What each label approves, in plain words, is in the run's summary, which the status links to.
 
 ## Give the reporter its own identity
 

@@ -4,8 +4,7 @@
 // files a change touched (changedCiFiles).
 import fs from 'node:fs';
 import * as g from '../git.js';
-import { rulesWithDefaults, validateConfig, withDefaults } from '../store.js';
-import { matchGlob } from '../glob.js';
+import { ciProtects, rulesWithDefaults, validateConfig, withDefaults } from '../store.js';
 import { validateRules } from '../rules.js';
 import { blockingRule, combinePolicy, EXCEPTIONS_FILE, POLICY_FILES, policyLoosenings } from '../policy.js';
 import { policyKeyWarnings } from '../schema.js';
@@ -136,9 +135,8 @@ export function createPolicyAt({ root }) {
 
   /** CI definition files a change touched (ci.files globs). */
   function changedCiFiles(changes, cfg) {
-    const globs = cfg.ci?.files || [];
     const touched = new Set();
-    for (const c of changes) for (const p of [c.path, c.oldPath]) if (p && globs.some((gl) => matchGlob(p, gl))) touched.add(p);
+    for (const c of changes) for (const p of [c.path, c.oldPath]) if (p && ciProtects(p, cfg.ci)) touched.add(p);
     return [...touched].sort();
   }
 

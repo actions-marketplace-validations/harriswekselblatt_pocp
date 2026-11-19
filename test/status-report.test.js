@@ -3,7 +3,10 @@
 // takes the newest run, re-checks approvals, and shows only generic text.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decideStatus, gather, readRun, reportStatus, runMarker, TEXT, workflowFiles } from '../src/status-report.js';
+import { APPROVE_WORKFLOW_LABEL, decideStatus, gather, readRun, reportStatus, runMarker, TEXT, waitingText, workflowFiles } from '../src/status-report.js';
+
+// A changed workflow waits for its label, named with the one command that adds it (pull request 7 of o/r).
+const WORKFLOW_WAIT = waitingText([APPROVE_WORKFLOW_LABEL], { number: 7, repository: 'o/r' });
 
 const SHA = 'a'.repeat(40);
 const BASE = 'e'.repeat(40);
@@ -67,10 +70,10 @@ test('spoof: a PR that edits the workflow gets no green from its own run, whatev
   for (const filename of ['.github/workflows/pocp.yml', '.github/workflows/other.yml', 'action.yml', '.github/actions/x/action.yml']) {
     const d = decideStatus(facts({ files: [{ filename }], runs: [run()] }));
     assert.equal(d.state, 'pending', filename);
-    assert.equal(d.description, TEXT.workflow, filename);
+    assert.equal(d.description, WORKFLOW_WAIT, filename);
   }
   // A rename away from a workflow path counts too.
-  assert.equal(decideStatus(facts({ files: [{ filename: 'x.yml', previous_filename: '.github/workflows/pocp.yml' }] })).description, TEXT.workflow);
+  assert.equal(decideStatus(facts({ files: [{ filename: 'x.yml', previous_filename: '.github/workflows/pocp.yml' }] })).description, WORKFLOW_WAIT);
 });
 
 test('spoof: a workflow change turns green only with pocp-approve-workflow from a writer, given after the first run', () => {
@@ -122,7 +125,7 @@ test('regression: a CI-changing PR whose run still waits for another approval st
 test('pocp-approve-workflow must come from someone other than the author, unless the base allows any writer', () => {
   const byAuthor = decideStatus(ciChanged({}, { actor: 'author' }));
   assert.equal(byAuthor.state, 'pending');
-  assert.equal(byAuthor.description, TEXT.workflow);
+  assert.equal(byAuthor.description, WORKFLOW_WAIT);
   assert.match(byAuthor.reason, /a writer other than the author/);
   assert.equal(decideStatus(ciChanged({}, { actor: null })).state, 'pending', 'an unknown actor never approves');
   assert.equal(decideStatus(ciChanged({}, { actor: 'maintainer' })).state, 'success');
@@ -436,7 +439,7 @@ test('carry-over: never for inconclusive or workflow approvals, a non-writer, or
   const early = carryFacts({ events: [{ label: 'pocp-approve-tests', actor: 'm', permission: 'write', created_at: '2026-11-04T09:00:00Z' }] });
   assert.equal(decideStatus(early).state, 'pending');
   const workflow = facts({ ...carryFacts({ label: 'pocp-approve-workflow' }), files: [{ filename: '.github/workflows/pocp.yml' }] });
-  assert.equal(decideStatus(workflow).description, TEXT.workflow);
+  assert.equal(decideStatus(workflow).description, WORKFLOW_WAIT);
 });
 
 test('carry-over: a force-push after the label voids it (the label was for another head)', () => {
