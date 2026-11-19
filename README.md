@@ -4,9 +4,9 @@ POCP checks that the tests a pull request was supposed to pass actually ran, on 
 
 It doesn't prove your code is correct. It has one preregistered evaluation so far ([below](#evaluation)).
 
-![Terminal demo: an agent breaks add() and edits the test so npm test passes; pocp verify reports that the old test fails on the new code and waits for a maintainer](docs/demo.svg)
+![Terminal demo: an agent breaks add() and edits the test so npm test passes; pocp verify reports that the old test fails on the new code and holds the change for a maintainer; the agent puts the test back, fixes add(), and verify passes](docs/demo.svg)
 
-An agent edits a failing test until CI turns green. POCP runs the old test against the new code and routes the change to a person. Run it from a clone with `node examples/demo/demo.mjs`.
+An agent edits a failing test until CI turns green. POCP runs the old test against the new code and holds the change for a person. Rather than wait for that approval, the agent puts the test back and fixes the code, and the pull request verifies. Run it from a clone with `node examples/demo/demo.mjs`.
 
 ## Install
 

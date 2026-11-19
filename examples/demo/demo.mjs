@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // The 60-second demo: an agent breaks the code, then edits the test so it passes again. Plain
-// CI goes green. In CI, `pocp verify` runs the old test on the new code and flags it.
+// CI goes green. In CI, `pocp verify` runs the old test on the new code and holds the change
+// for a maintainer. The agent then puts the test back and fixes the code, and verify passes.
 //
 //   node examples/demo/demo.mjs            # run it in a scratch folder, printing as it goes
 //   node examples/demo/demo.mjs --keep     # keep the scratch repository afterwards
@@ -105,18 +106,43 @@ const v = step('pocp verify main..HEAD --rerun', {
     const bad = lines.find((l) => /^\s*BAD /.test(l)) || '';
     const why = /the old tests fail on the new code[^;]*/.exec(bad)?.[0] || bad.trim();
     const rerun = lines.find((l) => /rerun passed/.test(l))?.replace(/\s*\(\d+ms\)/, '').trim();
-    const next = /\[maintainer, not the author\] .*?next: (.*)/.exec(s)?.[1];
-    return [head, '\u0000', rerun && `  ${rerun}   <- the edited test passes`, `  BAD: ${why}`, '       behavior changed, so a person must approve it', next && `  [maintainer] next: ${next}`].filter(Boolean).join('\n');
+    // The next step without "to the pull request (or runs: pocp approve ...)", on two lines, so it fits.
+    const next = /\[maintainer, not the author\] .*?next: (.*?)(?: to the pull request)?(?: \(or runs:.*)?$/m.exec(s)?.[1];
+    return [head, '\u0000', rerun && `  ${rerun}   <- the edited test passes`, `  BAD: ${why}`, '       behavior changed, so a person must approve it', next && `  [maintainer] next: ${next.replace(/ and adds /, '\n       and adds ')}`].filter(Boolean).join('\n');
   },
-  after: 3,
+  after: 2.5,
 });
-emit(`\x1b[2m# Merging waits for a maintainer. Exit code ${v.status}.\x1b[0m\n`, 3);
+say(`Exit code ${v.status}: in block mode, only a maintainer can accept this test edit.`, 1.2);
+
+// The honest fix: the agent puts the old test back and fixes the code it broke.
+say('So the agent puts the test back and fixes add() instead:', 0.6);
+write('src/math.js', 'export const add = (a, b) => a + b;\n');
+sh('git checkout -q main -- test/math.test.js');
+step('git diff HEAD', { filter: (s) => s.split('\n').filter((l) => /^[-+]\S|^[-+]\s/.test(l) && !/^(---|\+\+\+) /.test(l)).join('\n') });
+step('npm test', { filter: quietTest });
+// Putting the old test back is itself a test edit against the last commit, so the hook asks
+// for the same check; what CI judges is the pull request as a whole, below.
+step('git add -A && pocp fix --intent "Fix add()" && git commit -qm "Fix add()"', {
+  filter: () => '',
+  after: 0.6,
+});
+say('CI verifies the whole pull request again:', 0.6);
+const v2 = step('pocp verify main..HEAD --rerun', {
+  filter: (s) => {
+    const lines = s.split('\n');
+    const rerun = lines.find((l) => /rerun passed/.test(l))?.replace(/\s*\(\d+ms\)/, '').trim();
+    return [lines[0], '\u0000', rerun && `  ${rerun}   <- the original test, on the fixed code`].filter(Boolean).join('\n');
+  },
+  after: 2,
+});
+emit(`\x1b[2m# Exit code ${v2.status}: verified, ready to merge: the bug is fixed and the test is the original.\x1b[0m\n`, 3);
 
 if (castFile) {
-  const header = { version: 2, width: 100, height: 30, title: 'POCP: an agent edits a test to pass; POCP flags it' };
+  const header = { version: 2, width: 100, height: 40, title: 'POCP: an agent edits a test to pass; POCP holds it; the agent fixes the code' };
   fs.writeFileSync(castFile, `${[JSON.stringify(header), ...events.map((e) => JSON.stringify(e))].join('\n')}\n`);
 }
 if (keep) console.log(`\n(the repository is at ${dir})`);
 else fs.rmSync(dir, { recursive: true, force: true });
 fs.rmSync(shim, { recursive: true, force: true });
-process.exitCode = v.status === 0 ? 1 : 0; // the demo "passes" when POCP blocks the change
+// The demo "passes" when POCP holds the edited test, then verifies the honest fix.
+process.exitCode = v.status !== 0 && v2.status === 0 ? 0 : 1;
