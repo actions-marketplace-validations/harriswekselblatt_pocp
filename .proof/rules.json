@@ -37,8 +37,7 @@
           "{tests}"
         ]
       },
-      "source": "author",
-      "defer": "ci"
+      "source": "author"
     },
     {
       "id": "engine-tests",
@@ -57,8 +56,7 @@
           "{tests}"
         ]
       },
-      "source": "author",
-      "defer": "ci"
+      "source": "author"
     },
     {
       "id": "test-suite",
@@ -77,8 +75,7 @@
           "{tests}"
         ]
       },
-      "source": "author",
-      "defer": "ci"
+      "source": "author"
     },
     {
       "id": "eval-tests",
