@@ -48,7 +48,7 @@ anyway. For test folders it misses in a real project, add them to `guard.extra_t
 `config.json`.
 
 The first time `init` runs at a terminal it asks one question, whether you'd like a README badge
-(`tests | POCP verified`). The default is no. A yes prints the markdown for you to paste; no file
+(`uses POCP`). The default is no. A yes prints the markdown for you to paste; no file
 is changed, and it isn't asked again. `pocp init --badge` prints it without asking.
 
 ## 3. Say what must be proven

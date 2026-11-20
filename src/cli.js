@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { VERSION } from './engine.js';
-import { ignoreRepoEnv } from './git.js';
+import { git, ignoreRepoEnv } from './git.js';
 import { COMMANDS, commandHelp, parseArgs, UsageError } from './cli-args.js';
 import { createIsolatedRunner } from './isolate.js';
 
@@ -10,7 +10,7 @@ import { run as initCommand } from './commands/init.js';
 import { run as hooksCommand } from './commands/hooks.js';
 import { run as statusReportCommand } from './commands/status-report.js';
 import { run as approvalsCommand } from './commands/approvals.js';
-import { run as rulesCommand } from './commands/rules.js';
+import { proofFolderEngine, run as rulesCommand } from './commands/rules.js';
 import { run as openCommand } from './commands/open.js';
 import { run as addCommand } from './commands/add.js';
 import { run as widenCommand } from './commands/widen.js';
@@ -268,6 +268,11 @@ export async function main(argv = process.argv.slice(2)) {
     // (src/isolate.js). Without it, checks run as this user: the cooperative runner.
     if (flags.install && !(cmd === 'verify' && flags.isolate)) throw new UsageError('--install needs verify --isolate (without isolation, install dependencies before running pocp)');
     const isolated = cmd === 'verify' && flags.isolate ? createIsolatedRunner() : null;
+    // `rules check` outside a git repository (a copy without .git, as CI re-runs checks in)
+    // validates the .proof/ in the folder it runs in, and only there (proofFolderEngine).
+    if (cmd === 'rules' && git(process.cwd(), ['rev-parse', '--show-toplevel'], { allowFail: true }) === null) {
+      return await rulesCommand({ cmd, rest, flags, json, obligations, engine: proofFolderEngine(process.cwd()) });
+    }
     const engine = await buildEngine(flags, { runner: isolated || undefined });
 
     // POCP only acts where a checkout has adopted it. Git hooks are shared by every checkout

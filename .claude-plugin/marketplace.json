@@ -6,7 +6,7 @@
     {
       "name": "pocp",
       "source": "./plugins/pocp",
-      "description": "Stops Claude from skipping POCP's gate (--no-verify, hooksPath), force-pushing proven commits, or approving its own test and policy changes, and teaches it the POCP workflow."
+      "description": "Sets up POCP with /pocp:setup, then stops Claude from skipping POCP's gate (--no-verify, hooksPath), force-pushing proven commits, or approving its own test and policy changes, and teaches it the POCP workflow."
     }
   ]
 }
