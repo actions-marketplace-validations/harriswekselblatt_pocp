@@ -1,0 +1,357 @@
+{
+  "pocp": 1,
+  "id": "p-482fac5b",
+  "intent": "Machine-wide cap on concurrent check runs (queue time excluded from timeouts), and fewer git calls per pocp command",
+  "touches": [
+    "src/engine/prove.js",
+    "src/engine/rerun.js",
+    "src/engine/run.js",
+    "src/git.js",
+    "src/isolate.js",
+    "src/machine-slots.js",
+    "src/store.js",
+    "test/git-fewer-calls.test.js",
+    "test/helpers.js",
+    "test/machine-slots.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/git-fewer-calls.test.js",
+        "test/helpers.js",
+        "test/machine-slots.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/git-fewer-calls.test.js, test/helpers.js, test/machine-slots.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-20T00:56:15.585Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T00:56:15.964Z",
+      "duration_ms": 2281,
+      "stdout_sha256": "83c54804cd517032a18a3cac3a463f9d5cd39cf922504159023773302c7bfaec",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-876325a6",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T00:56:18.309Z",
+      "duration_ms": 35392,
+      "stdout_sha256": "fbc2afbd1451dae1801756c843cf1f26cc2e9aa15da8eca640356aa49b66b45c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-c6850588",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T00:56:53.778Z",
+      "duration_ms": 259540,
+      "stdout_sha256": "4f607e3fac3c1f4eb409fb040bd032a2d798b8fd6e4f7be8012291707a02e9e9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-e73939f5",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:b77bee29a9e0c92ee0dd84946660430f26a20aa93ae34f7ca001dd48896cc7b8",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T01:01:13.458Z",
+      "duration_ms": 313040,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (test/git-fewer-calls.test.js: a test file was added (it runs with the others and can change their outcome); test/helpers.js: lines were added to an existing test; test/machine-slots.test.js: a test file was added (it runs with the others and can change their outcome)): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "884e305b1cef398b8bd7be9a9859231bde5f4a8a",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "-test/git-fewer-calls.test.js",
+            "test/helpers.js",
+            "-test/machine-slots.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2364
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 36005
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 273450
+            }
+          ],
+          "left_out": [
+            "test/git-fewer-calls.test.js",
+            "test/machine-slots.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/git-fewer-calls.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/git-fewer-calls.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/helpers.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/machine-slots.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            }
+          ]
+        },
+        "duration_ms": 313040,
+        "timings": {
+          "setup_ms": 463,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 312553,
+            "run_ms": 311819,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 290,
+            "count": 1
+          },
+          "copy": {
+            "ms": 572,
+            "count": 4
+          },
+          "cleanup": {
+            "ms": 480,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T00:56:15.585Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T00:56:15.585Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-20T01:06:26.730Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8"
+    },
+    {
+      "at": "2026-11-20T01:06:27.134Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:b77bee29a9e0c92ee0dd84946660430f26a20aa93ae34f7ca001dd48896cc7b8",
+      "subject": "sha256:171a80f4341387c6a186fb07e35bbc5202400bed987d386efdb546d70ab997b8",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T01:06:27.134Z",
+      "to": "ci-approval",
+      "reason": "the old tests pass on the new code; a person must review the test change (test/git-fewer-calls.test.js: a test file was added (it runs with the others and can change their outcome); test/helpers.js: lines were added to an existing test; test/machine-slots.test.js: a test file was added (it runs with the others and can change their outcome)): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
+    }
+  ]
+}

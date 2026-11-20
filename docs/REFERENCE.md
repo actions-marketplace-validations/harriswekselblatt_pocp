@@ -171,6 +171,34 @@ Anything that can run a command can use POCP. Two useful places:
 
 The Claude Code plugin ([`plugins/pocp/`](../plugins/pocp/), README "With Claude Code, Codex, Cursor and pre-commit") refuses the commands that go around POCP and teaches the workflow; `pocp check-edit` and `pocp gate --json` work from any harness. [`examples/agent-instructions.md`](../examples/agent-instructions.md) is a block to paste into your agent's instructions file so it works with POCP instead of around it.
 
+## Several checkouts on one machine
+
+Each repository has its own lock, but checks from different repositories, worktrees or clones share one machine. POCP limits how many pocp processes run checks at once across the whole user account: one at a time by default. Others wait their turn, in the order they arrived, and say so on stderr:
+
+```
+pocp: waiting for 1 other POCP check on this machine (limit 1; POCP_MACHINE_CHECKS or ~/Library/Caches/pocp/check-slots/limit changes it). Waiting doesn't count toward the check's time limit.
+  running: "npm test --silent" in pocp-plugin-dir (pid 41233, running 3m 12s)
+  1 other pocp waiting ahead of this one
+```
+
+Why 1: most test runners (`node --test`, jest, vitest, `pytest -n`, `go test`, `cargo test`) already use every core. Two suites at once each take about twice as long, which turns a suite near half its time limit into a timeout. Taking turns finishes the same work in about the same total time, and each check runs at full speed. Raise the limit if your checks are single-threaded.
+
+- **The wait doesn't count toward the check's limit.** Each run's `timeout_ms`, `duration_ms` and `started_at` start when the command starts, after the wait. The test guard's overall `duration_ms` is its wall time and can include a wait; its per-run limits and times don't.
+- **The limit is per pocp process, not per check.** A `prove` (or `pocp fix`) takes one slot when its first check starts and keeps it until it ends, so it waits in line once, not before each check. The test guard and `verify --jobs` run several checks inside that one slot. Any other process keeps its slot for 3 seconds after its last check.
+- **A pocp started inside a check never waits.** Its check already holds a slot. Every check runs with `POCP_MACHINE_SLOT=1` in its environment. A pocp that sees it, or finds a slot holder among its parent processes, runs at once. So a test suite that runs pocp itself can't deadlock, even with a limit of 1.
+- **Crashes don't block the machine.** A slot whose process has died is taken back at once. So is one whose process has stopped updating it for 2 minutes, which also covers a pid reused after a crash.
+- **It never fails a check.** If the cache folder can't be used, checks run without the limit and pocp prints a note.
+- **It's off in CI** (`CI` set). A CI job has its machine to itself, and `verify --jobs` decides how many checks run there.
+
+| Variable | Effect |
+|---|---|
+| `POCP_MACHINE_CHECKS` | How many pocp processes may run checks at once: a number, or `0`/`off` for no limit. Overrides the `limit` file. It applies in CI too when set. |
+| `POCP_MACHINE_DIR` | Where the slots live. Default: `pocp/check-slots` in `$XDG_CACHE_HOME`, else `~/Library/Caches` (macOS) or `~/.cache`. |
+
+To set the limit for every terminal, hook and agent on your account, write it to the `limit` file in that folder: `echo 2 > ~/Library/Caches/pocp/check-slots/limit` (macOS; `~/.cache/pocp/check-slots/limit` on Linux), or `echo off` to turn it off.
+
+This is scheduling only: what runs and what is recorded are unchanged. It can't limit other load on the machine, such as test suites run outside pocp or a pocp older than this version. While a `prove` waits for a slot, it keeps its repository's lock. Another pocp command in the same repository that needs the lock (`ready`, `attest`, `abandon`) waits up to 10 seconds, as it would during a long check.
+
 ## Misses and the ratchet
 
 ```bash
