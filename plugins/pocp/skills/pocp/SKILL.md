@@ -59,6 +59,10 @@ comment on it.
 - Loosen `.proof/rules.json` or add keys to `.proof/allowed_signers`. CI judges every change by
   the base branch's rules and fails any loosening a maintainer hasn't approved.
 - Commit with `--no-verify` to skip the gate. CI's `pocp verify --require-coverage` catches it.
+- Switch checks off: `pocp ci off`, `pocp init --local` in a repository that uses CI,
+  `gh workflow disable`, or `--disable-billing-failed`. Each turns checks off on GitHub at
+  once, with no pull request, so it is the user's decision and the plugin's hook refuses it.
+  Say what you would change and why, and let the user run it.
 
 **When something escapes**
 

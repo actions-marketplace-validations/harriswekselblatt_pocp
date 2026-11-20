@@ -1,0 +1,79 @@
+{
+  "pocp": 1,
+  "id": "p-dea274de",
+  "intent": "Release 1.5.0: version pins, agent Never lists, Marketplace description, changelog",
+  "touches": [
+    ".pre-commit-hooks.yaml",
+    "action.yml",
+    "package.json",
+    "plugins/pocp/.claude-plugin/plugin.json",
+    "src/init.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T19:23:16.715Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:a69d28d798166e94697ab068828325c75339d7ee533c9a9db52344f28e7bda3f",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T19:23:17.788Z",
+      "duration_ms": 540406,
+      "stdout_sha256": "c2504427457b0ce1382d7579f5c35db7a04ee04bc07a69344f5488cea4f5d84e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-383dc28a",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T19:23:16.715Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T19:23:16.715Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T19:32:18.320Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:a69d28d798166e94697ab068828325c75339d7ee533c9a9db52344f28e7bda3f"
+    }
+  ]
+}

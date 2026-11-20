@@ -41,7 +41,7 @@ npx pocp init --hooks --github
 **On another CI** (GitLab, Jenkins, plain shell). In CI: keep your existing test step, and add:
 
 ```bash
-npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.4.0
+npm install --prefix "$HOME/.pocp" --no-save --ignore-scripts proof-of-change@1.5.0
 node "$HOME/.pocp/node_modules/proof-of-change/bin/pocp.js" verify origin/main..HEAD --require-coverage --rerun
 ```
 
@@ -68,7 +68,7 @@ Run `/pocp:setup` in a repository that doesn't use POCP yet: Claude finds your t
 default_install_hook_types: [pre-commit, prepare-commit-msg, post-commit]
 repos:
   - repo: https://github.com/harriswekselblatt/pocp
-    rev: v1.4.0
+    rev: v1.5.0
     hooks: [{ id: pocp-gate }, { id: pocp-trailer }, { id: pocp-land }]
 ```
 
