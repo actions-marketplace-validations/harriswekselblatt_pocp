@@ -28,7 +28,9 @@ Object.assign(process.env, GIT_ENV);
 const STEP_FILE_VARS = ['GITHUB_OUTPUT', 'GITHUB_ENV', 'GITHUB_PATH', 'GITHUB_STATE', 'GITHUB_STEP_SUMMARY'];
 export const RUNNER_STEP_FILES = Object.freeze(Object.fromEntries(STEP_FILE_VARS.filter((k) => process.env[k]).map((k) => [k, process.env[k]])));
 // Tests behave the same locally and inside CI: no host, no GitHub job summary, outputs or annotations.
-for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', ...STEP_FILE_VARS, 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
+// POCP_DEFER too: `pocp fix --no-defer` sets it to off for the checks it runs, and a suite run
+// that way would see no hand-off in test/ci-handoff.test.js.
+for (const k of ['POCP_HOST', 'POCP_DEFER', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', ...STEP_FILE_VARS, 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
 
 // Temporary folders: test/temp.js gives this process its own root folder (TEST_TMP, also TMPDIR)
 // and removes it, and every folder made with fs.mkdtempSync, on exit or interrupt.

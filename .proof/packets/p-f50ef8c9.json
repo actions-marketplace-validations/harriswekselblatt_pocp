@@ -46,21 +46,19 @@
     },
     {
       "id": "o4",
-      "kind": "guard",
-      "files": [
-        "test/claude-plugin.test.js",
-        "test/init-badge.test.js",
-        "test/rules-coverage.test.js"
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
       ],
-      "mutants": 0,
-      "seed": 1,
-      "text": "Existing tests or test setup changed (test/claude-plugin.test.js, test/init-badge.test.js, test/rules-coverage.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
-      "source": "guard:tests"
+      "source": "rule:test-suite"
     }
   ],
-  "state": "open",
-  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
-  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
   "opened_at": "2026-11-20T05:06:51.342Z",
   "opened_by": "harriswekselblatt",
   "proofs": [
@@ -297,6 +295,198 @@
         },
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T09:40:37.502Z",
+      "duration_ms": 3588,
+      "stdout_sha256": "84374d55dd30823f859074a59183bb084d5f792e4a58510b1960860b008c75b7",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-55f3e7e4",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T09:40:41.237Z",
+      "duration_ms": 45494,
+      "stdout_sha256": "7b3a506f20491922fe09dd09d71774635a18976ccf323af6a6dcfabd6a452639",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-1089990d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-20T09:41:26.816Z",
+      "duration_ms": 441493,
+      "stdout_sha256": "ce7527de46d7b0aca801ffa764482d521b9e5ca536677125f792bc02617c77f4",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9360ccce",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-20T09:48:48.420Z",
+      "duration_ms": 427832,
+      "stdout_sha256": "f6bc5ddc51b72be52ba859146fc87ba51ec24bf4f3674c4726fa1fea7965fb93",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-1009f717",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:49:33.064Z",
+      "duration_ms": 3707,
+      "stdout_sha256": "25091eef478d3833b6b2332777387d4378c32a8f8823f92c8da14d2609d03c72",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-33d693ac",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:49:36.844Z",
+      "duration_ms": 51898,
+      "stdout_sha256": "71dd2ba133b2b22398a3c65cd6afe683a7a752a3ded1262fab01c07ff4041052",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-82ca3a8c",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:50:28.817Z",
+      "duration_ms": 324352,
+      "stdout_sha256": "6ae98db91439218fdcf9e9306080654a4f450625cdee352c7d6e502a3e696e5e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-4c32d123",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:31:50.242Z",
+      "duration_ms": 349557,
+      "stdout_sha256": "66a72f72bb8aa00fde4fdc6767859df6e3c6749cba3bbf311f710d0fd3be59f3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9c40795d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
     }
   ],
   "attestations": [],
@@ -329,6 +519,47 @@
       "obligation": "o4",
       "by": "harriswekselblatt",
       "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144"
+    },
+    {
+      "at": "2026-11-20T08:13:46.486Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
+    },
+    {
+      "at": "2026-11-20T08:13:46.486Z",
+      "event": "requirements_synced",
+      "added": [
+        "o4"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T09:48:48.418Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T09:55:56.350Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T09:55:56.401Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T10:55:53.298Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7"
     }
   ],
   "deferrals": [

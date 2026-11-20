@@ -215,9 +215,45 @@ export function recordDeferral(packet, obligationId, { by, subject, now, reason 
   return d;
 }
 
-export function currentDeferral(packet, ob, subject) {
+/** The latest hand-over of `ob` for this subject: `to` "ci-approval" (a failed guard) or "ci-run" (a check CI runs). */
+export function currentDeferral(packet, ob, subject, to = 'ci-approval') {
   const d = obligationDigest(ob);
-  return (packet.deferrals || []).findLast((x) => x.obligation === ob.id && x.subject === subject && x.obligation_digest === d) || null;
+  return (packet.deferrals || []).findLast((x) => x.obligation === ob.id && x.subject === subject && x.obligation_digest === d && (x.to || 'ci-approval') === to) || null;
+}
+
+/**
+ * A check handed to CI to run (`ci.defer_heavy`, src/handoff.js): it was not run here, and the
+ * record says so. It is not a proof: only verify's own re-run of the check, in CI, can pass it.
+ */
+export function recordHandoff(packet, obligationId, { by, subject, now, reason }) {
+  const ob = packet.obligations.find((o) => o.id === obligationId);
+  if (!ob || !(isRunnable(ob) || isGuard(ob))) throw new ValidationError(`${obligationId} is not a check of ${packet.id} that can be handed to CI`);
+  packet.deferrals = packet.deferrals || [];
+  const d = { obligation: ob.id, obligation_digest: obligationDigest(ob), subject, by, at: now, to: 'ci-run', reason: reason || null };
+  packet.deferrals.push(d);
+  history(packet, now, 'handed_to_ci', { obligation: ob.id, by, subject });
+  return d;
+}
+
+/**
+ * Evaluation with checks handed to CI taken out of `unproven` and listed under `handed_to_ci`,
+ * when `allowed(ob)` says the policy in force lets that check be handed off. Only a check with
+ * no proof at all for this subject: a failed or unfinished local result is never hidden. The
+ * counts are unchanged, so a handed-off check is never counted as proven.
+ */
+export function applyHandoff(packet, ev, allowed) {
+  const handed = ev.unproven.filter((id) => {
+    const ob = packet.obligations.find((o) => o.id === id);
+    return Boolean(ob && currentDeferral(packet, ob, ev.subject, 'ci-run') && allowed(ob));
+  });
+  if (!handed.length) return ev;
+  const unproven = ev.unproven.filter((id) => !handed.includes(id));
+  return {
+    ...ev,
+    unproven,
+    handed_to_ci: handed,
+    ok: !ev.no_obligations && ev.missing_required.length === 0 && unproven.length === 0 && ev.failed.length === 0 && ev.unattested.length === 0,
+  };
 }
 
 /**
@@ -245,7 +281,8 @@ export function deferGuardApproval(packet, ev, mode) {
 /** Set the stored state from an evaluation. Terminal states are never changed here. */
 export function applyEvaluation(packet, evaluation, { now } = {}) {
   if (TERMINAL_STATES.has(packet.state) || packet.state === 'draft') return packet.state;
-  const next = evaluation.failed.length ? 'failed' : evaluation.ok ? 'proven' : 'open';
+  // Checks handed to CI aren't proven here: the packet stays open until CI runs them.
+  const next = evaluation.failed.length ? 'failed' : evaluation.ok && !evaluation.handed_to_ci?.length ? 'proven' : 'open';
   if (next !== packet.state) {
     history(packet, now, 'state', { from: packet.state, to: next, subject: evaluation.subject });
     packet.state = next;

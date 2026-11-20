@@ -13,6 +13,8 @@ import { createVerify } from './engine/verify.js';
 import { createGate } from './engine/gate.js';
 import { createLand } from './engine/land.js';
 import { EXCEPTIONS_FILE, POLICY_FILES } from './policy.js';
+import { handoffDisabled, handoffPolicy } from './handoff.js';
+import { deferAllowed } from './store.js';
 
 // One version source: package.json, read relative to this module so it is right wherever pocp is installed.
 export const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
@@ -30,10 +32,26 @@ export function createPocp(opts = {}) {
 
   // ------------------------------------------------------------------- parts
 
-  const { open, addObligation, widen, sync, ready, abandon, attest, deferToCi, evaluate, status } = createPackets({ activePackets, actor, emit, loadPacket, mutex, mutexAsync, nowFn, opts, requiredFor, root, savePacket, stagedForCoverage, stagedGuard, store });
-  const { prove } = createProve({ store, activePackets, cleanProblems, config, emit, evaluate, guardCacheKey, guardCheckFor, guardInputs, loadPacket, localSigners, mutexAsync, nowFn, readGuardCache, requiredFor, root, runObligation, runnerIdentity, savePacket, signingSetup, stagedForCoverage, stagedGuard, writeGuardCache });
-  const { rerunAt, rerunRequiredCi, checkRequiredCi, applyRerunEvidence, ciRun } = createRerun({ root, runObligation, flagProblem, runnerIdentity });
   const { readJsonAt, readRulesAt, policyAt, notEnrolled, policyInForce, readUncoveredExceptions, applyUncoveredExceptions, acceptedText, changedCiFiles } = createPolicyAt({ root });
+
+  // Which checks may be handed to CI at commit (ci.defer_heavy): judged by the policy committed
+  // at HEAD and the working policy together, so a commit can't turn hand-offs on for itself.
+  // Null (run everything here) unless the working config asks for it, so nothing extra runs.
+  const headPolicies = new Map();
+  function handoff() {
+    if (handoffDisabled()) return null;
+    const cfg = config();
+    if (!deferAllowed(cfg) || !g.hasHead(root)) return null;
+    const head = g.resolveRev(root, 'HEAD');
+    if (!headPolicies.has(head)) headPolicies.set(head, policyAt(head));
+    const base = headPolicies.get(head);
+    if (base.problems.length) return null;
+    return handoffPolicy(base, { rules: rules(), config: cfg, hasRules: true });
+  }
+
+  const { open, addObligation, widen, sync, ready, abandon, attest, deferToCi, evaluate, status } = createPackets({ activePackets, actor, emit, handoff, loadPacket, mutex, mutexAsync, nowFn, opts, requiredFor, root, savePacket, stagedForCoverage, stagedGuard, store });
+  const { prove } = createProve({ store, activePackets, actor, cleanProblems, config, emit, evaluate, guardCacheKey, guardCheckFor, guardInputs, handoff, loadPacket, localSigners, mutexAsync, nowFn, readGuardCache, requiredFor, root, runObligation, runnerIdentity, savePacket, signingSetup, stagedForCoverage, stagedGuard, writeGuardCache });
+  const { rerunAt, rerunRequiredCi, checkRequiredCi, applyRerunEvidence, ciRun } = createRerun({ root, runObligation, flagProblem, runnerIdentity });
   const { verify, findingSink, reportPolicy } = createVerify({ opts, root, emit, hostName, hostRequirements, hostTriggers, guardCheckFor, effectiveFiles, readJsonAt, readRulesAt, policyInForce, notEnrolled, readUncoveredExceptions, applyUncoveredExceptions, acceptedText, changedCiFiles, rerunAt, rerunRequiredCi, checkRequiredCi, applyRerunEvidence });
   const { gate, suggestPacket, checkEdit } = createGate({ root, store, hostName, nowFn, emit, config, rules, activePackets, stagedGuard, mergeFilter, mergeAware, hostRequirements, hostTriggers, evaluate, prove, policyAt, readRulesAt, changedCiFiles });
   const { trailers, addTrailersToFile, land } = createLand({ root, store, emit, stagedForCoverage, activePackets, evaluate });
@@ -97,7 +115,7 @@ export function createPocp(opts = {}) {
     stagePackets(ids) {
       if (store.kind === 'fs') g.addPaths(root, ids.map((id) => store.packetRelPath(id)));
     },
-    _internals: { requiredFor, evaluate, cleanProblems },
+    _internals: { requiredFor, evaluate, cleanProblems, handoff },
   };
 }
 

@@ -132,13 +132,14 @@ export const COMMANDS = {
   sync: { summary: 'add checks the current rules require', usage: ['sync [<packet>...]'], engine: true, flags: {} },
   prove: {
     summary: 'run the checks of the packets covering the staged files',
-    usage: ['prove [<packet>...] [--mode clean|snapshot] [--force] [--only <obl>]... [--no-stage]'],
+    usage: ['prove [<packet>...] [--mode clean|snapshot] [--force] [--only <obl>]... [--no-stage] [--no-defer]'],
     engine: true,
     flags: {
       mode: str('clean|snapshot', 'where checks run'),
       force: bool('re-run checks that already have proof'),
       only: rep('obl', 'run only this obligation (repeatable)'),
       'no-stage': bool("don't stage the packet files"),
+      'no-defer': bool('run checks the rules hand to CI (ci.defer_heavy) here too'),
     },
   },
   attest: { summary: 'sign off a manual or test-guard obligation', usage: ['attest <packet> <obligation> --by <who> [--note <text>]'], engine: true, flags: { note: str('text', 'why') } },
@@ -148,10 +149,10 @@ export const COMMANDS = {
   status: { summary: 'subject, staged files, packet progress', usage: ['status'], engine: true, flags: {} },
   fix: {
     summary: 'do what a blocked commit needs: open or widen a packet, add required checks, prove, stage',
-    usage: ['fix [--intent <text>] [--test <cmd>] [--mode clean|snapshot]'],
+    usage: ['fix [--intent <text>] [--test <cmd>] [--mode clean|snapshot] [--no-defer]'],
     engine: true,
     obligations: ['test'],
-    flags: { intent: str('text', 'what the change is for (for a new packet)'), mode: str('clean|snapshot', 'where checks run') },
+    flags: { intent: str('text', 'what the change is for (for a new packet)'), mode: str('clean|snapshot', 'where checks run'), 'no-defer': bool('run checks the rules hand to CI (ci.defer_heavy) here too') },
   },
   gate: {
     summary: 'decide whether the staged change may be committed',

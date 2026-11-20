@@ -30,23 +30,6 @@
         "{tests}"
       ],
       "source": "rule:test-suite"
-    },
-    {
-      "id": "o2",
-      "kind": "guard",
-      "files": [
-        "test/billing-workflows.test.js",
-        "test/claude-plugin.test.js",
-        "test/fixtures/github-billing/README.md",
-        "test/fixtures/github-billing/billing-annotations.json",
-        "test/fixtures/github-billing/billing-jobs.json",
-        "test/fixtures/github-billing/ordinary-annotations.json",
-        "test/fixtures/github-billing/ordinary-jobs.json"
-      ],
-      "mutants": 0,
-      "seed": 1,
-      "text": "Existing tests or test setup changed (test/billing-workflows.test.js, test/claude-plugin.test.js, test/fixtures/github-billing/README.md, test/fixtures/github-billing/billing-annotations.json, test/fixtures/github-billing/billing-jobs.json, test/fixtures/github-billing/ordinary-annotations.json, test/fixtures/github-billing/ordinary-jobs.json): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
-      "source": "guard:tests"
     }
   ],
   "state": "proven",
@@ -401,6 +384,30 @@
         },
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:f9890ca01d5a7084dbcf16425b7c1c6cbfd23941e4365d42c0286bdb264f94fd",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T19:12:29.910Z",
+      "duration_ms": 438710,
+      "stdout_sha256": "9be7540f6d496b2ede797fe01ae199f4e8db3fb5070965019206a60852b42645",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-0bebe41b",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
     }
   ],
   "attestations": [],
@@ -457,6 +464,13 @@
       "from": "failed",
       "to": "proven",
       "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T19:12:28.620Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
     }
   ],
   "deferrals": [

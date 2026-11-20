@@ -289,7 +289,11 @@ export function setCiMode(root, mode) {
   const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { pocp: 1 };
   const current = config.ci?.mode || 'github';
   if (current === mode) return false;
-  if (mode === 'local') config.ci = { ...config.ci, mode };
+  if (mode === 'local') {
+    config.ci = { ...config.ci, mode };
+    // Local mode never hands checks to CI: the hooks are the only gate (src/handoff.js).
+    delete config.ci.defer_heavy;
+  }
   else delete config.ci.mode;
   fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
   return true;

@@ -3,6 +3,7 @@
   "id": "p-94c78552",
   "intent": "Tests never pass the CI job step files (GITHUB_OUTPUT and the rest) to anything they start; isolation.test.js checks the real ones",
   "touches": [
+    "test/ci-handoff.test.js",
     "test/helpers.js",
     "test/isolation.test.js",
     "test/runner-step-files.test.js"
@@ -23,13 +24,12 @@
       "id": "o2",
       "kind": "guard",
       "files": [
-        "test/helpers.js",
-        "test/isolation.test.js",
-        "test/runner-step-files.test.js"
+        "test/ci-handoff.test.js",
+        "test/helpers.js"
       ],
       "mutants": 0,
       "seed": 1,
-      "text": "Existing tests or test setup changed (test/helpers.js, test/isolation.test.js, test/runner-step-files.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "text": "Existing tests or test setup changed (test/ci-handoff.test.js, test/helpers.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
       "source": "guard:tests"
     }
   ],
@@ -198,6 +198,210 @@
         },
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:31:50.242Z",
+      "duration_ms": 349557,
+      "stdout_sha256": "66a72f72bb8aa00fde4fdc6767859df6e3c6749cba3bbf311f710d0fd3be59f3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9c40795d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:9f89001670ef73527546762db9e650929b1e92b8b1733abccd17561a7469ed7e",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T10:37:39.950Z",
+      "duration_ms": 712601,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "baseline-red",
+        "passed": false,
+        "summary": "the old tests already fail at the base (\"node --test test/*.test.js\" exit 1), so the guard can't tell whether this change altered behavior: a person must approve it. The same tests fail on both sides (the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it; a check handed to CI that fails there blocks the merge; --ci-results can never stand in for a check handed to CI; a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off; a pull request that marks its own check \"defer\" is judged by the base rules; local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here; block mode hands the test guard to CI too, and CI still judges the test change; a pull request of several commits: every hand-off is run once, at the head, by verify; an approved loosening of the guard mode can't let a handed-off guard pass unchecked; a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails)",
+        "base": "66a9201d92f5efb18d8eb5830f30107cf117746b",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/ci-handoff.test.js",
+            "test/helpers.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 313234,
+              "failed_tests": [
+                "the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it",
+                "a check handed to CI that fails there blocks the merge",
+                "--ci-results can never stand in for a check handed to CI",
+                "a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off",
+                "a pull request that marks its own check \"defer\" is judged by the base rules",
+                "local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here",
+                "block mode hands the test guard to CI too, and CI still judges the test change",
+                "a pull request of several commits: every hand-off is run once, at the head, by verify",
+                "an approved loosening of the guard mode can't let a handed-off guard pass unchecked",
+                "a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/rules-coverage.test.js",
+            "test/runner-step-files.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/helpers.js is named in eval/e1/test/batch.test.js, so it may be test setup"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 397456,
+              "failed_tests": [
+                "the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it",
+                "a check handed to CI that fails there blocks the merge",
+                "--ci-results can never stand in for a check handed to CI",
+                "a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off",
+                "a pull request that marks its own check \"defer\" is judged by the base rules",
+                "local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here",
+                "block mode hands the test guard to CI too, and CI still judges the test change",
+                "a pull request of several commits: every hand-off is run once, at the head, by verify",
+                "an approved loosening of the guard mode can't let a handed-off guard pass unchecked",
+                "a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails"
+              ]
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "adjudication": {
+          "automatic": false,
+          "reason": "baseline-red",
+          "failing_on_new_code": [
+            "the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it",
+            "a check handed to CI that fails there blocks the merge",
+            "--ci-results can never stand in for a check handed to CI",
+            "a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off",
+            "a pull request that marks its own check \"defer\" is judged by the base rules",
+            "local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here",
+            "block mode hands the test guard to CI too, and CI still judges the test change",
+            "a pull request of several commits: every hand-off is run once, at the head, by verify",
+            "an approved loosening of the guard mode can't let a handed-off guard pass unchecked",
+            "a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails"
+          ],
+          "failing_at_base": [
+            "the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it",
+            "a check handed to CI that fails there blocks the merge",
+            "--ci-results can never stand in for a check handed to CI",
+            "a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off",
+            "a pull request that marks its own check \"defer\" is judged by the base rules",
+            "local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here",
+            "block mode hands the test guard to CI too, and CI still judges the test change",
+            "a pull request of several commits: every hand-off is run once, at the head, by verify",
+            "an approved loosening of the guard mode can't let a handed-off guard pass unchecked",
+            "a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails"
+          ],
+          "same_tests": true
+        },
+        "duration_ms": 712601,
+        "timings": {
+          "setup_ms": 554,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 313532,
+            "run_ms": 313234,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 398244,
+            "run_ms": 397456,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 820,
+            "count": 2
+          },
+          "copy": {
+            "ms": 475,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 856,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
     }
   ],
   "attestations": [],
@@ -228,6 +432,42 @@
       "obligation": "o2",
       "by": "harriswekselblatt",
       "subject": "sha256:6a4a427a9527d130673e7cfb734ee8bb37fe42dd411cdc8d1799d45d8285cf47"
+    },
+    {
+      "at": "2026-11-20T10:00:19.487Z",
+      "event": "touches_widened",
+      "added": [
+        "test/ci-handoff.test.js"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T10:00:19.487Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    },
+    {
+      "at": "2026-11-20T10:00:19.487Z",
+      "event": "requirements_synced",
+      "added": [
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T10:49:32.916Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7"
+    },
+    {
+      "at": "2026-11-20T10:55:53.895Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7"
     }
   ],
   "deferrals": [
@@ -239,6 +479,15 @@
       "at": "2026-11-20T06:45:36.855Z",
       "to": "ci-approval",
       "reason": "the old tests fail on the new code, and on the base the same checks didn't finish normally (\"node --test test/*.test.js\" exit 1, timed out), so it can't be told whether they were already failing: a person must approve it"
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:9f89001670ef73527546762db9e650929b1e92b8b1733abccd17561a7469ed7e",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T10:55:53.895Z",
+      "to": "ci-approval",
+      "reason": "the old tests already fail at the base (\"node --test test/*.test.js\" exit 1), so the guard can't tell whether this change altered behavior: a person must approve it. The same tests fail on both sides (the commit hands the check to CI: not run, not proven, said plainly; verify --rerun runs it; a check handed to CI that fails there blocks the merge; --ci-results can never stand in for a check handed to CI; a pull request that turns hand-offs on for itself is judged by the base: it runs its checks, and CI flags any hand-off; a pull request that marks its own check \"defer\" is judged by the base rules; local mode never hands off: the setting is refused, and a hand-off made elsewhere is no proof here; block mode hands the test guard to CI too, and CI still judges the test change; a pull request of several commits: every hand-off is run once, at the head, by verify; an approved loosening of the guard mode can't let a handed-off guard pass unchecked; a head that is a merge (\"Update branch\"): hand-offs still run, and a break still fails)"
     }
   ]
 }

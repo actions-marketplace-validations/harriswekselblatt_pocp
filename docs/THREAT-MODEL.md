@@ -20,7 +20,9 @@ environment.
 
 **A hurried or careless agent or person** (the common case). Can't commit a risky change
 without a packet; can't skip a required check; can't "prove" against unstaged edits; can't
-reuse a stale proof after the code, command or rules change. *Fully covered.*
+reuse a stale proof after the code, command or rules change. *Fully covered.* (With
+`ci.defer_heavy`, opt-in in GitHub CI mode, a check a rule marks `"defer": "ci"` runs in CI
+instead of at commit: see "Checks handed to CI" below.)
 
 **An agent optimising for a green gate.** Tries to delete or narrow a requirement, open a
 catch-all packet, gut an assertion, add `.skip`, change the test script to `echo ok`, replace
@@ -73,11 +75,53 @@ where you would already run that PR's tests, with no secrets and read-only permi
 | `signed:<principal>` | As `local`, plus a signature from a key in `allowed_signers`: who ran it, and the record wasn't edited since. |
 | `ci-result` | Recorded by `pocp ci-run` in this CI job for this exact commit and command. As trustworthy as everything that ran in the job before verify, which includes the pull request's tests. |
 | `rerun` | Run again by this `verify`, in a fresh copy of the commit. The most independent result POCP gives; see below for its limits. |
+| `handed-to-ci` | Not run at commit: handed to CI under `ci.defer_heavy` (below). Not evidence of anything. Verify passes it only by re-running it, which makes it `rerun`. |
 
 The test guard's obligation uses the same ladder with a `mechanical:` prefix
 (`mechanical:local`, `mechanical:signed:<principal>`, `mechanical:rerun`): POCP ran the
 two-part check (§6.2) rather than someone vouching for the change. `attested:<who>` on it
 means the mechanical check did not pass and someone signed off instead.
+
+## Checks handed to CI
+
+`ci.defer_heavy` (opt-in) lets a repository whose CI re-runs every check skip the checks a rule
+marks `"defer": "ci"` at commit, and the test guard's check in block mode. `pocp fix` records each
+as handed to CI rather than running it. This changes what a local commit shows, and nothing about
+what can merge:
+
+- **What merges is judged exactly as before.** CI's `verify --rerun` already ran every check of
+  every packet once, at the pull request's head, in a fresh copy, and judged the test guard on
+  the net change; a local proof was never what let code merge, since a packet file can be edited.
+  A handed-off check passes only when that verify runs it itself and it passes: no local record,
+  CI results file (which the pull request's tests can write) or signature counts for it, and a
+  verify without a re-run reports it `unproven`. Every check a commit in the range handed off is
+  added to the head's re-run by itself, not only through the packets the head's re-run reads,
+  including when the head is a merge ("Update branch").
+- **A hand-off is never a proof.** It is a separate record (`"to": "ci-run"`) beside the proofs,
+  the trailer lists it apart from `proven=`, the packet stays `open`, and only a check with no
+  local result at all for that code can be handed off: a check that ran here and failed still
+  blocks the commit.
+- **A change can't hand off its own checks.** Which checks may be handed off comes from the
+  committed policy and the change's own, combined strictly: locally HEAD's and the staged ones,
+  in CI the base branch's and each commit's, and never the head's alone even when a loosening is
+  approved. Turning `ci.defer_heavy` on and marking a check `"defer": "ci"` are loosenings, so CI
+  fails them without `pocp-approve-policy`; and the commits of that pull request are still judged
+  by the base, which doesn't allow hand-offs, so any hand-off in them is `unproven`.
+- **Failures still block.** The setting is refused unless `verify.fail_on` includes `unproven`,
+  `rerun_failed` and `test_change`, so a handed-off check that CI didn't run, or that failed there,
+  fails the pull request. `pocp doctor` reports a problem when no required status (`pocp` or the
+  verify job) makes that block the merge.
+- **What does change:** a commit can be made, and pushed, with a heavy check failing; the author
+  learns it from CI instead of from the hook. Intermediate commits of a pull request aren't tested
+  on their own code for a handed-off check (CI never re-ran them either; their local proofs were
+  only the author's word). A repository that relies on signed local proofs to skip CI re-runs
+  (`--rerun-unsigned`) gets no such skip for a handed-off check, which has nothing to sign.
+
+**Local mode never hands off.** With `ci.mode: "local"` there is no CI re-run and no required
+status: the git hooks are the only gate, so a handed-off check would run nowhere. POCP refuses
+`ci.defer_heavy` in local mode, `pocp ci off` removes it, a policy in local mode never allows a
+hand-off, and a commit made with hand-offs elsewhere that is verified against a local-mode base
+reports them as `unproven`. Local-mode repositories keep the full gate at every commit.
 
 ## Pull-request code in the verifying job
 

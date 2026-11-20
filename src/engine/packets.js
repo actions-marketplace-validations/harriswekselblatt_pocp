@@ -5,9 +5,10 @@ import * as P from '../packets.js';
 import { PocpError } from './shared.js';
 import { describeObligation, isGuard } from '../obligations.js';
 import { validateRules } from '../rules.js';
+import { canHandOff } from '../handoff.js';
 
 /** Packet operations for one engine, given the packet store helpers and locks it uses. */
-export function createPackets({ activePackets, actor, emit, loadPacket, mutex, mutexAsync, nowFn, opts, requiredFor, root, savePacket, stagedForCoverage, stagedGuard, store }) {
+export function createPackets({ activePackets, actor, emit, handoff = () => null, loadPacket, mutex, mutexAsync, nowFn, opts, requiredFor, root, savePacket, stagedForCoverage, stagedGuard, store }) {
   async function open(args) {
     return mutexAsync(() => openUnlocked(args));
   }
@@ -115,7 +116,11 @@ export function createPackets({ activePackets, actor, emit, loadPacket, mutex, m
 
   async function evaluate(packet, subject, rulesObj) {
     const req = await requiredFor(packet, rulesObj);
-    return P.deferGuardApproval(packet, P.evaluatePacket(packet, { subject, required: [...req.merged, ...req.guard] }), stagedGuard().mode);
+    const ev = P.deferGuardApproval(packet, P.evaluatePacket(packet, { subject, required: [...req.merged, ...req.guard] }), stagedGuard().mode);
+    // Checks handed to CI (ci.defer_heavy): not proven, but they don't hold the commit back.
+    const policy = ev.unproven.length ? handoff() : null;
+    // The guard only while the staged guard mode is block too (otherwise its sign-off path applies).
+    return policy ? P.applyHandoff(packet, ev, (ob) => canHandOff(ob, policy) && (!isGuard(ob) || stagedGuard().mode === 'block')) : ev;
   }
 
   async function status() {
