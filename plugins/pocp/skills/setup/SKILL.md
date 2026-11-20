@@ -53,7 +53,12 @@ from step 2 to the test command, and keep the rest of the file as `init` wrote i
 ```
 
 Use the real folders and command. Add `"cwd"` to the obligation if the command must run in a
-subfolder. Then run `pocp rules check` and fix anything it reports.
+subfolder. Then run `pocp rules check`: fix every problem, and treat a warning that a requirement
+"matches no tracked file" as a mistake in the globs, not something to leave.
+
+This first rule judges every later change, so the user decides it, not you. Show them the rule
+as written, the command it runs, and a few of the files its globs cover (`git ls-files` filtered
+by them), and ask them to confirm or correct it before you go on.
 
 **6. Commit, with the user's go-ahead**
 
