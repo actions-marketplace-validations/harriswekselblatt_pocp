@@ -650,9 +650,15 @@ function parseNameStatus(out) {
 
 /** Staged changes against HEAD (or the empty tree before the first commit). */
 export function stagedChanges(cwd, againstRev = null) {
-  const base = againstRev || (hasHead(cwd) ? 'HEAD' : emptyTree(cwd));
-  const out = git(cwd, ['diff', '--cached', '--name-status', '-M', '-z', base], { trim: false });
-  return parseNameStatus(out);
+  const diff = (base, extra = []) => git(cwd, ['diff', '--cached', '--name-status', '-M', '-z', base, ...extra], { trim: false, allowFail: extra.length > 0 });
+  if (againstRev) return parseNameStatus(diff(againstRev));
+  // One git call in the usual case (there is a HEAD), instead of asking first whether there is
+  // one. "--" makes git read HEAD as a revision only: before the first commit the call fails
+  // (and the empty tree is used, as before), even when a file named HEAD exists, which would
+  // otherwise turn HEAD into a path and list only that file's changes.
+  const out = diff('HEAD', ['--']);
+  if (out !== null) return parseNameStatus(out);
+  return parseNameStatus(diff(hasHead(cwd) ? 'HEAD' : emptyTree(cwd)));
 }
 
 /** Changes a commit introduced relative to its first parent (or the empty tree for a root commit). */
@@ -823,9 +829,15 @@ export function changedLines(cwd, from, to, paths) {
   return map;
 }
 
+// Where MERGE_HEAD lives depends only on the repository's layout (its git folder), which
+// doesn't change while pocp runs: asked once per folder, not on every staged-files check.
+const mergeHeadPaths = new Map();
+
 /** Commits being merged in (MERGE_HEAD) while a merge is in progress; empty otherwise. */
 export function mergeHeads(cwd) {
-  const file = path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'MERGE_HEAD']));
+  const key = `${cwd}\0${isolation ? isolation.gitDir : ''}`;
+  if (!mergeHeadPaths.has(key)) mergeHeadPaths.set(key, path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'MERGE_HEAD'])));
+  const file = mergeHeadPaths.get(key);
   let text;
   try {
     text = fs.readFileSync(file, 'utf8');

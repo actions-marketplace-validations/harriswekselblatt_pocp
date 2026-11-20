@@ -53,7 +53,7 @@ export const COMMANDS = {
   version: { summary: 'print the version', usage: ['version'], flags: {} },
   init: {
     summary: 'create .proof/, and optionally the git hooks and GitHub workflows',
-    usage: ['init [--hooks] [--github | --local] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>]'],
+    usage: ['init [--hooks] [--github | --local] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>] [--badge]'],
     flags: {
       hooks: bool('install the git hooks'),
       local: bool('local mode: the git hooks are the gate and no CI is expected (ci.mode "local"); implies --hooks'),
@@ -62,6 +62,7 @@ export const COMMANDS = {
       force: bool('replace existing hooks and workflow files'),
       deep: bool('test guard plants 10 bugs per test edit (guard.mutants 10); slower'),
       'pocp-ref': str('tag|sha', 'pin the workflows to this POCP release instead of this one'),
+      badge: bool('print a README badge to paste (at a terminal, a first init asks instead, default no)'),
     },
   },
   doctor: {

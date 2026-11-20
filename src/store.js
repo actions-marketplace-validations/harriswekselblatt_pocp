@@ -141,7 +141,7 @@ function writeJsonAtomic(file, value) {
 
 const SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
-function pidAlive(pid) {
+export function pidAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
@@ -178,7 +178,7 @@ function olderThan(file, ms) {
 }
 
 /** Create `file` holding `content`, only if it doesn't exist: never visible empty. */
-function publishExclusive(file, content) {
+export function publishExclusive(file, content) {
   const tmp = `${file}.new-${process.pid}-${randomBytes(6).toString('hex')}`;
   fs.writeFileSync(tmp, content, { flag: 'wx' });
   try {

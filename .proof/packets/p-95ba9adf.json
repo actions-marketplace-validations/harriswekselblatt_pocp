@@ -1,0 +1,640 @@
+{
+  "pocp": 1,
+  "id": "p-95ba9adf",
+  "intent": "Privacy guard works without git and allows the runner's home path on CI",
+  "touches": [
+    "test/privacy.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "guard",
+      "files": [
+        "test/privacy.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/privacy.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "opened_at": "2026-11-19T23:40:31.258Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T23:40:32.072Z",
+      "duration_ms": 4433,
+      "stdout_sha256": "3b3a2fc0a09278a82af4d1cd07f9049cbd212cabd43565d9688e3174b72f5264",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-cc4e9633",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T23:40:36.641Z",
+      "duration_ms": 95633,
+      "stdout_sha256": "a91980945de261c0e9a820c59ab1a2e5a12a01948c1e8870196a0817bea942d7",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-5f0adec6",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-19T23:42:12.397Z",
+      "duration_ms": 600359,
+      "stdout_sha256": "e6cc408e5b414876a98eb6dcd7550a5d6439e6a0a569547b2f42d769470e5609",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-37217db8",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb5d8bc0df4625dae281a40331731eacdc05f5f0e61e7bdbc285cdcbff6c07a3",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-19T23:52:13.022Z",
+      "duration_ms": 1280985,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"npm test --silent\" exit null, timed out), so there is nothing to compare",
+        "base": "44e959e87a24f0cea78091bf5a2a0591509f0d18",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/privacy.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 5537
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 77937
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 590928,
+              "failed_tests": [
+                "test/privacy.test.js"
+              ]
+            }
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "files": [
+              "test/privacy.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/privacy.test.js"
+                ],
+                "outcome": "fail",
+                "exit": 1,
+                "duration_ms": 458,
+                "tests": {
+                  "passed": 0,
+                  "failed": 1,
+                  "skipped": 0
+                },
+                "failed_tests": [
+                  "test/privacy.test.js"
+                ]
+              },
+              {
+                "side": "base",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/privacy.test.js"
+                ],
+                "outcome": "fail",
+                "exit": 1,
+                "duration_ms": 496,
+                "tests": {
+                  "passed": 0,
+                  "failed": 1,
+                  "skipped": 0
+                },
+                "failed_tests": [
+                  "test/privacy.test.js"
+                ]
+              }
+            ],
+            "reason": "the old versions of the edited tests fail on the new code, and on the base \"node --test test/privacy.test.js\" fails too; running the whole check instead"
+          }
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": null,
+              "timed_out": true,
+              "signal": "SIGTERM",
+              "duration_ms": 600189
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 1280985,
+        "timings": {
+          "setup_ms": 1095,
+          "new_baseline": {
+            "wall_ms": 600784,
+            "run_ms": 600189,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 679105,
+            "run_ms": 675356,
+            "runs": 5
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 1358,
+            "count": 2
+          },
+          "copy": {
+            "ms": 2546,
+            "count": 6
+          },
+          "cleanup": {
+            "ms": 1691,
+            "count": 8
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T00:29:44.164Z",
+      "duration_ms": 268075,
+      "stdout_sha256": "e50dc75d16309ef3b7f1f96c541446004e38cf3bb101c3a72695cc52112d20e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-341b98f9",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb5d8bc0df4625dae281a40331731eacdc05f5f0e61e7bdbc285cdcbff6c07a3",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T00:34:12.375Z",
+      "duration_ms": 578558,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "baseline-red",
+        "passed": false,
+        "summary": "the old tests already fail at the base (\"npm test --silent\" exit 1), so the guard can't tell whether this change altered behavior: a person must approve it. The same tests fail on both sides (test/privacy.test.js)",
+        "base": "44e959e87a24f0cea78091bf5a2a0591509f0d18",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/privacy.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2315
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 37032
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 267691,
+              "failed_tests": [
+                "test/privacy.test.js"
+              ]
+            }
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "files": [
+              "test/privacy.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/privacy.test.js"
+                ],
+                "outcome": "fail",
+                "exit": 1,
+                "duration_ms": 135,
+                "tests": {
+                  "passed": 0,
+                  "failed": 1,
+                  "skipped": 0
+                },
+                "failed_tests": [
+                  "test/privacy.test.js"
+                ]
+              },
+              {
+                "side": "base",
+                "check": "unit-tests",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/privacy.test.js"
+                ],
+                "outcome": "fail",
+                "exit": 1,
+                "duration_ms": 135,
+                "tests": {
+                  "passed": 0,
+                  "failed": 1,
+                  "skipped": 0
+                },
+                "failed_tests": [
+                  "test/privacy.test.js"
+                ]
+              }
+            ],
+            "reason": "the old versions of the edited tests fail on the new code, and on the base \"node --test test/privacy.test.js\" fails too; running the whole check instead"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 268798,
+              "failed_tests": [
+                "test/privacy.test.js"
+              ]
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "adjudication": {
+          "automatic": false,
+          "reason": "baseline-red",
+          "failing_on_new_code": [
+            "test/privacy.test.js"
+          ],
+          "failing_at_base": [
+            "test/privacy.test.js"
+          ],
+          "same_tests": true
+        },
+        "duration_ms": 578558,
+        "timings": {
+          "setup_ms": 467,
+          "new_baseline": {
+            "wall_ms": 1,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 308599,
+            "run_ms": 307308,
+            "runs": 5
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 269371,
+            "run_ms": 268798,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 805,
+            "count": 3
+          },
+          "copy": {
+            "ms": 879,
+            "count": 6
+          },
+          "cleanup": {
+            "ms": 904,
+            "count": 9
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-19T23:40:31.258Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T23:40:31.258Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-19T23:52:12.898Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    },
+    {
+      "at": "2026-11-20T00:13:34.411Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    },
+    {
+      "at": "2026-11-20T00:13:34.457Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    },
+    {
+      "at": "2026-11-20T00:13:34.823Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    },
+    {
+      "at": "2026-11-20T00:43:51.164Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    },
+    {
+      "at": "2026-11-20T00:43:51.210Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:fb5d8bc0df4625dae281a40331731eacdc05f5f0e61e7bdbc285cdcbff6c07a3",
+      "subject": "sha256:53a6273e78ee21d05076d1cfe314d9ea207c9eb65aa490718c95ad8565d9627d",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T00:13:34.823Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"npm test --silent\" exit null, timed out), so there is nothing to compare"
+    }
+  ]
+}

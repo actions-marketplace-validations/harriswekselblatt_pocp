@@ -151,7 +151,6 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
     }
     const commit = g.resolveRev(root, 'HEAD');
     const subject = g.subjectHashRev(root, commit);
-    const started_at = new Date().toISOString();
     const r = await runObligation(ob, root, { keepCiFiles: true });
     return {
       pocp: 1,
@@ -163,7 +162,7 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
       exit: r.exit,
       timed_out: r.timed_out,
       passed: r.passed,
-      started_at,
+      started_at: r.started_at,
       duration_ms: r.duration_ms,
       stdout_sha256: r.stdout_sha256,
       stderr_sha256: r.stderr_sha256,

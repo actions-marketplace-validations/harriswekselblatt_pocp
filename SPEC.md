@@ -215,7 +215,9 @@ obligation digest, `prove` copies it (`reused_from`) instead of running the comm
 
 - **Timeout.** Each runnable obligation has a timeout (`timeout_ms`, default 10 minutes).
   On timeout POCP sends SIGTERM to the whole process group, then SIGKILL after 5 seconds,
-  and records `timed_out: true` and a failed proof.
+  and records `timed_out: true` and a failed proof. A run's timeout, `duration_ms` and
+  `started_at` start when its command starts. Time spent waiting for a machine-wide check
+  slot (docs/REFERENCE.md, "Several checkouts on one machine") is not part of any of them.
 - **Process cleanup.** Commands run in their own process group. Every process that stays
   in that group is killed when the command times out, when POCP exits or is interrupted, and,
   through a small watchdog in the group, when POCP itself is killed outright. A process that
