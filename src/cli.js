@@ -7,6 +7,7 @@ import { createIsolatedRunner } from './isolate.js';
 
 import { EXIT, exitCodeFor, isKnownError } from './errors.js';
 import { run as initCommand } from './commands/init.js';
+import { run as upgradeCommand } from './commands/upgrade.js';
 import { run as hooksCommand } from './commands/hooks.js';
 import { run as statusReportCommand } from './commands/status-report.js';
 import { run as approvalsCommand } from './commands/approvals.js';
@@ -42,6 +43,7 @@ export { localizeCommands, shellJoin };
 
 const EARLY_COMMANDS = {
   'init': initCommand,
+  'upgrade': upgradeCommand,
   'hooks': hooksCommand,
   'status-report': statusReportCommand,
   'approvals': approvalsCommand,
@@ -91,6 +93,10 @@ Setup
                                      GitHub workflows (verify, the pocp status, approval labels),
                                      pinned to this release (--pocp-ref <tag|sha> to pin another);
                                      --local: no CI, the hooks are the gate (implies --hooks)
+  upgrade [--dry-run] [--to <version>] [--pocp-ref <tag|sha>]
+                                     move to a newer release: bump the proof-of-change dependency (or the
+                                     global install), re-pin the workflows, refresh the hooks; asks
+                                     npm for the latest version unless --to
   doctor [--base <rev>] [--offline]  check an adoption: hooks, policy, Action access, labels,
                                      branch protection, and what the adoption PR carries
   approve [<owner/repo#n>] [--repo <owner/repo>]... [--owner <login>]...  (also: approvals)
