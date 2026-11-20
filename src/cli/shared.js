@@ -22,11 +22,22 @@ export const LOCAL_INSTALL = SELF_BIN.includes(`${path.sep}node_modules${path.se
 export function localizeCommands(text, local = LOCAL_INSTALL) {
   return local ? String(text).replace(/(?<![\w./-])(?<!npx )pocp (?=[a-z])/g, 'npx pocp ') : text;
 }
-export const errWrite = (text) => process.stderr.write(localizeCommands(text));
+/**
+ * Text pocp prints can carry what a pull request wrote (file names, test names, details), and a
+ * CI runner reads any output line starting with "::" as a command (GitHub: ::set-output,
+ * ::add-mask, ...). A file name may hold a newline, so such a line can appear anywhere. pocp's
+ * own annotations are written elsewhere (writeGithubSummary); in this text, every line that
+ * would start with "::" (or the older "##[") is prefixed, and carriage returns, which some readers treat as line
+ * breaks, are dropped.
+ */
+export function inertCommands(text) {
+  return String(text).replace(/\r/g, '').split('\n').map((l) => (/^\s*(::|##\[)/.test(l) ? `· ${l}` : l)).join('\n');
+}
+export const errWrite = (text) => process.stderr.write(inertCommands(localizeCommands(text)));
 
 export function out(json, data, human) {
   if (json) process.stdout.write(`${JSON.stringify({ pocp: 1, ...data }, null, 2)}\n`);
-  else if (human) process.stdout.write(`${localizeCommands(human)}\n`);
+  else if (human) process.stdout.write(`${inertCommands(localizeCommands(human))}\n`);
 }
 
 /** Why each guard obligation still needs a sign-off: what the mechanical check found. */
@@ -98,9 +109,9 @@ export function writeGithubSummary(result, rows, commitProblems, ms, { annotatio
     // approval annotation below is what "pocp approvals" reads.
     const level = result.approval?.only ? 'warning' : 'error';
     for (const c of rows) {
-      if (!c.ok) process.stdout.write(`::${level} title=POCP::${c.kind === 'net' ? 'net change ' : ''}${c.commit.slice(0, 12)} ${commitProblems(c).join(' | ').replace(/\r?\n/g, ' ')}\n`);
+      if (!c.ok) process.stdout.write(`::${level} title=POCP::${c.kind === 'net' ? 'net change ' : ''}${c.commit.slice(0, 12)} ${commitProblems(c).join(' | ').replace(/[\r\n]+/g, ' ')}\n`);
     }
-    for (const f of result.rerun_failures || []) process.stdout.write(`::error title=POCP rerun::${f.packet}: ${f.problem}\n`);
+    for (const f of result.rerun_failures || []) process.stdout.write(`::error title=POCP rerun::${f.packet}: ${String(f.problem).replace(/[\r\n]+/g, ' ')}\n`);
     // Machine-readable, for "pocp approvals": what a maintainer's label would clear.
     const note = approvalAnnotation(result.approval);
     if (note) process.stdout.write(`${note}\n`);

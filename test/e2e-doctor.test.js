@@ -181,3 +181,27 @@ test('doctor: a branch that enforces the whole plan is ok; opting out of up-to-d
     if (expectWarning) assert.match(warn[0].why, /not the code that was verified/);
   }
 });
+
+test("doctor: pocp.yml's prediction and the reporter must use the status action at the same ref", () => {
+  const dir = sampleRepo({ deep: false });
+  const verify = (ref) => [
+    'name: pocp', 'on: { pull_request: {} }', 'jobs:', '  approval:', '    steps:',
+    `      - uses: harriswekselblatt/pocp/status@${ref}`, '        with:', "          predict-approval: 'true'",
+    '  verify:', '    steps:', '      - uses: harriswekselblatt/pocp@v2', '        with:', '          exit-detail: true',
+    '          accept-test-change: pocp-approve-tests', '          accept-policy-change: pocp-approve-policy', '',
+  ].join('\n');
+  const reporter = 'name: pocp-status\non:\n  workflow_run:\n    workflows: [pocp]\njobs:\n  report:\n    steps:\n      - uses: harriswekselblatt/pocp/status@v2\n';
+  write(dir, '.github/workflows/pocp.yml', verify('v2'));
+  write(dir, '.github/workflows/pocp-status.yml', reporter);
+  const same = pocp(dir, ['doctor', '--offline', '--json']);
+  assert.deepEqual(check(same, 'status-refs'), []);
+  assert.equal(check(same, 'reporter')[0].status, 'ok');
+  write(dir, '.github/workflows/pocp.yml', verify('v1'));
+  const differ = pocp(dir, ['doctor', '--offline', '--json']);
+  assert.equal(check(differ, 'status-refs')[0]?.status, 'problem', JSON.stringify(differ.json.checks.map((c) => c.id)));
+  assert.match(check(differ, 'status-refs')[0].what, /predicts with the status action at v1, but the reporter runs v2/);
+  // The prediction alone is not a reporter: without pocp-status.yml, doctor still says one is missing.
+  fs.rmSync(path.join(dir, '.github/workflows/pocp-status.yml'));
+  const none = pocp(dir, ['doctor', '--offline', '--json']);
+  assert.equal(check(none, 'reporter')[0].status, 'problem');
+});

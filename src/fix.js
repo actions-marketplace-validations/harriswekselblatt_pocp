@@ -110,6 +110,7 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
           ...(x.outcome === 'unfinished' ? { unfinished: true } : {}),
         }))),
       });
+      for (const detail of nearTimeout(engine, r.packets, engine.config())) actions.push({ action: 'note', detail });
       progressed = true;
     }
     // Block mode: a test change the check couldn't pass goes to a maintainer in CI. Recorded as
@@ -184,6 +185,36 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
     advice: needsPerson.length ? dontRewrite(needsPerson) : null,
     gate,
   };
+}
+
+/**
+ * Checks that passed but used more than half their time limit. On a busy machine (several
+ * agents proving at once) such a check is the next to time out, and a timeout means the whole
+ * run again with nothing learned. Advice only: nothing here changes a result.
+ */
+export function nearTimeout(engine, packets, cfg) {
+  const out = [];
+  for (const p of packets || []) {
+    let packet = null;
+    try { packet = engine.loadPacket(p.id); } catch { continue; }
+    for (const x of p.runs || []) {
+      if (!x.passed || x.skipped || x.cached || x.reused_from || x.guard) continue;
+      const ob = (packet.obligations || []).find((o) => o.id === x.obligation);
+      const limit = ob?.timeout_ms || cfg.run.timeout_ms;
+      if (!limit || !(x.duration_ms > limit / 2)) continue;
+      const where = ob?.timeout_ms ? `the check's timeout_ms (${ob.source && ob.source !== 'author' ? `in ${ob.source.replace(/^rule:/, 'rule ')}` : `in packet ${p.id}`})` : 'run.timeout_ms in .proof/config.json';
+      const [took, of] = durations(x.duration_ms, limit);
+      out.push(`${p.id}: ${x.obligation} took ${took} of its ${of} limit; under load it may time out. Consider raising ${where}.`);
+    }
+  }
+  return out;
+}
+
+/** Both in the limit's unit: whole seconds under two minutes, else minutes to one decimal. */
+function durations(ms, limit) {
+  if (limit < 120_000) return [`${Math.round(ms / 1000)}s`, `${Math.round(limit / 1000)}s`];
+  const min = (v) => `${Number((v / 60_000).toFixed(1))} min`;
+  return [min(ms), min(limit)];
 }
 
 function dedupe(list) {

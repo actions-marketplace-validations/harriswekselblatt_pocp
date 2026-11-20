@@ -3,7 +3,7 @@
   "packet_ttl_days": 14,
   "run": {
     "mode": "clean",
-    "timeout_ms": 600000,
+    "timeout_ms": 1200000,
     "env": "inherit"
   },
   "snapshot": {

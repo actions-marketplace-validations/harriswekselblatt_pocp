@@ -27,14 +27,36 @@ export const APPROVAL_MARKERS = Object.freeze({
   'approval-coverage': 'pocp-approve-coverage',
 });
 // Steps the trusted workflow runs for each label verify says it waits for (verify's `needs`
-// output). They choose the pending text only, never the state: a pull request's own workflow can
-// run any step it likes, and a wrong list only names the wrong labels on a status that stays
-// pending. A workflow without them gets the generic text.
+// output). On their own they choose the pending text only, never the state: without isolation a
+// check can write the step's outputs, and a wrong list only names the wrong labels on a status
+// that stays pending. With the approvable step (below) they also say which labels, all given,
+// turn the wait green. A workflow without them gets the generic text.
 export const NEEDS_MARKERS = Object.freeze({
   'needs-tests': 'pocp-approve-tests',
   'needs-policy': 'pocp-approve-policy',
   'needs-inconclusive': 'pocp-approve-inconclusive',
 });
+// The step the trusted workflow runs when verify said the wait is for approvals only, and its
+// needs-* steps list every one (verify's `approvable` output), in a run whose checks were
+// isolated. Isolation is what makes those outputs verify's own: an isolated check can't reach
+// the runner's output files (src/isolate.js probes for it, and verify fails rather than run
+// unisolated), and the workflow decides on isolation before any of the pull request's code
+// runs. Only with this step do the needs-* steps count for more than the pending text: the
+// labels they name, all given, turn the wait green without running verify again
+// (approvedWait). A run without it is judged as before.
+export const APPROVABLE_STEP = 'approvable';
+// The step pocp.yml runs, instead of verify, when its prediction (status-report
+// --predict-approval) found verify needn't run. Such a run evaluated nothing: set aside like a
+// skipped run, so the run already waiting decides (approvedWait).
+// The approvals a wait may turn green on without a new run. pocp-approve-tests accepts exactly
+// the test-change findings the waiting run listed; nothing else about the run changes.
+export const FAST_PATH_LABELS = new Set(['pocp-approve-tests']);
+export const APPROVED_WITHOUT_RUN_STEP = 'approved-without-run';
+export function approvedWithoutRun(run) {
+  const job = run?.job;
+  return Boolean(run && run.status === 'completed' && job && job.status === 'completed'
+    && stepOf(job, APPROVED_WITHOUT_RUN_STEP)?.conclusion === 'success' && stepOf(job, 'verify')?.conclusion === 'skipped');
+}
 // GitHub's "list pull request files" returns at most this many files. A list that reaches it may
 // be missing the rest, so it never shows that no CI file changed.
 export const FILES_CAP = 3000;
@@ -48,6 +70,7 @@ export const runMarker = (number, baseSha) => `pocp-run pr-${number} base-${base
 
 export const TEXT = Object.freeze({
   verified: 'Verified: required checks passed on this code.',
+  approved: 'Verified: required checks passed on this code, and a maintainer approved what it waited for.',
   waiting: "Waiting for a maintainer's approval. See the verify run for what's needed.",
   inconclusive: "Inconclusive: a check didn't finish. Re-run it, or a maintainer approves.",
   failed: 'Not verified: see the verify run.',
@@ -157,7 +180,31 @@ export function runIdentity(job, number, baseSha) {
 }
 
 // Every step the trusted workflow runs to evaluate a pull request.
-const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS)]);
+const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', APPROVABLE_STEP, ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS)]);
+
+/**
+ * Whether a run that waits only for approvals now has every one, so the wait is as good as a
+ * re-run with those labels (which would pass: verify's `approvable` means nothing else blocks).
+ * Each label the run waits for, and each it already relied on, must be on the pull request and
+ * have been given by a writer after this head's first run (labelFreshness), exactly as for a
+ * run verified with labels. Returns { ok, labels } or { ok: false, why }.
+ */
+export function approvedWait(facts, run, sha) {
+  const job = run?.job;
+  if (stepOf(job, APPROVABLE_STEP)?.conclusion !== 'success') return { ok: false, why: 'the run does not say it waits for approvals only (no approvable step)' };
+  const needed = runNeeds(job);
+  if (!needed.length) return { ok: false, why: 'the run names no approval it waits for' };
+  // Only test-change approvals: a policy approval changes which rules judge the run, and an
+  // inconclusive one is for a check that didn't finish, so both are decided by a new run.
+  const other = needed.filter((l) => !FAST_PATH_LABELS.has(l));
+  if (other.length) return { ok: false, why: `${other.join(', ')} is decided by a new run` };
+  const labels = sortLabels([...new Set([...needed, ...readRun(job).approvals])]);
+  const missing = labels.filter((l) => !facts.pr.labels.includes(l));
+  if (missing.length) return { ok: false, why: `${missing.join(', ')} not given` };
+  const unauthorized = labels.filter((l) => !labelFreshness(facts, l, sha).ok);
+  if (unauthorized.length) return { ok: false, why: `${unauthorized.join(', ')} last applied by someone without write access, before this head's first run, before a force-push, or not readable` };
+  return { ok: true, labels };
+}
 const isPocpStep = (s) => POCP_STEPS.has(s.name) || String(s.name || '').startsWith(MARKER_PREFIX);
 
 /**
@@ -243,8 +290,9 @@ export function decideStatus(facts) {
     .filter((r) => r.event === 'pull_request' && r.repository === facts.repository && r.head_sha === sha)
     // A run whose verify job was skipped (a label event the workflow ignores) says nothing.
     .filter((r) => r.conclusion !== 'skipped' && !(r.job && r.job.conclusion === 'skipped'))
-    // Nor does a run cancelled before its verify job evaluated anything (cancelledBeforeVerify).
-    .filter((r) => !cancelledBeforeVerify(r));
+    // Nor does a run cancelled before its verify job evaluated anything (cancelledBeforeVerify),
+    // or one whose prediction found verify needn't run (approvedWithoutRun).
+    .filter((r) => !cancelledBeforeVerify(r) && !approvedWithoutRun(r));
   // A run still queued or running (a new run, or a re-run attempt of an older one) may replace
   // what finished before it: wait for it. Which pull request it is for isn't readable yet.
   const underway = ofHead.filter((r) => r.status !== 'completed');
@@ -311,6 +359,10 @@ export function decideStatus(facts) {
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
   }
   if (outcome === 'failed') return status('failure', TEXT.failed, `run ${newest.id} failed (${stepSummary(newest.job)})${via}`, newest);
+  // A wait for approvals only, now given: green from this run, without running verify again.
+  // Only a wait (code 4); an inconclusive run is decided by a run that finishes.
+  const given = outcome === 'waiting' ? approvedWait(facts, newest, sha) : { ok: false };
+  if (given.ok) return status('success', TEXT.approved, `run ${newest.id} waited only for ${given.labels.join(', ')}, now given by a writer after this head's first run${via}`, newest);
   if (outcome === 'waiting') return status('pending', waitingText(runNeeds(newest.job), { number: pr.number, repository: facts.repository }), `run ${newest.id} is waiting${via}`, newest);
   return status('pending', TEXT[outcome], `run ${newest.id} is ${outcome}${via}`, newest);
 }
@@ -375,7 +427,7 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
 }
 
 /** Fetch every fact decideStatus needs, fresh. */
-export async function gather(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH }) {
+export async function gather(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH, excludeRunId = null }) {
   const repo = `/repos/${repository}`;
   const facts = { event_sha: sha, repository, ci_globs: workflowFiles(baseConfig), ci_except: baseConfig?.ci?.files_except || [], workflow_approver: baseConfig?.ci?.workflow_approver || 'independent', pr: null, base_sha: null, changed_files: null, head_prs: [], incomplete: [], files: [], runs: [], label_events: [], force_pushes: [] };
   const need = (r) => {
@@ -400,6 +452,8 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
   facts.files = need(await listAll(gh, `${repo}/pulls/${pr.number}/files?per_page=100`)).map((f) => ({ filename: f.filename, previous_filename: f.previous_filename }));
   const runs = need(await listAll(gh, `${repo}/actions/workflows/${wf.id}/runs?head_sha=${head}&per_page=100`, 'workflow_runs', 5));
   for (const r of runs) {
+    // predictApproval's own run: it is underway and evaluates nothing.
+    if (excludeRunId && String(r.id) === String(excludeRunId)) continue;
     const run = { id: r.id, workflow_id: r.workflow_id, path: r.path, event: r.event, head_sha: r.head_sha, repository: r.repository?.full_name, status: r.status, conclusion: r.conclusion, created_at: r.created_at, run_started_at: r.run_started_at, run_attempt: r.run_attempt, html_url: r.html_url, job: null };
     // Jobs of runs still underway too: a verify job already skipped (an ignored label event)
     // shows the run says nothing. A job list cut short leaves the job unknown, never guessed.
@@ -417,6 +471,49 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
   }
   if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow, VERIFY_JOB);
   return facts;
+}
+
+/**
+ * For the workflow's run on an approval label event: does verify need to run? Not when the
+ * trusted reporter would now turn the status green from a run that already finished
+ * (approvedWait), with this run left out. Nor when the pull request has already moved past the
+ * event's head: the new head's own run decides, and a verify for the old head, started late,
+ * would only cancel it. A prediction only: it decides whether verify runs, never the status,
+ * which the reporter decides on its own after this run completes. Any doubt (an error, data
+ * incomplete) means verify runs, as before.
+ */
+export async function predictApproval(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH, runId, asAction = false, actionRef = null }) {
+  try {
+    const facts = await gather(gh, { repository, sha, prNumber, baseConfig, workflowPath, excludeRunId: runId });
+    if (facts.pr && sha && facts.pr.head_sha !== sha) return { skip: true, reason: `the pull request moved to ${short(facts.pr.head_sha)}; its own run decides` };
+    const decision = decideStatus(facts);
+    if (!(decision.write === true && decision.state === 'success' && decision.description === TEXT.approved)) return { skip: false, reason: decision.reason };
+    // Run as the status action (an adopter's pocp.yml): the reporter must be this same code, or
+    // an older one could never turn the wait green and the status would stay pending.
+    if (asAction) {
+      if (!actionRef) return { skip: false, reason: "this action's ref is unknown, so the reporter's can't be matched" };
+      const refs = await reporterActionRefs(gh, repository);
+      if (refs.size !== 1 || !refs.has(actionRef)) return { skip: false, reason: `the reporter's status action is at ${[...refs].join(', ') || 'no ref found'}, not ${actionRef}` };
+    }
+    return { skip: true, reason: decision.reason };
+  } catch (e) {
+    return { skip: false, reason: `couldn't predict: ${e.message}` };
+  }
+}
+
+/** The refs of the status action in the default branch's workflows that run on workflow_run (the reporter). */
+export async function reporterActionRefs(gh, repository) {
+  const repo = await gh.get(`/repos/${repository}`);
+  const ref = encodeURIComponent(repo.default_branch);
+  const dir = await gh.get(`/repos/${repository}/contents/.github/workflows?ref=${ref}`);
+  const refs = new Set();
+  for (const f of (Array.isArray(dir) ? dir : []).filter((x) => x.type === 'file' && /\.ya?ml$/.test(x.name))) {
+    const file = await gh.get(`/repos/${repository}/contents/${f.path.split('/').map(encodeURIComponent).join('/')}?ref=${ref}`);
+    const text = Buffer.from(String(file?.content || ''), 'base64').toString('utf8');
+    if (!/^\s*workflow_run:/m.test(text)) continue;
+    for (const m of text.matchAll(/^\s*-?\s*uses:\s*['"]?[\w.-]+\/[\w.-]*pocp[\w.-]*\/status@([^\s'"#]+)/gim)) refs.add(m[1]);
+  }
+  return refs;
 }
 
 /**
