@@ -1,6 +1,7 @@
 // The workflows behind the "pocp" status: the verify job reports what verify found through
 // which steps run, the reporter never touches a pull request's code, and every approval
 // label (the new ones included) is removed on push.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

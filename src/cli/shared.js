@@ -65,6 +65,7 @@ export function formatGate(r) {
     if (r.pending_approvals?.length) {
       lines.push(r.local_mode ? '  needs your approval before you merge (local mode):' : '  CI requires human approval for this commit:');
       lines.push(...remedyLines(r.pending_approvals, '    '));
+      if (r.hold?.command) lines.push(`    the maintainer approves with: ${r.hold.command}`);
     }
     return lines.join('\n');
   }

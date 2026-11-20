@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { git, packetId, pocp, sampleRepo, sh, write } from './helpers.js';
 import { BREAK_ADD, TWEAK_ADD, commit } from './fixtures.js';
@@ -50,7 +51,7 @@ test('engine errors exit 1; outside a repo exits 2', () => {
   assert.equal(pocp(dir, ['show', 'p-nothere']).code, 1);
   assert.match(pocp(dir, ['show', 'p-nothere']).stderr, /no packet "p-nothere"/);
   assert.match(pocp(dir, ['miss', 'close', 'm-nothere']).stderr, /no miss "m-nothere"/);
-  const outside = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'pocp-norepo-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-norepo-')); // this process's temp root, in no repository
   const r = pocp(outside, ['status']);
   assert.equal(r.code, 2);
   assert.match(r.stderr, /not inside a git repository/);

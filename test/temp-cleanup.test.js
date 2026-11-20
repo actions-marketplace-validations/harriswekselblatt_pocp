@@ -1,5 +1,6 @@
 // A test file that uses the helpers leaves nothing behind in TMPDIR (or wherever else it made
 // a temporary folder) once its process exits, without any cleanup code of its own.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

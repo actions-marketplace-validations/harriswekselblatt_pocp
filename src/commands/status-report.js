@@ -29,6 +29,6 @@ export async function run({ flags, json }) {
   const labelGh = process.env.LABELS_TOKEN ? githubClient({ token: process.env.LABELS_TOKEN }) : null;
   const r = await reportStatus(gh, { repository, sha, prNumber, baseConfig, workflowPath: flags.workflow || undefined, dryRun: Boolean(flags['dry-run']), labelGh });
   const d = r.decision;
-  out(json, r, `${d.write ? `${r.written ? 'set' : 'would set'} ${STATUS_CONTEXT} on ${d.sha.slice(0, 12)}: ${d.state} (${d.description}); ${d.reason}` : `nothing written: ${d.reason}`}${r.removed?.length ? `\nremoved stale approval label(s): ${r.removed.join(', ')}` : ''}`);
+  out(json, r, `${d.write ? `${r.written ? 'set' : 'would set'} ${STATUS_CONTEXT} on ${d.sha.slice(0, 12)}: ${d.state} (${d.description}); ${d.reason}` : `nothing written: ${d.reason}`}${r.removed?.length ? `\nremoved stale approval label(s): ${r.removed.join(', ')}` : ''}${r.comment ? `\nhold comment: ${r.comment.action}${r.comment.reason ? ` (${r.comment.reason})` : ''}` : ''}`);
   return EXIT.ok;
 }
