@@ -1,6 +1,6 @@
 {
   "name": "pocp",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Sets up POCP in a repository (/pocp:setup), then keeps Claude working with it instead of around it: blocks skipping the gate, force-pushing proven commits and self-approving test or policy changes, and teaches the POCP workflow.",
   "author": { "name": "Harris Wekselblatt", "url": "https://github.com/harriswekselblatt" },
   "homepage": "https://github.com/harriswekselblatt/pocp",

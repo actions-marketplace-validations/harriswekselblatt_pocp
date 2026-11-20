@@ -1,15 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 (2026-11-20)
 
 Approving a pull request no longer costs a second verify run. Nothing POCP checks changed: the
 same checks run, with the same rules, and the reporter still decides the status alone.
 
 Upgrading: run `pocp init --github --force` and commit `.github/workflows` (the prediction
 steps, `mark` and the `approvable` step), with the action and the status action at the same
-release. Not yet run on GitHub: whether the status action sees its own ref (`github.action_ref`)
-inside a composite action. If it doesn't, the prediction never skips verify, and approvals
-re-run verify as before.
+release. Checked on this repository's own pull requests: a review-only approval turned the
+`pocp` status green and merged in under a minute, without a second verify run.
 
 ### Added
 
