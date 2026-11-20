@@ -1,0 +1,75 @@
+{
+  "pocp": 1,
+  "id": "p-fbc21b1f",
+  "intent": "Drop unit-tests (o1) and engine-tests (o2): both are subsets of test-suite (npm test), with the same globs",
+  "touches": [
+    ".proof/rules.json"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node bin/pocp.js rules check",
+      "source": "author"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+  "policy_repo": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+  "opened_at": "2026-11-19T23:24:43.453Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:8fe636c4ada65fcc58dffa26b7826c6f6f00e30bc6bc9db5a02fb37fe1ced44c",
+      "subject": "sha256:7e75cf1d3873deefe4c25fd18664e828729f338c7cb731afbc2dca03e1b01a07",
+      "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+      "run": "node bin/pocp.js rules check",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-19T23:24:45.694Z",
+      "duration_ms": 1053,
+      "stdout_sha256": "e1906351c5cdf52ebfd2b6b3440f39f6c4162e8f3787bf8fa2ab4d48867caaf2",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-5d0bd596",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-19T23:24:43.453Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T23:24:43.453Z",
+      "event": "obligation_added",
+      "obligation": "o1",
+      "source": "author",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-19T23:24:43.453Z",
+      "event": "requirements_synced",
+      "added": [],
+      "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553"
+    },
+    {
+      "at": "2026-11-19T23:24:46.953Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:7e75cf1d3873deefe4c25fd18664e828729f338c7cb731afbc2dca03e1b01a07"
+    }
+  ]
+}

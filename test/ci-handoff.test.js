@@ -397,3 +397,8 @@ test('a head that is a merge ("Update branch"): hand-offs still run, and a break
   assert.ok(blocking(bad).some((x) => x.code === 'rerun_failed'), JSON.stringify(blocking(bad)));
   assert.ok(base);
 });
+
+test('the suite ignores a POCP_DEFER=off from the shell that runs it (pocp fix --no-defer sets it for its checks)', () => {
+  // helpers.js removes it on import; with it left in, every hand-off test above sees no hand-off.
+  assert.equal(process.env.POCP_DEFER, undefined);
+});

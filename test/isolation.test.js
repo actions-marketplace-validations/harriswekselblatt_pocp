@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { git, packetId, pocp as runPocp, read, sampleRepo, write, writeConfig } from './helpers.js';
+import { RUNNER_STEP_FILES, git, packetId, pocp as runPocp, read, sampleRepo, write, writeConfig } from './helpers.js';
 import { TWEAK_ADD, commit } from './fixtures.js';
 import { createIsolatedRunner, IsolationError, POCP_ROOT, trustedDir, trustedPath, uidProcesses, workerEnv } from '../src/isolate.js';
 
@@ -128,7 +128,15 @@ before(async () => {
   if (SKIP) return;
   repo = sampleRepo();
   runner = createIsolatedRunner();
-  await runner.prepare({ root: repo });
+  // The job's step files, which test/helpers.js keeps out of every test's environment: the
+  // runner protects what pocp's own environment names, as in a real verify step, so they are
+  // put back only while it prepares.
+  Object.assign(process.env, RUNNER_STEP_FILES);
+  try {
+    await runner.prepare({ root: repo });
+  } finally {
+    for (const k of Object.keys(RUNNER_STEP_FILES)) delete process.env[k];
+  }
   // A check's snapshot, as pocp would make it: pocp's own temporary folder.
   snap = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-tree-'));
   write(snap, 'ok.sh', 'echo honest output\n');
@@ -182,7 +190,8 @@ test('isolated: a check cannot write a sibling verifier file or its own snapshot
 });
 
 test('isolated: a check cannot write or read RUNNER_TEMP or the step\'s file-command files', { skip: SKIP }, async () => {
-  const files = ['GITHUB_OUTPUT', 'GITHUB_ENV', 'GITHUB_STEP_SUMMARY'].map((k) => process.env[k]).filter(Boolean);
+  const files = ['GITHUB_OUTPUT', 'GITHUB_ENV', 'GITHUB_STEP_SUMMARY'].map((k) => RUNNER_STEP_FILES[k]).filter(Boolean);
+  assert.ok(files.length >= 2, 'a GitHub runner gives the step its file-command files');
   const before = files.map((f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null));
   const cmd = [
     'touch "$RT/pwned-$P" && echo wrote-temp',

@@ -1,0 +1,576 @@
+{
+  "pocp": 1,
+  "id": "p-f50ef8c9",
+  "intent": "Audit fixes: rules check warns when a requirement guards nothing, /pocp:setup has the user confirm the first rule, and the badge says 'uses POCP' instead of claiming 'verified'",
+  "touches": [
+    "src/badge.js",
+    "src/commands/rules.js",
+    "src/rules.js",
+    "test/claude-plugin.test.js",
+    "test/init-badge.test.js",
+    "test/rules-coverage.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:unit-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "test",
+      "run": "node --test test/engine.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:engine-tests"
+    },
+    {
+      "id": "o3",
+      "kind": "test",
+      "run": "npm test --silent",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o4",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T05:06:51.342Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T05:06:53.913Z",
+      "duration_ms": 7524,
+      "stdout_sha256": "2e77f007b36a68386b6c0613b54e1ceaa778d94e822e97077c8c395e20f127fd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-cbc047e4",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T05:07:01.650Z",
+      "duration_ms": 116038,
+      "stdout_sha256": "e199b32d52a6a8c05f7f2a7a9c74490e1f18f42b0067503e5cf27a0849a970aa",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-f65d03f1",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T05:08:57.874Z",
+      "duration_ms": 534767,
+      "stdout_sha256": "b2f801a57d417eb0b8b373a99144d058b647c2513acfd3322f55f8c9b2c59a01",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-3c525a4b",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:5517b40a90f2d1850c59cf374e8e5e80607725575cf05d92984dd8d0ea702d8d",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144",
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T05:17:52.799Z",
+      "duration_ms": 963774,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the badge is a plain static shields.io badge linking to the POCP repository: behavior changed, so a person must approve it",
+        "base": "a7f900ee46ff962f79e97e371c95f642c5456284",
+        "checks": [
+          {
+            "id": "unit-tests",
+            "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js"
+          },
+          {
+            "id": "engine-tests",
+            "run": "node --test test/engine.test.js"
+          },
+          {
+            "id": "test-suite",
+            "run": "npm test --silent"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/claude-plugin.test.js",
+            "test/init-badge.test.js",
+            "-test/rules-coverage.test.js"
+          ],
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 2441
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 38149
+            },
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 495693,
+              "failed_tests": [
+                "the badge is a plain static shields.io badge linking to the POCP repository"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/rules-coverage.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/rules-coverage.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "unit-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "engine-tests",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            },
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 424433
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 963774,
+        "timings": {
+          "setup_ms": 620,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 537700,
+            "run_ms": 536283,
+            "runs": 3
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 425345,
+            "run_ms": 424433,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 971,
+            "count": 2
+          },
+          "copy": {
+            "ms": 1087,
+            "count": 5
+          },
+          "cleanup": {
+            "ms": 1203,
+            "count": 7
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T09:40:37.502Z",
+      "duration_ms": 3588,
+      "stdout_sha256": "84374d55dd30823f859074a59183bb084d5f792e4a58510b1960860b008c75b7",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-55f3e7e4",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T09:40:41.237Z",
+      "duration_ms": 45494,
+      "stdout_sha256": "7b3a506f20491922fe09dd09d71774635a18976ccf323af6a6dcfabd6a452639",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-1089990d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-20T09:41:26.816Z",
+      "duration_ms": 441493,
+      "stdout_sha256": "ce7527de46d7b0aca801ffa764482d521b9e5ca536677125f792bc02617c77f4",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9360ccce",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-20T09:48:48.420Z",
+      "duration_ms": 427832,
+      "stdout_sha256": "f6bc5ddc51b72be52ba859146fc87ba51ec24bf4f3674c4726fa1fea7965fb93",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-1009f717",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:49:33.064Z",
+      "duration_ms": 3707,
+      "stdout_sha256": "25091eef478d3833b6b2332777387d4378c32a8f8823f92c8da14d2609d03c72",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-33d693ac",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:49:36.844Z",
+      "duration_ms": 51898,
+      "stdout_sha256": "71dd2ba133b2b22398a3c65cd6afe683a7a752a3ded1262fab01c07ff4041052",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-82ca3a8c",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:50:28.817Z",
+      "duration_ms": 324352,
+      "stdout_sha256": "6ae98db91439218fdcf9e9306080654a4f450625cdee352c7d6e502a3e696e5e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-4c32d123",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:31:50.242Z",
+      "duration_ms": 349557,
+      "stdout_sha256": "66a72f72bb8aa00fde4fdc6767859df6e3c6749cba3bbf311f710d0fd3be59f3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9c40795d",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T05:06:51.342Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T05:06:51.342Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2",
+        "o3",
+        "o4"
+      ],
+      "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3"
+    },
+    {
+      "at": "2026-11-20T05:33:56.898Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144"
+    },
+    {
+      "at": "2026-11-20T05:33:57.291Z",
+      "event": "deferred",
+      "obligation": "o4",
+      "by": "harriswekselblatt",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144"
+    },
+    {
+      "at": "2026-11-20T08:13:46.486Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
+    },
+    {
+      "at": "2026-11-20T08:13:46.486Z",
+      "event": "requirements_synced",
+      "added": [
+        "o4"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T09:48:48.418Z",
+      "event": "proof_failed",
+      "obligation": "o3",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T09:55:56.350Z",
+      "event": "proof_failed",
+      "obligation": "o4",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T09:55:56.401Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:649d4be252e8d3ed50218b66da09bf154e9ab9db16df8201a0534be324aa91d6"
+    },
+    {
+      "at": "2026-11-20T10:55:53.298Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:99ffb53106deeb460116aafe0f698a6add4d7d11e628ce8437b93eb06e20beb7"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:5517b40a90f2d1850c59cf374e8e5e80607725575cf05d92984dd8d0ea702d8d",
+      "subject": "sha256:d765ec8e7ba7ca848e2d31806bee84c18eeaa6dda683ee2d602c8de41cf52144",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T05:33:57.291Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"npm test --silent\" exit 1); failing: the badge is a plain static shields.io badge linking to the POCP repository: behavior changed, so a person must approve it"
+    }
+  ]
+}

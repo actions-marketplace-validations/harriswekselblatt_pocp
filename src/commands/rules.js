@@ -5,7 +5,8 @@ import { EXIT } from '../errors.js';
 import { UsageError } from '../cli-args.js';
 import { out } from '../cli/shared.js';
 import { policyKeyWarnings } from '../schema.js';
-import { ruleWarnings, validateRules } from '../rules.js';
+import { spawnSync } from 'node:child_process';
+import { coverageWarnings, ruleWarnings, validateRules } from '../rules.js';
 import { createFsStore, validateConfig } from '../store.js';
 
 export async function run({ engine, json, rest }) {
@@ -15,7 +16,7 @@ export async function run({ engine, json, rest }) {
     ...validateRules(rawRules || {}),
     ...validateConfig(engine.config()).map((p) => `config: ${p}`),
   ];
-  const warnings = [...policyKeyWarnings({ rules: rawRules, config: engine.store.readRawConfig?.() }), ...ruleWarnings(engine.rules(), engine.root)];
+  const warnings = [...policyKeyWarnings({ rules: rawRules, config: engine.store.readRawConfig?.() }), ...ruleWarnings(engine.rules(), engine.root), ...coverageWarnings(engine.rules(), trackedFiles(engine.root))];
   // Without git, say which .proof/ was checked: there is no repository to name it.
   const checked = engine.checked ? { checked: engine.checked } : {};
   out(json, { ok: problems.length === 0, problems, warnings, ...checked }, [
@@ -45,4 +46,11 @@ export function proofFolderEngine(cwd) {
   }
   const store = createFsStore(dir);
   return { root: dir, store, config: () => store.readConfig(), rules: () => store.readRules(), checked: path.join(dir, '.proof') };
+}
+
+// Tracked files, for coverageWarnings. Outside a git checkout (CI's isolated copies), none.
+function trackedFiles(root) {
+  const r = spawnSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (r.status !== 0 || typeof r.stdout !== 'string') return [];
+  return r.stdout.split('\0').filter(Boolean);
 }
