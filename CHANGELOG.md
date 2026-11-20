@@ -19,6 +19,24 @@ re-run verify as before.
   without a terminal, with `--json` or on a re-run. `pocp init --badge` prints it for scripts.
 - **verify's job summary ends with one line:** `Checked by POCP · how this works`, linking to
   docs/HOW-IT-WORKS.md. The `pocp` status text is unchanged.
+- **A machine-wide limit on checks running at once.** Each repository already had its own
+  lock. Several worktrees or clones on one machine still each ran their full test suite at
+  the same time, so every check ran slower than its time limit allowed. Now one pocp process
+  per user account runs checks at a time. The others wait in order and say on stderr who they
+  wait for. Waiting doesn't count toward a check's `timeout_ms` or its `duration_ms`. A
+  `prove` waits once, not before each check.
+  - A pocp running inside a check never waits, so a check that runs pocp can't deadlock.
+  - A slot left by a crashed run is taken back.
+  - CI and an unusable cache folder run without the limit.
+  - `POCP_MACHINE_CHECKS` sets the limit (`off` disables it), and so does a `limit` file in
+    the slots folder (`~/Library/Caches/pocp/check-slots` or `~/.cache/pocp/check-slots`).
+    `POCP_MACHINE_DIR` sets where the slots live.
+
+  What runs and what is recorded are unchanged.
+- **Fewer git processes per command.** Starting git is most of a pocp command's own CPU.
+  `pocp gate` (the pre-commit hook) now starts 26 instead of 31, and a one-check `pocp fix`
+  starts 78 instead of 89. pocp no longer asks whether HEAD exists before each diff against
+  it, and asks where MERGE_HEAD lives once per run. The answers are the same.
 
 ### Changed
 
@@ -70,27 +88,6 @@ re-run verify as before.
   for new projects stays 10 minutes.
 - The friction benchmark's results called `--rerun-unsigned` the Action's default; it is
   `rerun: all`.
-
-### Added
-
-- **A machine-wide limit on checks running at once.** Each repository already had its own
-  lock. Several worktrees or clones on one machine still each ran their full test suite at
-  the same time, so every check ran slower than its time limit allowed. Now one pocp process
-  per user account runs checks at a time. The others wait in order and say on stderr who they
-  wait for. Waiting doesn't count toward a check's `timeout_ms` or its `duration_ms`. A
-  `prove` waits once, not before each check.
-  - A pocp running inside a check never waits, so a check that runs pocp can't deadlock.
-  - A slot left by a crashed run is taken back.
-  - CI and an unusable cache folder run without the limit.
-  - `POCP_MACHINE_CHECKS` sets the limit (`off` disables it), and so does a `limit` file in
-    the slots folder (`~/Library/Caches/pocp/check-slots` or `~/.cache/pocp/check-slots`).
-    `POCP_MACHINE_DIR` sets where the slots live.
-
-  What runs and what is recorded are unchanged.
-- **Fewer git processes per command.** Starting git is most of a pocp command's own CPU.
-  `pocp gate` (the pre-commit hook) now starts 26 instead of 31, and a one-check `pocp fix`
-  starts 78 instead of 89. pocp no longer asks whether HEAD exists before each diff against
-  it, and asks where MERGE_HEAD lives once per run. The answers are the same.
 
 ## 1.4.0 (2026-11-19)
 
