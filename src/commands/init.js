@@ -6,6 +6,7 @@ import { LIVE_VARIABLE, LOCAL_MODE_TRADE, STATUS_CHECK, createApprovalLabels, go
 import { UsageError } from '../cli-args.js';
 import { APPROVAL_LABELS } from '../doctor.js';
 import { formatLayout, hooksHealth, initProofDir, installHooks, writeGithubWorkflows } from '../init.js';
+import { BADGE_MARKDOWN, badgeInteractive, badgeLines, offerBadge } from '../badge.js';
 import { git } from '../git.js';
 import { out } from '../cli/shared.js';
 
@@ -27,7 +28,7 @@ export async function run({ flags, json }) {
   if (onGithub && !flags['no-live']) {
     live = goLive(process.cwd(), requiredChecksPlan(process.cwd(), JSON.parse(fs.readFileSync(path.join(process.cwd(), '.proof', 'config.json'), 'utf8'))), { protect: false });
   }
-  out(json, { created: r.created, hooks, test_layout: r.layout, ...(flags.local ? { mode: 'local' } : {}), ...(github ? { github } : {}), ...(labels ? { labels } : {}), ...(live ? { live } : {}) }, [
+  out(json, { created: r.created, hooks, test_layout: r.layout, ...(flags.local ? { mode: 'local' } : {}), ...(github ? { github } : {}), ...(labels ? { labels } : {}), ...(live ? { live } : {}), ...(flags.badge ? { badge: BADGE_MARKDOWN } : {}) }, [
     r.created.length ? `created ${r.created.join(', ')}` : '.proof/ already set up',
     ...(r.config_created ? [flags.deep
       ? 'test guard: deep (guard.mutants 10): test edits are also checked with 10 planted bugs; slower'
@@ -51,6 +52,17 @@ export async function run({ flags, json }) {
         : live ? [`${LIVE_VARIABLE} not set: ${live.error}`] : []),
       `next: commit them in a pull request${labels?.ok ? '' : ', create the labels (pocp doctor lists them)'}, and once it merges run "pocp ci required --apply" to require the "${STATUS_CHECK}" status${live?.ok ? '' : ' and turn it on'}`,
     ] : []),
+    ...(flags.badge ? badgeLines() : []),
   ].join('\n'));
+  // Last, and only on a first setup at a terminal: one yes/no question about the README badge,
+  // defaulting to no. A yes prints it to paste; no file is changed.
+  if (!hooks?.refused && badgeInteractive({ json, flags, configCreated: r.config_created })) {
+    const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      await offerBadge({ interactive: true, ask: (q) => rl.question(q), say: (text) => process.stdout.write(`${text}\n`) });
+    } finally {
+      rl.close();
+    }
+  }
   return hooks?.refused ? EXIT.usage : EXIT.ok;
 }

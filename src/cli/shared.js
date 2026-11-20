@@ -8,6 +8,7 @@ import { loadHost } from '../host.js';
 import { remedyLines, whoOf } from '../remedies.js';
 import { shortDigest } from '../hash.js';
 import { approvalMarkdown } from '../explain.js';
+import { SUMMARY_FOOTER } from '../badge.js';
 
 export const list = (v) => (v === undefined ? [] : [].concat(v));
 
@@ -139,6 +140,8 @@ export function writeGithubSummary(result, rows, commitProblems, ms, { annotatio
   if (reruns.length) {
     lines.push('', '| Check | Result |', '|---|---|', ...reruns.map((x) => `| \`${esc(x.run)}\` | ${esc(x.status)}${x.duration_ms !== undefined ? ` (${x.duration_ms}ms)` : ''} |`));
   }
+  // One quiet line, last: where to read how the check works.
+  lines.push('', SUMMARY_FOOTER);
   try {
     fs.appendFileSync(file, `${lines.join('\n')}\n`);
   } catch { /* summary is best effort */ }
