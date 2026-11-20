@@ -41,6 +41,11 @@ re-run verify as before.
 
 ### Fixed
 
+- **`pocp rules check` works in a copy without `.git`.** CI re-runs a packet's checks in such
+  a copy, so a check of `pocp rules check` passed locally and failed every re-run with "not
+  inside a git repository". Without git it now checks the `.proof/` in the folder it runs in,
+  and only there: `.proof/` must be a real folder holding a real `rules.json` (no symlinks), it
+  never searches other folders, and it prints which `.proof/` it checked.
 - **Nothing pocp prints can start a line GitHub reads as a workflow command.** verify prints what
   a pull request wrote, file names included, and git allows newlines in a file name, so a name
   could put a line such as `::set-output name=code::4` in verify's output. Every printed line
