@@ -2,6 +2,7 @@
 // (.github/workflows, examples/github and what `pocp init --github` generates, action.yml):
 // jobs can't hang for six hours, third-party actions are pinned by commit, checkouts leave no
 // token behind, and green never comes from a step output the checks could write.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

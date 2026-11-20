@@ -2,6 +2,7 @@
 // limit is never recorded as timed out, whatever its leftovers do; a leftover that holds
 // stdout/stderr can't keep the run open until the limit; output is decoded per stream, so a
 // multi-byte character split across chunks (or at the cap) never turns into U+FFFD.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';

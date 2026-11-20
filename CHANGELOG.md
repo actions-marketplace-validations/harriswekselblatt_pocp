@@ -98,6 +98,14 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
 
 ### Fixed
 
+- **A pocp killed mid-proof no longer leaves its copy of the repository behind for good.** SIGKILL,
+  a crash or the OOM killer gave pocp no chance to remove its temp folder. Each folder's name now
+  records its owner (process ID and start time), and the next pocp run that makes a temp folder
+  removes leftovers whose owner is gone, at most once an hour. A live run's folder is never
+  touched. See "Temporary folders" in docs/REFERENCE.md.
+- **POCP's own test suite stopped leaking temp folders.** A test file stopped with SIGTERM,
+  SIGINT or SIGHUP now removes its folder. Every test file keeps its folders inside its own root.
+  Each run sweeps roots left by SIGKILLed runs. One Mac had collected about 12,000 such folders.
 - **`pocp rules check` works in a copy without `.git`.** CI re-runs a packet's checks in such
   a copy, so a check of `pocp rules check` passed locally and failed every re-run with "not
   inside a git repository". Without git it now checks the `.proof/` in the folder it runs in,
