@@ -1,6 +1,7 @@
 // The repository's own workflows: approval labels reach verify only for the head they were
 // given on, the coverage approval is never passed to a verifier that can't apply it (the job
 // fails and says so), and every approval label is removed on each push.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

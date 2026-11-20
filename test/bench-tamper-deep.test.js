@@ -1,6 +1,7 @@
 // The tamper-bench scenarios that attack deep mode's planted-bug check: a weakened assertion
 // hidden behind a new test that fails at random, or behind one that fails whenever the source
 // under test differs from the commit (bench/tamper/RESULTS.md, target pocp-deep).
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

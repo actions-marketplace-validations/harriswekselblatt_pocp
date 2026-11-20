@@ -10,6 +10,7 @@
 //
 // The same file lives in each of the author's public-bound repos; keep them identical.
 
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

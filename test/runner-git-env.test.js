@@ -1,6 +1,7 @@
 // A check never inherits variables that point git at another repository, index or config.
 // Git sets GIT_INDEX_FILE for the commit hooks, so a check run from a hook that makes its own
 // temporary repository and runs `git add` would otherwise write into the committer's index.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
