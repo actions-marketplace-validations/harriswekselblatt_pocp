@@ -457,6 +457,17 @@ request changed: such a pull request stays yellow until a maintainer adds
 `pocp-approve-workflow` (by default someone other than its author). A pull request from a fork
 gets a read-only token and can't post a status at all.
 
+A run's steps come from the workflow file of its pull request's merge with that pull request's
+base, so a second pull request with the same head commit, against a branch whose `pocp.yml` was
+edited, gets a run that names the first one. Since 1.5 the reporter counts a run only when GitHub
+ties it to the pull request: a run from another branch is set aside, and while another pull
+request, open, closed or merged, has that head commit or was open from the same branch when the
+run was created, the status stays pending until a new commit. This narrows the gap; it doesn't
+close it. The approved head's runs read for carry-over and sticky approvals aren't checked this
+way yet, and it rests on GitHub's record of each pull request's head and when it was open. The
+reporter's own App, with the environment rule, remains what stops a same-repository branch from
+posting the status itself.
+
 By default the reporter and every workflow in the repository post as the same app, GitHub
 Actions, so a branch pushed to **this** repository by someone with write access (including an
 agent using a maintainer's token) can edit its workflow to post its own `pocp: success`. Give

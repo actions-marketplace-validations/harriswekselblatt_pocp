@@ -150,13 +150,16 @@ test('a label run whose verify job was skipped counts as no evaluation: the wait
 // predictApproval runs inside the label event's own run: that run is left out, or it would
 // always read as underway.
 function fakeGh({ job, labels, events, head = SHA, workflows = {} }) {
+  // As GitHub returns a same-repository pull_request run: its branch, and the open pull requests
+  // that match it.
+  const asGitHub = { head_branch: 'topic', head_repository: { full_name: 'o/r' }, pull_requests: [{ number: 7, head: { ref: 'topic', sha: head }, base: { ref: 'main', sha: BASE } }] };
   const runs = [
-    { id: 100, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: SHA, repository: { full_name: 'o/r' }, status: 'completed', conclusion: 'success', created_at: FIRST_RUN, run_started_at: FIRST_RUN, run_attempt: 1 },
-    { id: 200, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: SHA, repository: { full_name: 'o/r' }, status: 'in_progress', conclusion: null, created_at: AFTER, run_started_at: AFTER, run_attempt: 1 },
+    { id: 100, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: SHA, repository: { full_name: 'o/r' }, ...asGitHub, status: 'completed', conclusion: 'success', created_at: FIRST_RUN, run_started_at: FIRST_RUN, run_attempt: 1 },
+    { id: 200, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: SHA, repository: { full_name: 'o/r' }, ...asGitHub, status: 'in_progress', conclusion: null, created_at: AFTER, run_started_at: AFTER, run_attempt: 1 },
   ];
   const jobs = { 100: [{ name: 'verify', ...job }], 200: [{ name: 'approval', status: 'in_progress', conclusion: null, steps: [] }] };
   const get = async (url) => {
-    if (url.endsWith('/pulls/7')) return { number: 7, state: 'open', head: { sha: head }, base: { sha: BASE }, labels: labels.map((name) => ({ name })), user: { login: 'author' }, changed_files: 1 };
+    if (url.endsWith('/pulls/7')) return { number: 7, state: 'open', head: { sha: head, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' } }, base: { sha: BASE, ref: 'main' }, labels: labels.map((name) => ({ name })), user: { login: 'author' }, changed_files: 1 };
     if (url.endsWith('/actions/workflows/pocp.yml')) return WF;
     if (/\/collaborators\/maintainer\/permission$/.test(url)) return { permission: 'write' };
     if (/\/commits\/\w+$/.test(url)) return { parents: [{ sha: 'f'.repeat(40) }] };
@@ -170,6 +173,8 @@ function fakeGh({ job, labels, events, head = SHA, workflows = {} }) {
     const ok = (items) => ({ items, complete: true, reason: null });
     if (url.includes('/pulls?state=open')) return ok([{ number: 7, state: 'open', head: { sha: SHA } }]);
     if (url.includes('/pulls/7/files')) return ok([{ filename: 'src/a.js' }]);
+    // Which pull requests had the head (status-report.js headPulls): this one only.
+    if (url.includes(`/commits/${head}/pulls`) || url.includes('/pulls?state=all&head=o%3Atopic')) return ok([{ number: 7, state: 'open', head: { sha: head, label: 'o:topic' } }]);
     if (url.includes(`/workflows/${WF.id}/runs`)) return ok(runs);
     const m = /\/actions\/runs\/(\d+)\/jobs/.exec(url);
     if (m) return ok(jobs[m[1]] || []);

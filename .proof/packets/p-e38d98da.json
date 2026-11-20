@@ -1,0 +1,251 @@
+{
+  "pocp": 1,
+  "id": "p-e38d98da",
+  "intent": "The reporter counts a verify run only when GitHub ties it to this pull request: a run from another branch is set aside, and another pull request with the same head keeps the status pending",
+  "touches": [
+    "src/status-report.js",
+    "test/label-freshness.test.js",
+    "test/status-report-approved-wait.test.js",
+    "test/status-report-integrity.test.js",
+    "test/status-report.test.js",
+    "test/sticky-approval.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/label-freshness.test.js",
+        "test/status-report-approved-wait.test.js",
+        "test/status-report-integrity.test.js",
+        "test/status-report.test.js",
+        "test/sticky-approval.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/label-freshness.test.js, test/status-report-approved-wait.test.js, test/status-report-integrity.test.js, test/status-report.test.js, test/sticky-approval.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T22:28:29.913Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:62b39dfa5dc88cc4d1dc937ea0747ad6764a83bd34c60cdb2ee212bff0851593",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T22:28:31.215Z",
+      "duration_ms": 297964,
+      "stdout_sha256": "d70a001f982ac7666b28095f229b719ee000c80dcbb49826f26aece764de8976",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-ec7bd3d4",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:76647a6305f77bce4a20e819e52cc3acd7d9ff53c765b50becab1ca25400ab40",
+      "subject": "sha256:62b39dfa5dc88cc4d1dc937ea0747ad6764a83bd34c60cdb2ee212bff0851593",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T22:33:29.312Z",
+      "duration_ms": 685644,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: predictApproval: skip when the waiting run would go green; its own run is left out; predictApproval as the status action: skip only when the reporter's status action is at the same ref; predictApproval as the status action with no ref: verify runs (never skipped on an unknown ref); honest pull request: complete data, the run for this pull request and base, one PR on the head → green; file list: 2999 files is complete; 3000 (GitHub's cap) and 3001 are not, and never green; run identity: a run that evaluated another pull request or another base is not evidence; latest attempt: a newer queued, running, failed or cancelled run or attempt keeps an older success from winning; shared head: two open pull requests with the same head never get green, by pull request number or by head; newer runs that stopped before their marker never revive an older success; a run with the marker but without the verified step is never green (outdated workflow): behavior changed, so a person must approve it",
+        "base": "ac90b8db70b9ef4654a2f597438dd2cd72138b55",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/label-freshness.test.js",
+            "test/status-report-approved-wait.test.js",
+            "test/status-report-integrity.test.js",
+            "test/status-report.test.js",
+            "test/sticky-approval.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 349252,
+              "failed_tests": [
+                "predictApproval: skip when the waiting run would go green; its own run is left out",
+                "predictApproval as the status action: skip only when the reporter's status action is at the same ref",
+                "predictApproval as the status action with no ref: verify runs (never skipped on an unknown ref)",
+                "honest pull request: complete data, the run for this pull request and base, one PR on the head → green",
+                "file list: 2999 files is complete; 3000 (GitHub's cap) and 3001 are not, and never green",
+                "run identity: a run that evaluated another pull request or another base is not evidence",
+                "latest attempt: a newer queued, running, failed or cancelled run or attempt keeps an older success from winning",
+                "shared head: two open pull requests with the same head never get green, by pull request number or by head",
+                "newer runs that stopped before their marker never revive an older success",
+                "a run with the marker but without the verified step is never green (outdated workflow)"
+              ]
+            }
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/label-freshness.test.js is named in test/e2e-local-mode.test.js, so it may be test setup"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 334745
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 685644,
+        "timings": {
+          "setup_ms": 698,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 349525,
+            "run_ms": 349252,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 335322,
+            "run_ms": 334745,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 751,
+            "count": 2
+          },
+          "copy": {
+            "ms": 489,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 488,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T22:28:29.913Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T22:28:29.913Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T22:44:55.192Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:62b39dfa5dc88cc4d1dc937ea0747ad6764a83bd34c60cdb2ee212bff0851593"
+    },
+    {
+      "at": "2026-11-20T22:44:55.542Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:62b39dfa5dc88cc4d1dc937ea0747ad6764a83bd34c60cdb2ee212bff0851593"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:76647a6305f77bce4a20e819e52cc3acd7d9ff53c765b50becab1ca25400ab40",
+      "subject": "sha256:62b39dfa5dc88cc4d1dc937ea0747ad6764a83bd34c60cdb2ee212bff0851593",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T22:44:55.542Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: predictApproval: skip when the waiting run would go green; its own run is left out; predictApproval as the status action: skip only when the reporter's status action is at the same ref; predictApproval as the status action with no ref: verify runs (never skipped on an unknown ref); honest pull request: complete data, the run for this pull request and base, one PR on the head → green; file list: 2999 files is complete; 3000 (GitHub's cap) and 3001 are not, and never green; run identity: a run that evaluated another pull request or another base is not evidence; latest attempt: a newer queued, running, failed or cancelled run or attempt keeps an older success from winning; shared head: two open pull requests with the same head never get green, by pull request number or by head; newer runs that stopped before their marker never revive an older success; a run with the marker but without the verified step is never green (outdated workflow): behavior changed, so a person must approve it"
+    }
+  ]
+}
