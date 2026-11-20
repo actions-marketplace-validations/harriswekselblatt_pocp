@@ -13,6 +13,32 @@ re-run verify as before.
 
 ### Added
 
+Upgrading for the verdict on GitHub: `pocp init --github --force` (the `mark` step and the
+`verdict-*` steps in `pocp.yml`), with the action and the status action at the same release.
+An older `pocp.yml` keeps working; its status and comment say the verdict isn't known.
+
+- **Why a person must approve, wherever you work.** Every approval hold now has one plain
+  reason, built in one place (`src/hold.js`) and shown in `pocp fix`, `pocp gate`, the
+  pre-commit hook, `pocp approvals`, the `pocp` status and a pull request comment. Where the test
+  guard's verdict is known, the words say what it found, so a test edit whose old tests now
+  **fail** on the new code never reads like one whose old tests still pass: "Test file edited;
+  the old tests fail on the new code, so the code now behaves differently and the edited tests
+  accept that." versus "Test file edited; the old tests still pass on the new code, but POCP
+  can't show on its own that the edited tests check as much as before, so a person signs off on
+  test edits." The status says it in a few words beside the command
+  (`Waiting for approval (old tests FAIL on new code). Run: gh pr edit …`), within 140
+  characters, and when it must choose, keeps "FAIL" over the command. On GitHub the verdict is
+  typed end to end: verify writes it into its isolated approval file (`verdict=…`), the `mark`
+  step accepts only the four fixed words, and four `verdict-*` steps carry it; the reporter
+  believes one only behind the `approvable` step. Without it (checks not isolated, or a wait for
+  more than tests) the words say the verdict isn't known and point at the verify run. The trusted
+  reporter keeps one comment on each waiting pull request, updated in place, with the reason,
+  the files and lines to look at, what the label approves and the command; it says "approved,
+  nothing waiting" once cleared. Only a marker comment by the reporter's own identity counts,
+  and any extra one by that identity is deleted. It uses the token the reporter already has; turn it off with
+  `"ci": { "pr_comment": false }`. `pocp gate --json`, `pocp fix --json` and
+  `pocp approvals --json` carry it as `hold`, and the agent instructions ask agents to relay it
+  word for word.
 - **An opt-in README badge.** The first `pocp init` at a terminal asks once whether to show a
   `tests | POCP verified` badge (a plain shields.io badge linking to this repository). The
   default is no; a yes prints the markdown to paste, and no file is changed. Never asked in CI,
