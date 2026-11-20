@@ -39,6 +39,24 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   `"ci": { "pr_comment": false }`. `pocp gate --json`, `pocp fix --json` and
   `pocp approvals --json` carry it as `hold`, and the agent instructions ask agents to relay it
   word for word.
+- **Approvals stick to what was approved.** With "require branches to be up to date", every merge
+  to the base made the other open pull requests update, and each update voided their approvals.
+  `pocp-approve-tests` and `pocp-approve-policy` are now bound to the pull request's own changes
+  at the head they were given for: a later head that is exactly that head plus base content (its
+  tree is the clean merge of the two, which verify checks with git before any check runs) keeps
+  them, through any number of updates. Any change of the pull request's own voids them, as do a
+  hand-resolved conflict, a base policy change, an approved head that changed CI files, and, for
+  tests, a base update that changes which files count as test changes. Only a review-only hold
+  (the test guard's typed verdict: the old tests still pass on the new code) carries over, and only
+  it turns green without a new run (#98's fast path); a behaviour change is approved, with a run,
+  on the head that shows it. Local approvals (`--accept-test-change=<sha>`) follow the same rule,
+  so an approval given on a branch survives its merge into main. The verify job records what
+  it found as `pocp-held` and `pocp-approval` steps (verify `--record-file`, from isolated checks
+  only), and the reporter checks them. Upgrading: `pocp init --github --force`; pull requests
+  approved before the upgrade need one more re-label. docs/STATUS.md has the rule, and
+  docs/THREAT-MODEL.md the attacks it was tested against. Not yet run on GitHub: whether the
+  jobs API returns a record step's name with its `steps.*` value filled in. If it doesn't, no
+  record reads, and labels are judged as before.
 - **`pocp rules check` warns when a requirement guards nothing.** A requirement whose globs match
   no tracked file is reported, so a first rule that points at the wrong folder is caught before
   every later change is judged by it. Only `rules check` looks (the commit path doesn't pay for it).

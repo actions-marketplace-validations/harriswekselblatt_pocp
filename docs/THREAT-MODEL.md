@@ -299,6 +299,64 @@ same rule (src/label-freshness.js) and removes such a label. Anything GitHub can
 API error, a list cut short, an unreadable permission) refuses the approval. (A label added in
 the seconds between a push and that head's first run is refused too: add it again.)
 
+**Cheaper approvals must not be less informed (1.5).** Three changes made a click cheaper: one
+command adds every label, a test approval turns the status green without re-running verify, and
+an approval survives "Update branch". Each is limited to the case where the click decides less: a
+**review-only** hold, where the test guard's typed verdict (`needs-review`, carried in the
+isolated approval file and the run's `verdict-needs-review` step, never from text) says the old
+tests still pass on the new code, so the maintainer only judges whether the edited test reads
+right. When the old tests **fail** on the new code (`behavior-changed`), the edited tests catch
+less (`detection-dropped`) or the old tests already failed (`baseline-red`), the maintainer is
+accepting a behaviour change. That decision is tied to the run that showed it: the label re-runs
+verify, which applies it to that head, and it never carries over to another head, in CI or
+locally. A verdict that can't be read (an older workflow, two verdict steps) counts as not
+review-only.
+
+**Sticky approvals (1.5).** `pocp-approve-tests` and `pocp-approve-policy` are bound to the pull
+request's own changes at the head they were given for (STATUS.md, "Approvals stick to what was
+approved"), so updating the branch doesn't void them. What must hold: the new head's tree is
+exactly the clean merge of the approved head with base content (verify, with git, before any of
+the pull request's code runs; merge drivers from `.gitattributes` off), the approved head changed
+no CI file, the base's policy is the one the approval was judged by, and, for tests, the same files
+are held as test changes. The attacks this is tested against (test/sticky-approval-git.test.js,
+test/sticky-approval.test.js):
+
+- a merge commit that adds test edits, or any file, of its own: not the clean merge, voided;
+- a merge that keeps the pull request's side (`-s ours`) and so undoes a test the base added: its
+  tree is the approved head's, but not the merge's, voided;
+- a conflict resolved by hand: voided, even when the result matches the approved content;
+- a later commit of the pull request's own, test or source: voided (a reviewer judged the test
+  change against the code it came with);
+- a force-push: different content, or a force-push back to an earlier head, voids it; so does an
+  approved head that is no longer fetched (`gone`, the usual case after a rebase on GitHub). A
+  rebase with the same content keeps it only while the approved head is still in the checkout;
+- canonicalisation tricks: trees are compared by object id, so a mode, line endings, trailing
+  space, a rename, a binary or a submodule is a difference;
+- a base update that changes which files count as held (a new glob, an import, a newer verifier):
+  the held sets recorded by the two runs differ, voided; a base policy change voids it outright;
+- a forged record: records are step names from the base's workflow, read from a file isolated
+  checks can't reach and checked against fixed patterns; a head that changes a CI file (or an
+  approved head that did) has its records ignored, and a record naming another approved head than
+  the one GitHub's data gives doesn't count;
+- a behaviour-changed hold, on the approved head or the new one: never carries (above); the
+  label is removed and a fresh one re-runs verify;
+- local approvals (`--accept-test-change=<sha>`): the same merge rule, then, after the new head's
+  checks, the same held test files and a review-only verdict (test/sticky-approval-local.test.js);
+- labels by someone without write access never stick, and a non-writer re-applying a writer's
+  label takes it over; removing the label revokes the approval.
+
+- a head pushed in the seconds before the label, before its run existed (then the newest run
+  before the label is on an older head, perhaps with other test edits), or a force-push between
+  the approved head's run and the label: the approved head must also be the head of the run the
+  label's own event started, with no force-push in between, or the label is removed.
+
+Missing data never approves, and while the head's run is unfinished or GitHub's lists are cut
+short it doesn't remove the label either. Once the head's run has finished, anything it couldn't
+settle (no comparison, no usable record of the approved head) is judged as before 1.5: the label
+doesn't count for this head and is removed, so adding it again approves it. What it doesn't cover:
+an agent with the maintainer's own token can still add labels as the maintainer (see "Who can
+approve a workflow change" in STATUS.md).
+
 The token for those reads (`actions: read`, `pull-requests: read`) is set only in the verify
 step's environment. verify takes it out of its own environment before it installs or runs
 anything, and isolated checks get an allowlisted environment that never includes it, nor can

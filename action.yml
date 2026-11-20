@@ -73,6 +73,15 @@ outputs:
   approvable_needs:
     description: "With approvable: the labels the wait needs, from the same file (comma-separated)."
     value: ${{ steps.mark.outputs.needs }}
+  held_tests:
+    description: "What an approval of this head binds to (sticky approvals, docs/REFERENCE.md): the fingerprint of the set of files verify held as test changes. Only with isolate 'true' and the bundled pocp, from a file isolated checks can't reach; otherwise empty. The workflow names a step after it (`pocp-held tests <fingerprint>`) for the trusted reporter."
+    value: ${{ steps.records.outputs.held_tests }}
+  approval_tests:
+    description: "For a pocp-approve-tests label given for an earlier head: '<verdict> <that head>', where verdict is same (this head is exactly that head plus base content), content, conflict, ci, policy or gone. Same source as held_tests; empty when not compared."
+    value: ${{ steps.records.outputs.approval_tests }}
+  approval_policy:
+    description: "As approval_tests, for pocp-approve-policy."
+    value: ${{ steps.records.outputs.approval_policy }}
   approvable_verdict:
     description: "With approvable: what the test guard found (behavior-changed, detection-dropped, baseline-red or needs-review), from the same file, for the pocp status's words only. Empty when verify wrote none."
     value: ${{ steps.mark.outputs.verdict }}
@@ -102,8 +111,10 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         POCP_GITHUB_TOKEN: ${{ inputs.label-freshness == 'github' && inputs.github-token || '' }}
         APPROVAL_FILE: ${{ runner.temp }}/pocp-approvable
+        RECORD_FILE: ${{ runner.temp }}/pocp-records
       run: |
         rm -f "$APPROVAL_FILE"
+        rm -f "$RECORD_FILE"
         if [ -n "$RANGE_INPUT" ]; then RANGE=$RANGE_INPUT
         elif [ -n "$PR_BASE" ] && [ -n "$PR_HEAD" ]; then RANGE="$PR_BASE..$PR_HEAD"
         else
@@ -141,6 +152,8 @@ runs:
         if [ -n "$POCP_CMD" ]; then read -r -a cmd <<< "$POCP_CMD"; fi
         # The approval file (read by the Approval file step below): only the bundled pocp, isolated.
         if [ "$ISOLATE" = "true" ] && [ "${#cmd[@]}" -eq 0 ]; then args+=("--approval-file=$APPROVAL_FILE"); fi
+        # The record file (read by the Record file step below): the same conditions.
+        if [ "$ISOLATE" = "true" ] && [ "${#cmd[@]}" -eq 0 ]; then args+=("--record-file=$RECORD_FILE"); fi
         run_verify() {
           if [ "${#cmd[@]}" -gt 0 ]; then "${cmd[@]}" "$@"
           else node "$GITHUB_ACTION_PATH/bin/pocp.js" "$@"; fi
@@ -178,3 +191,21 @@ runs:
             if [ -n "$verdict" ]; then echo "verdict=$verdict" >> "$GITHUB_OUTPUT"; fi
           fi
         fi
+    # What an approval of this head binds to (src/sticky-approval.js), from verify's record file:
+    # same rules as the approval file above, each line checked against a fixed pattern.
+    - name: Record file
+      id: records
+      if: always() && inputs.isolate == 'true'
+      shell: bash
+      env:
+        RECORD_FILE: ${{ runner.temp }}/pocp-records
+      run: |
+        [ -f "$RECORD_FILE" ] || exit 0
+        while IFS= read -r line; do
+          if printf '%s' "$line" | grep -Eqx 'held tests [0-9a-f]{64}'; then
+            echo "held_tests=${line#held tests }" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$line" | grep -Eqx 'approval pocp-approve-(tests|policy) (same|content|conflict|ci|policy|gone) [0-9a-f]{40}'; then
+            rest=${line#approval pocp-approve-}
+            echo "approval_${rest%% *}=${rest#* }" >> "$GITHUB_OUTPUT"
+          fi
+        done < "$RECORD_FILE"

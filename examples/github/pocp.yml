@@ -169,6 +169,18 @@ jobs:
       - name: verdict-needs-review
         if: steps.predict.outputs.skip != 'true' && (steps.verify.outputs.approvable == 'true' && steps.verify.outputs.approvable_verdict == 'needs-review')
         run: 'true'
+      # What an approval of this head binds to, so a label survives "Update branch" when the pull
+      # request's own changes didn't change (sticky approvals, docs/REFERENCE.md). The action
+      # reports these only with isolate: true, from a file isolated checks can't reach.
+      - name: pocp-held tests ${{ steps.verify.outputs.held_tests }}
+        if: steps.predict.outputs.skip != 'true' && (steps.verify.outputs.held_tests != '')
+        run: 'true'
+      - name: pocp-approval pocp-approve-tests ${{ steps.verify.outputs.approval_tests }}
+        if: steps.predict.outputs.skip != 'true' && (steps.verify.outputs.approval_tests != '')
+        run: 'true'
+      - name: pocp-approval pocp-approve-policy ${{ steps.verify.outputs.approval_policy }}
+        if: steps.predict.outputs.skip != 'true' && (steps.verify.outputs.approval_policy != '')
+        run: 'true'
       # Exactly one of these runs. Green needs the verify step's own success; the code output
       # only picks waiting / inconclusive / failed. A missing or unknown code is a failure.
       - name: verified

@@ -187,6 +187,7 @@ export const COMMANDS = {
       'accept-inconclusive': approval("a test change whose check didn't finish; =<sha>: only for that head"),
       'exit-detail': bool("exit 4 when only an approval is missing, 5 when something didn't finish"),
       'approval-file': str('path', "with --isolate: when only approvals are missing, write the labels to this file (for pocp.yml's approvable step); otherwise remove it"),
+      'record-file': str('path', 'with --isolate: write what an approval of this head binds to (held test files, and how this head compares with the head a sticky label was given for), for pocp.yml\'s record steps; otherwise remove it'),
       jobs: num('n', 'checks run at once (default: CPU cores - 1, at most 4)'),
       isolate: bool('run each check as a fresh unprivileged user (Linux, passwordless sudo); fail if that is not possible'),
       install: str('cmd', 'with --isolate: install dependencies at the head, isolated, before the checks'),
