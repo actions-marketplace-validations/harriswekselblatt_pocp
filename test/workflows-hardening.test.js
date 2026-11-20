@@ -31,6 +31,10 @@ function generated() {
 const ALL = () => ({ ...Object.fromEntries([...REPO_WORKFLOWS, ...TEMPLATES].map((f) => [f, read(f)])), ...generated() });
 
 const indent = (l) => l.match(/^\s*/)[0].length;
+// The condition inside the prediction's skip guard, which every step after approved-without-run
+// carries (workflow-status.test.js checks it is there).
+const SKIP_GUARD = "steps.predict.outputs.skip != 'true' && (";
+const unguard = (c) => (c && c.startsWith(SKIP_GUARD) && c.endsWith(')') ? c.slice(SKIP_GUARD.length, -1) : c);
 const code = (l) => l.replace(/\s+#.*$/, '');
 
 /** { name: lines } for each job under the top-level `jobs:` key. */
@@ -125,10 +129,11 @@ test('green never depends on the code output: only the verify step\'s own outcom
     else assert.match(verify.join('\n'), /exit-detail: true/, file);
     // Evaluate the result steps' conditions for each outcome and code, as Actions would.
     const results = ['verified', 'waiting', 'inconclusive', 'failed'];
+    let skipValue = '';
     const runs = (outcome, codeValue) => results.filter((n) => {
       const cond = keyOf(named(n), 'if');
       assert.ok(cond, `${file}: ${n} has no if`);
-      const expr = cond.replace(/steps\.verify\.outputs\.code/g, JSON.stringify(codeValue)).replace(/steps\.verify\.outcome/g, JSON.stringify(outcome)).replace(/==/g, '===').replace(/!=/g, '!==');
+      const expr = cond.replace(/steps\.predict\.outputs\.skip/g, JSON.stringify(skipValue)).replace(/steps\.verify\.outputs\.code/g, JSON.stringify(codeValue)).replace(/steps\.verify\.outcome/g, JSON.stringify(outcome)).replace(/==/g, '===').replace(/!=/g, '!==');
       assert.doesNotMatch(expr, /steps\.|env\.|outputs/, `${file}: ${n} reads something else: ${cond}`);
       return Function(`return (${expr});`)();
     });
@@ -141,6 +146,10 @@ test('green never depends on the code output: only the verify step\'s own outcom
     assert.deepEqual(runs('success', '0'), ['verified']);
     assert.deepEqual(runs('failure', '4'), ['waiting']);
     assert.deepEqual(runs('failure', '5'), ['inconclusive']);
+    // When the prediction skipped verify, no result step runs (the run reports nothing).
+    skipValue = 'true';
+    for (const codeValue of ['0', '1', '4', '5', '']) assert.deepEqual(runs('skipped', codeValue), [], `${file}: skip/${codeValue}`);
+    skipValue = '';
     // No other step's condition uses the code output to pass.
     for (const s of all) {
       const cond = keyOf(s, 'if') || '';
@@ -214,5 +223,81 @@ test('verify and the reporter both run when a pull request is retargeted (edited
   // The reporter follows every verify run.
   for (const rel of ['.github/workflows/pocp-status.yml', 'examples/github/pocp-status.yml']) {
     assert.match(fs.readFileSync(path.join(ROOT, rel), 'utf8'), /\n {2}workflow_run:\n {4}workflows: \[pocp\]\n {4}types: \[completed\]\n/, rel);
+  }
+});
+
+test('a wait turns green without a new run only from an isolated run: the approvable step is gated before any pull request code runs', () => {
+  const verifyFiles = Object.entries(ALL()).filter(([f]) => /(^|\/)pocp\.yml$/.test(f));
+  assert.equal(verifyFiles.length, 3);
+  for (const [file, yaml] of verifyFiles) {
+    const all = steps(yaml);
+    const named = (n) => all.find((s) => keyOf(s, 'name') === n);
+    const approvable = named('approvable');
+    assert.ok(approvable, `${file}: no approvable step`);
+    const cond = unguard(keyOf(approvable, 'if'));
+    assert.doesNotMatch(cond, /outputs\.code|outcome/, `${file}: approvable must not depend on the code output`);
+    const verify = named('verify');
+    if (keyOf(verify, 'run')) {
+      // The repo's own workflow: `plan`, from the base's verifier alone, decides isolation
+      // before the verify step runs any of the pull request's code, and verify follows it. The
+      // approval comes from verify's file, read by `mark` (after verify, only when isolated),
+      // never from an output of the verify step, which a printed line could set.
+      assert.equal(cond, "steps.mark.outputs.approvable == 'true'", file);
+      const mark = all.find((s) => keyOf(s, 'id') === 'mark');
+      assert.ok(mark && all.indexOf(mark) > all.indexOf(verify), `${file}: mark runs after verify`);
+      assert.equal(keyOf(mark, 'if'), "steps.predict.outputs.skip != 'true' && (steps.plan.outputs.isolate == 'true')", file);
+      assert.doesNotMatch(mark.join('\n'), /steps\.verify|cat |echo "\$labels"$/m, `${file}: mark reads only the file, and prints nothing`);
+      assert.match(verify.join('\n'), /rm -f "\$APPROVAL_FILE"/, `${file}: no file left from before verify`);
+      assert.match(verify.join('\n'), /APPROVAL_FILE: \$\{\{ runner\.temp \}\}\/pocp-approvable/, file);
+      const planAt = all.findIndex((s) => keyOf(s, 'id') === 'plan');
+      assert.ok(planAt >= 0 && planAt < all.indexOf(verify), `${file}: plan runs before verify`);
+      assert.equal(keyOf(all[planAt], 'working-directory'), 'verifier', `${file}: plan runs the base's verifier, not the pull request's code`);
+      assert.match(verify.join('\n'), /PLAN_ISOLATE: \$\{\{ steps\.plan\.outputs\.isolate \}\}/, file);
+      assert.match(verify.join('\n'), /if \[ "\$PLAN_ISOLATE" = "true" \]; then\n\s+set -- "\$@" --isolate/, file);
+    } else {
+      // The action: its approvable output comes from its own file-reading step, which runs only
+      // with isolate 'true' (an input the workflow sets).
+      assert.match(cond, /^steps\.verify\.outputs\.approvable == 'true'$/, file);
+      assert.match(verify.join('\n'), /isolate: true/, `${file}: the example isolates`);
+    }
+  }
+  const action = read('action.yml');
+  assert.match(action, /\n {2}approvable:\n(?: {4}.*\n)*? {4}value: \$\{\{ steps\.mark\.outputs\.approvable \}\}\n/);
+  assert.match(action, /\n {2}approvable_needs:\n(?: {4}.*\n)*? {4}value: \$\{\{ steps\.mark\.outputs\.needs \}\}\n/);
+  assert.match(action, /\n {6}id: mark\n {6}if: always\(\) && inputs\.isolate == 'true'\n/);
+  // Removed first thing (before any exit), and passed only isolated with the bundled pocp.
+  assert.match(action, /\n {6}run: \|\n {8}rm -f "\$APPROVAL_FILE"\n/);
+  assert.match(action, /if \[ "\$ISOLATE" = "true" \] && \[ "\$\{#cmd\[@\]\}" -eq 0 \]; then args\+=\("--approval-file=\$APPROVAL_FILE"\); fi/);
+  assert.equal((action.match(/--approval-file/g) || []).length, 1, 'passed in one place only');
+  // Every needs-* step reads the file's list when there is one: those are the labels that decide.
+  for (const [file, yaml] of verifyFiles) {
+    for (const n of ['needs-tests', 'needs-policy', 'needs-inconclusive']) {
+      const s = steps(yaml).find((x) => keyOf(x, 'name') === n);
+      assert.match(unguard(keyOf(s, 'if')), /^contains\(steps\.(mark\.outputs\.approvable == 'true' && steps\.mark\.outputs\.needs|verify\.outputs\.approvable == 'true' && steps\.verify\.outputs\.approvable_needs) \|\| steps\.verify\.outputs\.needs, 'pocp-approve-/, `${file}: ${n}`);
+    }
+  }
+});
+
+test("on an approval label, verify is skipped only on the prediction, a step of the verify job that runs before the pull request's code", () => {
+  const LABEL = "vars.POCP_STATUS_LIVE == 'true' && github.event.action == 'labeled' && startsWith(github.event.label.name, 'pocp-approve-')";
+  const verifyFiles = Object.entries(ALL()).filter(([f]) => /(^|\/)pocp\.yml$/.test(f));
+  for (const [file, yaml] of verifyFiles) {
+    // One job: every run joins the per-pull-request concurrency group when its event arrives.
+    assert.deepEqual(Object.keys(jobs(yaml)), ['verify'], file);
+    const all = steps(yaml);
+    const at = (pred) => all.findIndex(pred);
+    const predict = at((s) => keyOf(s, 'id') === 'predict');
+    const skipStep = at((s) => keyOf(s, 'name') === 'approved-without-run');
+    const prCheckout = at((s) => /actions\/checkout@/.test(s.join('\n')) && /pull_request\.head\.sha/.test(s.join('\n')));
+    assert.ok(predict > 0 && predict < skipStep && skipStep < prCheckout, `${file}: prediction, then approved-without-run, then the pull request's checkout`);
+    assert.equal(keyOf(all[predict], 'if'), LABEL, file);
+    assert.equal(keyOf(all[predict], 'continue-on-error'), 'true', `${file}: a failed prediction means verify runs`);
+    assert.match(all[predict].join('\n'), /predict-approval/, file);
+    // Before the pull request's checkout, only the default branch is checked out.
+    for (const s of all.slice(0, prCheckout).filter((x) => /actions\/checkout@/.test(x.join('\n')))) {
+      assert.match(s.join('\n'), /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/, file);
+      assert.equal(keyOf(s, 'if'), LABEL, file);
+    }
+    assert.doesNotMatch(yaml, /statuses: write|: write\b/, file);
   }
 });

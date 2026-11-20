@@ -311,7 +311,8 @@ test('pocp.yml and the example run the identity marker first, named as the repor
   for (const rel of ['.github/workflows/pocp.yml', 'examples/github/pocp.yml']) {
     const wf = fs.readFileSync(path.join(ROOT, rel), 'utf8');
     const lines = wf.split('\n');
-    const stepsAt = lines.findIndex((l) => l.trim() === 'steps:');
+    const verifyAt = lines.findIndex((l) => l === '  verify:');
+    const stepsAt = lines.findIndex((l, i) => i > verifyAt && l.trim() === 'steps:');
     const firstStep = lines.slice(stepsAt + 1).find((l) => /^\s*- /.test(l));
     assert.equal(firstStep.trim(), '- name: pocp-run pr-${{ github.event.pull_request.number }} base-${{ github.event.pull_request.base.sha }}', rel);
     // Rendered by GitHub, that name is exactly runMarker(number, base sha).

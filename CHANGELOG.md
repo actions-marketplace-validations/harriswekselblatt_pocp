@@ -2,6 +2,61 @@
 
 ## Unreleased
 
+Approving a pull request no longer costs a second verify run. Nothing POCP checks changed: the
+same checks run, with the same rules, and the reporter still decides the status alone.
+
+Upgrading: run `pocp init --github --force` and commit `.github/workflows` (the prediction
+steps, `mark` and the `approvable` step), with the action and the status action at the same
+release. Not yet run on GitHub: whether the status action sees its own ref (`github.action_ref`)
+inside a composite action. If it doesn't, the prediction never skips verify, and approvals
+re-run verify as before.
+
+### Changed
+
+- **A test approval turns the status green without running verify again.** Adding
+  `pocp-approve-tests` used to re-run the whole verify job (every check, and the test guard)
+  only to accept a result already known; on POCP's own pull requests that took 5–13 minutes
+  after every approval. Now, when verify waits for that approval only and its checks were
+  isolated, its run says so (`approvable`). Once the label is given by a writer after the head's
+  first run (the same rule as before), the reporter sets success from that run: the label
+  accepts exactly the test-change findings it listed. On the label event, the verify job's first
+  steps ask, with the reporter's own code, whether that is now the case
+  (`status-report --predict-approval`), and skip the rest of the job only if so (the run shows
+  `approved-without-run`). Policy and inconclusive approvals still re-run verify (a policy
+  approval changes which rules judge the run; an inconclusive one is for a check that didn't
+  finish), as do runs without isolation, with `--ci-results`, or without `POCP_STATUS_LIVE`, and
+  any doubt. The signal comes from a file verify writes (`--approval-file`) in the runner's temp
+  folder, which isolated checks can't reach, read by a step that prints nothing of the pull
+  request's: never from the verify step's outputs, which a printed line can set
+  (docs/THREAT-MODEL.md, "How the job reports the verdict"). The prediction is a step of the
+  verify job, so label runs keep their order in the concurrency group.
+- **`pocp doctor` checks that pocp.yml and pocp-status.yml use the status action at the same
+  ref.** The prediction and the reporter must decide alike; at run time the prediction also
+  refuses to skip verify when they differ, or when its own ref is unknown.
+- **The status action takes `config-dir`**, the folder with the `.proof/config.json` to judge by
+  (the prediction passes the default branch's).
+- **`pocp fix` notes a check that passed but used more than half its time limit.** On a busy
+  machine it is the next to time out, which costs a whole run and says nothing about the code.
+  The note names the setting to raise. Advice only.
+
+### Fixed
+
+- **Nothing pocp prints can start a line GitHub reads as a workflow command.** verify prints what
+  a pull request wrote, file names included, and git allows newlines in a file name, so a name
+  could put a line such as `::set-output name=code::4` in verify's output. Every printed line
+  that would start with "::" now starts with "· ", and line breaks in pocp's own annotations are
+  flattened. (Before this, such a line may have been able to set the verify step's `code` or `needs` output: a
+  failure shown as a wait, or the wrong labels named; never green.)
+- **The action now outputs `needs`.** The example workflow's `needs-*` steps read
+  `steps.verify.outputs.needs`, which the action never declared, so in projects using the
+  action the `pocp` status didn't name the labels or the one command to add them (1.4.0).
+- POCP's own repository allows each check 20 minutes (`run.timeout_ms`), up from 10. Its full
+  suite takes about 5 minutes on CI but up to 20 on a busy development machine, where it kept
+  timing out. A timeout is inconclusive, never a pass, so this changes no verdict. The default
+  for new projects stays 10 minutes.
+- The friction benchmark's results called `--rerun-unsigned` the Action's default; it is
+  `rerun: all`.
+
 ### Added
 
 - **A machine-wide limit on checks running at once.** Each repository already had its own

@@ -52,8 +52,15 @@ test('pocp.yml asks verify to check label freshness, with a read-only token for 
   const own = readRoot('.github/workflows/pocp.yml');
   assert.match(own, /grep -q -- '--label-freshness'/);
   assert.match(own, /\npermissions:\n {2}contents: read\n {2}actions: read(?: +#[^\n]*)?\n {2}pull-requests: read(?: +#[^\n]*)?\n/);
-  assert.equal((own.match(/github\.token/g) || []).length, 1);
+  // The token appears twice: verify's own environment, and the prediction step, which runs the
+  // default branch's pocp before the pull request is checked out.
+  assert.equal((own.match(/github\.token/g) || []).length, 2);
   assert.match(own, /\n {10}POCP_GITHUB_TOKEN: \$\{\{ github\.token \}\}\n/);
+  const predict = own.slice(own.indexOf('\n      - id: predict\n'), own.indexOf('\n      - name: approved-without-run\n'));
+  assert.match(predict, /\n {8}working-directory: reporter\n/);
+  assert.match(predict, /\n {10}GH_TOKEN: \$\{\{ github\.token \}\}\n/);
+  assert.ok(own.indexOf('\n      - id: predict\n') < own.indexOf('path: pr\n'), 'the prediction runs before the pull request is checked out');
+  assert.match(own, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}\n {10}path: reporter\n/);
   // The action hands the token to verify's process only.
   const action = readRoot('action.yml');
   assert.match(action, /\n {2}label-freshness:\n/);
