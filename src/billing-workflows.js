@@ -17,6 +17,9 @@ export const isPocpWorkflow = (p) => OURS.includes(p);
 
 // Workflows missing from the recent runs looked up one by one, at most this many.
 const MAX_LOOKUPS = 10;
+/** A blocked run older than this is no evidence: billing may have been fixed since without any
+ *  workflow running to show it. */
+export const MAX_EVIDENCE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function gh(args) {
   const bin = process.env.POCP_GH || 'gh';
@@ -60,7 +63,7 @@ export function ghProblem(r) {
  * incomplete: reason | null }. An unreadable answer about one workflow leaves it unchecked; a
  * failed first call or a rate limit stops the scan (incomplete). Nothing unchecked is offered.
  */
-export function billingFailedWorkflows(repo, workflows, { call = gh, anyBranch = false } = {}) {
+export function billingFailedWorkflows(repo, workflows, { call = gh, anyBranch = false, now = Date.now() } = {}) {
   const active = (workflows || []).filter((w) => w.state === 'active' && String(w.path).startsWith('.github/workflows/'));
   const result = { found: [], unchecked: [], incomplete: null };
   if (!active.length) return result;
@@ -93,8 +96,10 @@ export function billingFailedWorkflows(repo, workflows, { call = gh, anyBranch =
     if (r.workflow_id != null && !byId.has(r.workflow_id)) byId.set(r.workflow_id, r);
     if (r.path && !byPath.has(r.path)) byPath.set(r.path, r);
   }
-  // Recent runs of active workflows known to have started their jobs.
-  const started = new Set(recent.filter((r) => ofActive(r) && r.conclusion === 'success').map((r) => r.id));
+  // Recent runs known to have started their jobs. Any workflow's counts, disabled ones included
+  // (POCP's own, once `ci off` has switched them off): billing is the repository's, not a
+  // workflow's, so a job that started shows it works.
+  const started = new Set(recent.filter((r) => r.conclusion === 'success').map((r) => r.id));
   const hits = [];
   const seen = new Set(); // runs whose jobs were read
   let lookups = 0;
@@ -115,6 +120,12 @@ export function billingFailedWorkflows(repo, workflows, { call = gh, anyBranch =
       if (!latest) continue; // never ran on the default branch: no evidence
     }
     if (latest.conclusion !== 'failure') continue;
+    const created = Date.parse(latest.created_at || '');
+    if (!Number.isFinite(created)) {
+      result.unchecked.push(w.path);
+      continue;
+    }
+    if (now - created > MAX_EVIDENCE_AGE_MS) continue; // too old to say anything about today
     const jobs = call(['api', `repos/${repo}/actions/runs/${latest.id}/jobs`]);
     seen.add(latest.id);
     if (!jobs.ok || !Array.isArray(jobs.json?.jobs)) {
@@ -156,7 +167,7 @@ export function billingFailedWorkflows(repo, workflows, { call = gh, anyBranch =
   let extra = 0;
   for (const r of recent) {
     if (age(r.id) >= oldest) break;
-    if (!ofActive(r) || r.conclusion !== 'failure' || started.has(r.id) || seen.has(r.id)) continue;
+    if (r.conclusion !== 'failure' || started.has(r.id) || seen.has(r.id)) continue;
     if (extra++ >= MAX_LOOKUPS) {
       doubtful.push(age(r.id));
       continue;

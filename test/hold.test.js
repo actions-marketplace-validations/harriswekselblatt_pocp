@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { holdExplanation, holdReason, holdStatus, HOLD_LABELS, HOLD_VERDICTS, STATUS_MAX, terminalSafe } from '../src/hold.js';
+import { heldResult } from '../src/engine/verify.js';
+import { gravestVerdict, holdExplanation, holdReason, holdStatus, HOLD_LABELS, HOLD_VERDICTS, STATUS_MAX, terminalSafe } from '../src/hold.js';
 import { summarizeFindings } from '../src/decision.js';
 import { withFacts } from '../src/finding.js';
 import { approvalFileBody } from '../src/commands/verify.js';
@@ -54,12 +55,28 @@ test('the verdict is typed end to end: verify\'s needs, the approval file, never
   assert.deepEqual(s.needs[0].verdicts, ['needs-review', 'behavior-changed']);
   // A file name that reads like a verdict changes nothing: only the typed field counts.
   const named = summarizeFindings([finding(undefined, 'test/the old tests fail on the new code.test.js')]);
-  assert.equal(named.needs[0].verdicts, undefined);
+  assert.deepEqual(named.needs[0].verdicts, ['unknown']);
   assert.equal(holdExplanation([{ label: 'pocp-approve-tests', verdicts: named.needs[0].verdicts }]).items[0].verdict, undefined);
+  // One file review-only, another with no typed verdict: the label's verdict is unknown, never
+  // review-only, so it gets no fast path and never sticks.
+  const mixed = summarizeFindings([finding('needs-review', 'test/a.test.js'), finding(undefined, 'test/b.test.js')]);
+  assert.equal(gravestVerdict(mixed.needs[0].verdicts), null);
+  assert.equal(holdExplanation(mixed.needs).items[0].verdict, undefined);
   // The approval file: labels first (all an older workflow reads), then the gravest verdict.
   assert.equal(approvalFileBody({ labels: ['pocp-approve-tests'], verdict: 'behavior-changed' }), 'pocp-approve-tests\nverdict=behavior-changed\n');
   assert.equal(approvalFileBody({ labels: ['pocp-approve-tests'], verdict: 'nonsense' }), 'pocp-approve-tests\n');
   assert.equal(approvalFileBody({ labels: ['pocp-approve-tests'] }), 'pocp-approve-tests\n');
+});
+
+test('one commit with a review-only result and a worse one: the worse speaks for it', () => {
+  const r = (verdict, summary) => ({ verdict: 'failed', summary, result: verdict ? { verdict } : {} });
+  const review = r('needs-review', 'old tests pass');
+  const fails = r('behavior-changed', 'old tests fail');
+  const untyped = r(undefined, 'no typed verdict');
+  assert.equal(heldResult([review, fails]), fails);
+  assert.equal(heldResult([fails, review]), fails, 'order of the checks doesn\'t matter');
+  assert.equal(heldResult([review, untyped]), untyped, 'an untyped result is never covered by a review-only one');
+  assert.equal(heldResult([{ verdict: 'passed', summary: 'ok' }]), null);
 });
 
 test('the reporter trusts a verdict step only behind the approvable step, and only one', () => {

@@ -10,6 +10,17 @@ import { detectTestChanges, guardBudget, guardRequirement, isLegacyGuardObligati
 import { digestMatches } from '../hash.js';
 import { evaluateTriggers, normalizeRequirement, policyDigest, requirementsFor } from '../rules.js';
 import { formatProblem } from '../store.js';
+import { HOLD_VERDICTS } from '../hold.js';
+
+/**
+ * Of a commit's test-change check results, the one a maintainer is asked about: the gravest. One
+ * without a typed guard verdict comes before any typed one, so a review-only result never speaks
+ * for a worse or unknown one. Null when every result passed.
+ */
+export function heldResult(results = []) {
+  const rank = (r) => HOLD_VERDICTS.indexOf(r.result?.verdict);
+  return results.filter((r) => r.verdict && r.verdict !== 'passed' && r.summary).sort((a, b) => rank(a) - rank(b))[0] || null;
+}
 import { isGuard, isRunnable, obligationDigest } from '../obligations.js';
 import { packetProblem } from '../records.js';
 import { parseTrailers } from '../trailer.js';
@@ -429,7 +440,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     }
     const toReview = missing.filter((f) => !unfinishedFor(f));
     if (!toReview.length || acceptTestChange) return;
-    const failed = results.find((r) => r.verdict && r.verdict !== 'passed' && r.summary);
+    const failed = heldResult(results);
     // Two cases a maintainer's test approval doesn't resolve: the check passed on checks the
     // packet chose (a rule must require them), or it passed only on the author's machine (CI
     // must re-run it). Every other case is approvable.

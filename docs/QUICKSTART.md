@@ -116,8 +116,9 @@ repository that already has POCP's workflows, `pocp ci off` disables them on Git
 `pocp-status.yml`) and sets the mode; `pocp ci on` enables them again and
 removes it. Neither touches the workflow files, so there is nothing to commit under
 `.github/`; commit the change to `.proof/config.json`. Switching to local mode is a policy
-loosening, so verify asks for `--accept-policy-change` on that commit. `ci off` lists your
-other workflows and the command to disable each; it doesn't touch them. The test guard's fast
+loosening, so verify asks for `--accept-policy-change` on that commit. `ci off` also finds your
+other workflows that fail because GitHub won't start their jobs for billing, and asks before
+disabling them (`gh workflow enable <file>` turns each back on). The test guard's fast
 or deep mode is a separate setting and works the same under the hooks.
 
 Before merging a branch, run what CI would have run. `<base>..HEAD` is the branch's commits:
@@ -133,7 +134,7 @@ waits for a person (a test change the check couldn't pass, a policy loosening), 
 then approve it for that exact head:
 
 ```bash
-pocp verify --require-coverage --rerun main..HEAD --accept-test-change $(git rev-parse HEAD)
+pocp verify --require-coverage --rerun main..HEAD --accept-test-change=$(git rev-parse HEAD)
 ```
 
 (or `--accept-policy-change`). verify then prints `verified`. It doesn't say an approval was
@@ -164,6 +165,9 @@ yellow, with no red ✗ and no failure email (`--no-live` leaves it off). Withou
 do neither and says so: `pocp doctor` then lists the labels to create, and step 3 below turns
 the status on.
 
+Before pushing, set your toolchain and install command in `pocp.yml` (the lines marked ▶):
+verify runs every check on a fresh runner, so a check like `npm test` or `pytest` needs them.
+
 1. **Push `adopt-pocp` and open the adoption pull request** with `.proof/` and the workflows. It changes CI files, so its verify waits for `pocp-approve-policy`: read the diff and add the label (`pocp approve owner/repo#<number>`). The reporter only runs once it is on the default branch, so this pull request shows no yellow `pocp` status: its `verify` check is green, and its job summary's heading names the label it waits for. Nothing is required yet, and no other label is needed. Keep this pull request to `.proof/` and CI files (`pocp doctor` checks): until it merges, CI judges with the base branch's rules.
 2. **A maintainer approves a change by adding its label:** `pocp-approve-tests`, `pocp-approve-policy`, `pocp-approve-inconclusive`, `pocp-approve-coverage` or `pocp-approve-workflow`. [STATUS.md](STATUS.md) says what each covers.
 3. **Once the adoption pull request merges, require the status:** `pocp ci required --apply`. It sets branch protection from `.proof/config.json`: the `pocp` status (in place of the `verify` job, if that was required), pull requests only, admins included, and branches up to date before merging (so the merged code is the code that was verified; when `main` moves, a pull request needs "Update branch" before it merges). Each can be turned off in `ci`. It also turns the `pocp` status on if `init` couldn't. On a free plan's private repository GitHub has no branch protection: the status is then a signal only, and the command says so. Merge queues aren't supported yet ([REFERENCE.md](REFERENCE.md)).
@@ -175,8 +179,8 @@ If your repository has a second maintainer, keep the default `"ci": { "workflow_
 An approval covers only the code reviewed: a label added before the latest push doesn't count,
 and the reporter removes it, so add it again after reviewing the new commits. Neither workflow
 uses `pull_request_target` (which GitHub blocks by default in public repositories from
-December 2, 2026). Upgrading from 1.3.0 or earlier: `pocp init --github --force` regenerates
-the workflows and removes the old `pocp-labels.yml`; `pocp doctor` says when that's needed.
+December 2, 2026). To upgrade, see [REFERENCE.md, Upgrading](REFERENCE.md#upgrading); `pocp doctor` says when
+the workflows are out of date.
 
 **If agents push branches with your token,** a workflow on such a branch can post its own
 `pocp: success`. Give the reporter its own GitHub App and require `pocp` from it:

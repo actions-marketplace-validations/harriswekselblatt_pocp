@@ -81,6 +81,24 @@ test('the sweep removes folders whose owner is gone and keeps live ones', async 
   }
 });
 
+test('a live owner started through exec keeps its folder, though ps reports an earlier start', async () => {
+  // `sh -c "...; exec pocp ..."`: ps reports the shell's start time, which can be minutes before
+  // Node started and recorded its own. Only a later start means the process ID was reused.
+  const base = freshBase();
+  const live = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+  try {
+    await waitFor('the live process to show in ps', () => processStarts([live.pid])?.get(live.pid));
+    const start = processStarts([live.pid]).get(live.pid);
+    const [execd] = mkdirs(base, `pocp-snap-${live.pid}-${(start + 3600).toString(36)}-exec01`);
+    const r = sweepStale(base, { kinds: ['snap'] });
+    assert.deepEqual(r.removed, []);
+    assert.equal(r.live, 1);
+    assert.ok(fs.existsSync(path.join(execd, 'file')), 'the exec\'d owner\'s folder is kept');
+  } finally {
+    live.kill('SIGKILL');
+  }
+});
+
 test('the sweep touches nothing but its own kinds of folder, directly in the temp folder', () => {
   const base = freshBase();
   const outside = freshBase();

@@ -30,7 +30,9 @@ const WORKFLOWS = [
   { id: 305, name: 'old', path: '.github/workflows/old.yml', state: 'disabled_manually' },
   { id: 306, name: 'Dependabot Updates', path: 'dynamic/dependabot/dependabot-updates', state: 'active' },
 ];
-const run = (id, workflowId, p, conclusion, created = '2026-11-19T23:39:00Z') => ({ id, workflow_id: workflowId, path: p, status: 'completed', conclusion, event: 'push', head_branch: 'main', head_repository: { full_name: 'me/site' }, created_at: created, html_url: `https://github.com/me/site/actions/runs/${id}` });
+// Blocked runs count as evidence for 30 days, so the newest runs are dated an hour ago.
+const RECENT = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+const run = (id, workflowId, p, conclusion, created = RECENT) => ({ id, workflow_id: workflowId, path: p, status: 'completed', conclusion, event: 'push', head_branch: 'main', head_repository: { full_name: 'me/site' }, created_at: created, html_url: `https://github.com/me/site/actions/runs/${id}` });
 
 /** GitHub as gh api answers it, by endpoint: a body, or { status, message } for an error. */
 function table({ pocpBilling = true } = {}) {
@@ -96,7 +98,7 @@ test('only workflows with all the evidence are found: a billing failure, not an 
     path: '.github/workflows/test.yml',
     file: 'test.yml',
     pocp: false,
-    run: { id: 5001, conclusion: 'failure', event: 'push', created_at: '2026-11-19T23:39:00Z', url: 'https://github.com/me/site/actions/runs/5001' },
+    run: { id: 5001, conclusion: 'failure', event: 'push', created_at: RECENT, url: 'https://github.com/me/site/actions/runs/5001' },
     message: BILLING_MESSAGE,
   });
   // POCP's own is found, and marked: ci off switches it, so it is never offered here.
@@ -153,10 +155,18 @@ test('billing fixed since: a newer run that started makes an old blocked run no 
   ran['repos/me/site/actions/runs?per_page=20&status=completed'].workflow_runs.unshift(run(5201, 302, '.github/workflows/lint.yml', 'failure'));
   ran['repos/me/site/actions/runs/5201/jobs'] = ORDINARY_JOBS;
   assert.deepEqual(billingFailedWorkflows('me/site', WORKFLOWS, fakeCall(ran)).found, []);
-  // A newer success from a workflow since disabled doesn't count: only active workflows do.
+  // A newer success from a workflow since disabled counts too (POCP's own, after `ci off`):
+  // billing is the repository's, and a job started.
   const off = table();
   off['repos/me/site/actions/runs?per_page=20&status=completed'].workflow_runs.unshift(run(5202, 305, '.github/workflows/old.yml', 'success'));
-  assert.equal(billingFailedWorkflows('me/site', WORKFLOWS, fakeCall(off)).found.length, 2);
+  assert.deepEqual(billingFailedWorkflows('me/site', WORKFLOWS, fakeCall(off)).found, []);
+});
+
+test('a blocked run more than 30 days old is no evidence: billing may have been fixed since', () => {
+  const t = table();
+  assert.equal(billingFailedWorkflows('me/site', WORKFLOWS, { ...fakeCall(t), now: Date.now() }).found.length, 2);
+  const later = Date.now() + 31 * 24 * 60 * 60 * 1000;
+  assert.deepEqual(billingFailedWorkflows('me/site', WORKFLOWS, { ...fakeCall(t), now: later }).found, []);
 });
 
 test('every job unstarted: a run where some jobs ran is not offered; jobs skipped behind the blocked one are fine', () => {
@@ -263,7 +273,7 @@ test('the evidence says what billing means for a private and a public repository
   const found = billingFailedWorkflows('me/site', WORKFLOWS, fakeCall(table())).found.filter((w) => !w.pocp);
   const priv = evidenceLines('me/site', found, true).join('\n');
   assert.match(priv, /1 workflow\(s\) on me\/site fail because GitHub Actions doesn't start their jobs for billing:/);
-  assert.match(priv, /test \(\.github\/workflows\/test\.yml\): latest run 5001 on 2026-11-19: failure, "The job was not started because recent account payments have failed or your spending limit needs to be increased"/);
+  assert.match(priv, /test \(\.github\/workflows\/test\.yml\): latest run 5001 on \d{4}-\d{2}-\d{2}: failure, "The job was not started because recent account payments have failed or your spending limit needs to be increased"/);
   assert.match(priv, /private, so its jobs spend the account's Actions minutes/);
   assert.match(evidenceLines('me/site', found, false).join('\n'), /public, where standard GitHub-hosted runners are free/);
   assert.doesNotMatch(evidenceLines('me/site', found, null).join('\n'), /private|public/);
@@ -378,7 +388,7 @@ test('ci off, not on a terminal: lists the billing failures with their evidence,
   assert.equal(r.code, 0, r.stderr);
   // POCP's own: ci off disables them as always, and only them.
   assert.deepEqual(calls().filter((c) => c.includes('PUT')), ['api -X PUT repos/me/site/actions/workflows/1/disable', 'api -X PUT repos/me/site/actions/workflows/2/disable']);
-  assert.match(r.stdout, /1 workflow\(s\) on me\/site fail because GitHub Actions doesn't start their jobs for billing:\n {2}test \(\.github\/workflows\/test\.yml\): latest run 5001 on 2026-11-19: failure, "The job was not started because recent account payments have failed/);
+  assert.match(r.stdout, /1 workflow\(s\) on me\/site fail because GitHub Actions doesn't start their jobs for billing:\n {2}test \(\.github\/workflows\/test\.yml\): latest run 5001 on \d{4}-\d{2}-\d{2}: failure, "The job was not started because recent account payments have failed/);
   assert.match(r.stdout, /not disabled \(nothing was asked: no terminal, or --json\)\. To disable them: pocp ci off --disable-billing-failed/);
   assert.doesNotMatch(r.stdout, /lint\.yml\): latest run/, 'an ordinary failure is not offered');
   assert.equal(JSON.parse(read(dir, '.proof/config.json')).ci.mode, 'local');
@@ -427,7 +437,8 @@ test('doctor in local mode: reports the billing failures; acts only with --disab
 
   const human = pocp(dir, ['doctor'], env(gh));
   assert.match(human.stdout, /note 1 workflow\(s\) on me\/site fail because GitHub Actions doesn't start their jobs for billing: \.github\/workflows\/test\.yml/);
-  assert.match(human.stdout, /latest run 5001 on 2026-11-19: failure/);
+  assert.match(human.stdout, /latest run 5001 on \d{4}-\d{2}-\d{2}: failure/);
+  assert.ok(human.stdout.includes(`latest run 5001 on ${RECENT.slice(0, 10)}: failure`), 'the run\'s own date');
   assert.match(human.stdout, /To disable them: pocp doctor --disable-billing-failed/);
   assert.ok(!calls().some((x) => x.includes('PUT')));
 

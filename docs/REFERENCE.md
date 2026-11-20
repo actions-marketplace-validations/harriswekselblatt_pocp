@@ -110,7 +110,7 @@ pocp verify origin/main..HEAD --require-coverage --rerun     # re-runs every req
 - **Fast when nothing needs running:** digest, coverage, policy and signature checks are git reads, typically well under a second per commit. The commit hooks cache each old tree's subject hash locally, so they stay fast as history grows (see [`bench/friction/`](../bench/friction/)).
 - **Merges:** during a merge the gate judges only files that differ from both sides (conflict resolutions); files taken unchanged from the merged branch carry that branch's proofs. Verify doesn't check merge commits one by one (they carry no trailers), but what a merge adds is part of the pull request's net change: the test guard and `--require-coverage` judge it, and the head re-run runs on the head itself, merge or not. Merging main into a branch doesn't make main's changes the branch's: the net change starts at the merge base.
 - **Fails closed:** a `rules.json` or `config.json` that doesn't parse or validate, in the commit or its base, fails verification.
-- **Says what each check rests on:** every check is labelled `rerun`, `ci-result`, `signed:<who>`, `local`, `handed-to-ci` (not run at commit, and not yet re-run; see `ci.defer_heavy` above), or `attested:<who>` (see [the threat model](THREAT-MODEL.md)).
+- **Says what each check rests on:** every check is labelled `rerun`, `ci-result`, `signed:<who>`, `local`, `handed-to-ci` (not run at commit, and not yet re-run; see `ci.defer_heavy` below), or `attested:<who>` (see [the threat model](THREAT-MODEL.md)).
 - **Readable:** on GitHub Actions it writes a results table to the job summary and error annotations on failing commits. The summary ends with one line, `Checked by POCP · how this works`, linking to [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 
 ### Hand heavy checks to CI (`ci.defer_heavy`)
@@ -196,9 +196,9 @@ pocp upgrade --to 1.5.0    # a release you choose (no registry lookup)
 
 It installs first, so a failed install (offline, say) leaves everything else as it was, and it pins the version it actually installed. It refuses when tracked files other than the ones it writes have uncommitted changes, so the upgrade is a change of its own; an interrupted upgrade can be run again, and a run with nothing to do changes nothing. It only moves forward: an older `--to` is refused.
 
-**The pull request needs approvals.** Re-pinned workflows are a CI change, so the pull request needs `pocp-approve-workflow` (from a maintainer who isn't its author, by default) and `pocp-approve-policy`. That is intended: an upgrade changes what judges your code. In local mode there are usually no workflows to re-pin, and nothing to approve.
+**The pull request needs approvals.** Re-pinned workflows are a CI change, so the pull request needs `pocp-approve-workflow` (from a maintainer who isn't its author, by default) and `pocp-approve-policy`. That is intended: an upgrade changes what judges your code. In local mode nothing in CI approves it: workflow files left on disk by `pocp ci off` are re-pinned too, so they stay current if you turn CI back on, but they don't run.
 
-**From 1.4.0 or older**, which have no `upgrade`: install the new release yourself (`npm install --save-dev proof-of-change@latest`), then run `npx pocp upgrade` to re-pin the workflows.
+**From 1.4.0 or older**, which have no `upgrade`: install the new release yourself (`npm install --save-dev proof-of-change@1.5.0`, or `npm install -g proof-of-change@1.5.0`), then, on GitHub, `npx pocp init --github --force` to bring in this release's new workflow steps (the verdict, approval-record and prediction steps) and re-pin them. `--force` rewrites `pocp.yml`: put back your ▶ toolchain and `install:` lines, and add `--no-live` if you keep the `pocp` status off. The pull request needs `pocp-approve-policy` and `pocp-approve-workflow`. In local mode, installing is all. Later upgrades are `npx pocp upgrade`.
 
 ### Knowing a release is out
 
@@ -228,7 +228,7 @@ Each repository has its own lock, but checks from different repositories, worktr
 
 ```
 pocp: waiting for 1 other POCP check on this machine (limit 1; POCP_MACHINE_CHECKS or ~/Library/Caches/pocp/check-slots/limit changes it). Waiting doesn't count toward the check's time limit.
-  running: "npm test --silent" in pocp-plugin-dir (pid 41233, running 3m 12s)
+  running: "npm test --silent" in my-app (pid 41233, running 3m 12s)
   1 other pocp waiting ahead of this one
 ```
 
@@ -295,7 +295,7 @@ Set `POCP_HOST=./my-host.mjs` to add rules from your own tooling and receive eve
 ## Library
 
 ```js
-import { createPocp } from 'pocp';
+import { createPocp } from 'proof-of-change';
 const pocp = createPocp({ cwd, policy, events, store, runner });
 await pocp.gate();
 ```

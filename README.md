@@ -15,6 +15,8 @@ npm install --save-dev proof-of-change
 npx pocp init --hooks --github
 ```
 
+`--github` needs a GitHub `origin` and `gh` logged in with the `workflow` scope (`gh auth refresh -s workflow`). Before you push, set your toolchain and install command in `.github/workflows/pocp.yml` (the lines marked ▶): CI runs every check on a fresh machine. No CI? Use `npx pocp init --local` (below).
+
 `init` creates `.proof/` and installs git hooks (yours keep running). Then:
 
 1. **Say what must be proven.** A rule in `.proof/rules.json` maps files to a check, which is any command (`npm test`, `pytest`, `go test ./...`):
@@ -28,7 +30,7 @@ npx pocp init --hooks --github
 2. **Commit.** If the hook blocks it, run `npx pocp fix --intent "<what the change does>"` and commit again. The commit gets a `Proof-Of-Change` trailer.
 3. **Check the setup** with `npx pocp doctor`, which prints the commands for anything missing.
 
-**Upgrading.** `npx pocp upgrade --dry-run` shows what a newer release would change; `npx pocp upgrade` bumps the dependency (or the global install), re-pins the GitHub workflows to the new release and says which approvals the pull request needs. POCP never checks for updates in the background: `pocp doctor` notes, from local files, when the hooks and CI run different releases, and only `pocp upgrade` asks the npm registry ([docs/REFERENCE.md](docs/REFERENCE.md#upgrading)).
+**Upgrading.** `npx pocp upgrade --dry-run` shows what a newer release would change; `npx pocp upgrade` bumps the dependency (or the global install), re-pins the GitHub workflows to the new release and says which approvals the pull request needs. POCP never checks for updates in the background: `pocp doctor` notes, from local files, when the hooks and CI run different releases, and only `pocp upgrade` asks the npm registry ([docs/REFERENCE.md](docs/REFERENCE.md#upgrading)). From 1.4, which has no `upgrade`, see that section first.
 
 ## Where the checks run
 
