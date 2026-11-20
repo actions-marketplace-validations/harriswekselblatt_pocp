@@ -99,3 +99,27 @@ test("the plugin's skill teaches the same workflow as examples/agent-instruction
   const instructions = fs.readFileSync(path.join(ROOT, 'examples', 'agent-instructions.md'), 'utf8');
   assert.equal(body(skill), instructions.slice(instructions.indexOf('\n---\n') + 5).trim());
 });
+
+test('the plugin folder has what the Claude plugin directory requires: a README of 40+ words and a license', () => {
+  const readme = fs.readFileSync(path.join(PLUGIN, 'README.md'), 'utf8');
+  const prose = readme.replace(/```[\s\S]*?```/g, ' ');
+  const words = prose.split(/\s+/).filter((w) => /[A-Za-z]/.test(w));
+  assert.ok(words.length >= 40, `README has ${words.length} words outside code blocks`);
+  const plugin = json(path.join(PLUGIN, '.claude-plugin', 'plugin.json'));
+  assert.ok(plugin.license || fs.existsSync(path.join(PLUGIN, 'LICENSE')), 'license in plugin.json or a LICENSE file');
+  assert.match(plugin.name, /^[a-z0-9-]{1,64}$/);
+});
+
+test("the setup skill names only real pocp commands, and keeps approvals the user's", () => {
+  const skill = fs.readFileSync(path.join(PLUGIN, 'skills', 'setup', 'SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: setup\ndescription: .+\n---\n/);
+  const commands = new Set([...skill.matchAll(/`(?:npx )?pocp ([a-z]+)/g)].map((m) => m[1]));
+  assert.ok(commands.has('init') && commands.has('doctor') && commands.has('fix'), [...commands].join(','));
+  for (const cmd of commands) {
+    if (cmd === 'approve') continue; // named only under "Never"
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'pocp.js'), cmd, '--help'], { encoding: 'utf8' });
+    assert.equal(r.status, 0, `pocp ${cmd} --help: ${r.stderr}`);
+  }
+  const never = skill.slice(skill.indexOf('**Never**'));
+  for (const s of ['pocp-approve-', 'pocp approve', '--accept-', '--no-verify', 'core.hooksPath']) assert.ok(never.includes(s), s);
+});

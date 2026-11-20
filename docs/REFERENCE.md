@@ -111,7 +111,7 @@ pocp verify origin/main..HEAD --require-coverage --rerun     # re-runs every req
 - **Merges:** during a merge the gate judges only files that differ from both sides (conflict resolutions); files taken unchanged from the merged branch carry that branch's proofs. Verify doesn't check merge commits one by one (they carry no trailers), but what a merge adds is part of the pull request's net change: the test guard and `--require-coverage` judge it, and the head re-run runs on the head itself, merge or not. Merging main into a branch doesn't make main's changes the branch's: the net change starts at the merge base.
 - **Fails closed:** a `rules.json` or `config.json` that doesn't parse or validate, in the commit or its base, fails verification.
 - **Says what each check rests on:** every check is labelled `rerun`, `ci-result`, `signed:<who>`, `local`, or `attested:<who>` (see [the threat model](THREAT-MODEL.md)).
-- **Readable:** on GitHub Actions it writes a results table to the job summary and error annotations on failing commits.
+- **Readable:** on GitHub Actions it writes a results table to the job summary and error annotations on failing commits. The summary ends with one line, `Checked by POCP · how this works`, linking to [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 
 A ready-made workflow is in [`examples/github/pocp.yml`](../examples/github/pocp.yml), and there's a composite action in [`action.yml`](../action.yml). The action runs the copy of POCP bundled at the action's own ref, so pinning `uses: harriswekselblatt/pocp@<commit>` pins the verifier.
 
