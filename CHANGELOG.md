@@ -11,6 +11,15 @@ release. Not yet run on GitHub: whether the status action sees its own ref (`git
 inside a composite action. If it doesn't, the prediction never skips verify, and approvals
 re-run verify as before.
 
+### Added
+
+- **An opt-in README badge.** The first `pocp init` at a terminal asks once whether to show a
+  `tests | POCP verified` badge (a plain shields.io badge linking to this repository). The
+  default is no; a yes prints the markdown to paste, and no file is changed. Never asked in CI,
+  without a terminal, with `--json` or on a re-run. `pocp init --badge` prints it for scripts.
+- **verify's job summary ends with one line:** `Checked by POCP · how this works`, linking to
+  docs/HOW-IT-WORKS.md. The `pocp` status text is unchanged.
+
 ### Changed
 
 - **A test approval turns the status green without running verify again.** Adding

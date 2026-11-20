@@ -47,6 +47,10 @@ which is fine: a file that a rule's check runs (`tests/run.sh` below) is guarded
 anyway. For test folders it misses in a real project, add them to `guard.extra_test_globs` in
 `config.json`.
 
+The first time `init` runs at a terminal it asks one question, whether you'd like a README badge
+(`tests | POCP verified`). The default is no. A yes prints the markdown for you to paste; no file
+is changed, and it isn't asked again. `pocp init --badge` prints it without asking.
+
 ## 3. Say what must be proven
 
 In `.proof/rules.json`, replace `"requirements": []` with this rule, and keep the rest of the
