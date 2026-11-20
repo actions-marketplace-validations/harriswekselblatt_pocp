@@ -28,6 +28,7 @@
     "require_pull_request": true,
     "enforce_admins": true,
     "require_up_to_date": true,
+    "defer_heavy": true,
     "files": [
       ".github/workflows/**",
       ".github/actions/**",
