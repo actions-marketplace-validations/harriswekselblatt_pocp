@@ -30,7 +30,7 @@
       ],
       "obligation": {
         "kind": "test",
-        "run": "npm test --silent",
+        "run": "node --test test/*.test.js",
         "changed_test_command": [
           "node",
           "--test",
