@@ -13,7 +13,7 @@ export const STATUS_MAX = 140;
 
 /** A few words per label, for the status line (it has room for little else). */
 export const HOLD_SHORT = Object.freeze({
-  'pocp-approve-tests': 'tests edited',
+  'pocp-approve-tests': 'tests edited, verdict unknown',
   'pocp-approve-policy': 'POCP rules changed',
   'pocp-approve-inconclusive': "a test check didn't finish",
   'pocp-approve-coverage': 'files without proof',

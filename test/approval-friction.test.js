@@ -180,11 +180,11 @@ const facts = (over = {}) => ({
 test('the pocp status names every label and the one command, and stays pending', () => {
   const d = decideStatus(facts({ runs: [job('waiting', ['pocp-approve-tests', 'pocp-approve-policy'])] }));
   assert.equal(d.state, 'pending');
-  assert.equal(d.description, 'Waiting for approval (tests edited, POCP rules changed). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-policy');
+  assert.equal(d.description, 'Waiting for approval (tests, rules). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-policy');
   // A changed workflow: its label and everything verify asked for, at once.
   const wf = decideStatus(facts({ files: [{ filename: '.github/workflows/pocp.yml' }], runs: [job('waiting', ['pocp-approve-tests'])] }));
   assert.equal(wf.state, 'pending');
-  assert.equal(wf.description, 'Waiting for approval (tests edited, CI changed). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-workflow');
+  assert.equal(wf.description, 'Waiting for approval (tests, CI). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests,pocp-approve-workflow');
   // Even a run whose own steps claim success gets no green while its workflow is unapproved.
   const spoof = decideStatus(facts({ files: [{ filename: '.github/workflows/pocp.yml' }], runs: [job('verified', ['pocp-approve-tests'])] }));
   assert.equal(spoof.state, 'pending');

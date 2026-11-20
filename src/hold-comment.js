@@ -203,6 +203,12 @@ export async function upsertHoldComment(gh, { repository, number, comment, ident
     }
     if (comment.kind !== 'hold') return { action: 'skipped', reason: 'no hold comment to update' };
     const made = await gh.post(url, { body: comment.body });
+    // Posted as someone the reporter wouldn't recognise next time (labels-token isn't
+    // github.token): it would post again on every run. Take it back and say why.
+    if (!byUs(made)) {
+      try { await gh.delete(`/repos/${repository}/issues/comments/${made?.id}`); } catch { /* reported below */ }
+      return { action: 'skipped', reason: `the comment was posted as ${made?.user?.login || 'an unknown identity'}, not ${identity.login}: labels-token must be github.token` };
+    }
     // Two reporters (two heads of the same pull request) may have both just posted: keep the oldest.
     const ours = await mine();
     if (ours.length > 1) {

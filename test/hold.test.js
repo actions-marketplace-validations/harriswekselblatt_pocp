@@ -5,6 +5,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { holdExplanation, holdReason, holdStatus, HOLD_LABELS, HOLD_VERDICTS, STATUS_MAX, terminalSafe } from '../src/hold.js';
 import { summarizeFindings } from '../src/decision.js';
 import { withFacts } from '../src/finding.js';
@@ -99,7 +103,7 @@ test('the gate, pocp fix and the hooks give the same sentence as the status and 
 // ---- the pocp status: 140 characters --------------------------------------------------------
 
 test('the status names why and the command within 140 characters, degrading a step at a time', () => {
-  assert.equal(holdStatus(['pocp-approve-tests'], { number: 7, repository: 'o/r' }), 'Waiting for approval (tests edited). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests');
+  assert.equal(holdStatus(['pocp-approve-tests'], { number: 7, repository: 'o/r' }), 'Waiting for approval (tests edited, verdict unknown). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests');
   // Too long with the few words: one word each. POCP's own two-label wait fits that way.
   assert.equal(holdStatus(['pocp-approve-tests', 'pocp-approve-workflow'], { number: 104, repository: 'harriswekselblatt/pocp' }), 'Waiting for approval (tests, CI). Run: gh pr edit 104 -R harriswekselblatt/pocp --add-label pocp-approve-tests,pocp-approve-workflow');
   // Too long even so: the command alone (the text before 1.5).
@@ -107,7 +111,7 @@ test('the status names why and the command within 140 characters, degrading a st
   assert.equal(mid, 'Waiting for approval. Run: gh pr edit 1234 -R some-org/some-repo --add-label pocp-approve-tests,pocp-approve-policy,pocp-approve-workflow');
   // Too long with the command: the reasons and the labels.
   const long = 'an-organisation-with-a-very-long-name/a-repository-with-an-even-longer-name';
-  assert.equal(holdStatus(['pocp-approve-tests'], { number: 12345, repository: long }), 'Waiting for approval (tests edited): add pocp-approve-tests');
+  assert.equal(holdStatus(['pocp-approve-tests'], { number: 12345, repository: long }), 'Waiting for approval (tests edited, verdict unknown): add pocp-approve-tests');
   // Everything at once with a long repository: still within the limit.
   const all = holdStatus(HOLD_LABELS, { number: 99999, repository: long });
   assert.ok(all.length <= STATUS_MAX, all);
@@ -404,7 +408,7 @@ function reporter(needs) {
 test('the reporter writes the status, then the comment, with the labels token; ci.pr_comment false turns it off', async () => {
   const on = reporter();
   const r = await reportStatus(on.gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, labelGh: on.comments.gh });
-  assert.deepEqual(on.writes, [['status', 'pending', 'Waiting for approval (tests edited). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests']]);
+  assert.deepEqual(on.writes, [['status', 'pending', 'Waiting for approval (tests edited, verdict unknown). Run: gh pr edit 7 -R o/r --add-label pocp-approve-tests']]);
   assert.equal(r.comment.action, 'created');
   assert.equal(on.comments.comments.length, 1);
   assert.ok(on.comments.comments[0].body.includes(holdReason('pocp-approve-tests')));
@@ -461,4 +465,80 @@ test('pocp gate, the hook and pocp fix print the hold sentence and command, and 
   const c = spawnSync('git', ['commit', '-qm', 'loosen'], { cwd: dir, encoding: 'utf8' });
   assert.equal(c.status, 0, c.stderr);
   assert.ok(`${c.stdout}${c.stderr}`.includes(`why: ${reason}`), `${c.stdout}${c.stderr}`);
+});
+
+test('a comment posted as another identity is taken back, so it is never posted on every run', async () => {
+  const f = factsFor([{ filename: 'test/x.test.js' }]);
+  const hold = holdComment(decideStatus(f), f);
+  const api = commentsApi();
+  const realPost = api.gh.post;
+  // labels-token set to a personal token: the comment comes back as that person.
+  api.gh.post = async (url, body) => {
+    const c = await realPost(url, body);
+    c.user = { login: 'someone', type: 'User' };
+    return c;
+  };
+  const r = await upsertHoldComment(api.gh, { repository: 'o/r', number: 7, comment: hold });
+  assert.equal(r.action, 'skipped');
+  assert.match(r.reason, /labels-token must be github\.token/);
+  assert.equal(api.comments.length, 0);
+});
+
+// ---- the CI files carry the verdict exactly as the reporter reads it ---------------------------
+
+// The verdict-* steps (null: none), and which files hold a mark step (the example uses the action's).
+const CI_FILES = { '.github/workflows/pocp.yml': 'steps.mark.outputs', 'examples/github/pocp.yml': 'steps.verify.outputs', 'action.yml': null };
+const MARK_FILES = ['.github/workflows/pocp.yml', 'action.yml'];
+const readRepo = (p) => fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', p), 'utf8');
+
+/** The `run:` script of the step with `id: mark` in a workflow or action file. */
+function markScript(text) {
+  const lines = text.split('\n');
+  const at = lines.findIndex((l) => /^\s*(- )?id: mark\s*$/.test(l));
+  assert.ok(at >= 0, 'no mark step');
+  const run = lines.findIndex((l, i) => i > at && /^\s*run: \|\s*$/.test(l));
+  const indent = /^\s*/.exec(lines[run + 1])[0].length;
+  const body = [];
+  for (const l of lines.slice(run + 1)) {
+    if (l.trim() && /^\s*/.exec(l)[0].length < indent) break;
+    body.push(l.slice(indent));
+  }
+  return body.join('\n');
+}
+
+test('the four verdict words agree in hold.js, the mark steps and the verdict-* steps of every CI file', () => {
+  for (const [file, outputs] of Object.entries(CI_FILES)) {
+    const text = readRepo(file);
+    if (MARK_FILES.includes(file)) assert.ok(text.includes(`verdict=(${HOLD_VERDICTS.join('|')})`), `${file}: mark accepts exactly ${HOLD_VERDICTS.join(', ')}`);
+    if (!outputs) continue;
+    for (const v of HOLD_VERDICTS) {
+      assert.ok(text.includes(`- name: verdict-${v}\n`), `${file}: verdict-${v}`);
+      assert.ok(text.includes(`${outputs}.approvable == 'true' && ${outputs === 'steps.mark.outputs' ? 'steps.mark.outputs.verdict' : 'steps.verify.outputs.approvable_verdict'} == '${v}'`), `${file}: verdict-${v} needs approvable`);
+    }
+  }
+  assert.ok(readRepo('action.yml').includes('value: ${{ steps.mark.outputs.verdict }}'));
+});
+
+test('every mark step passes only the four verdict words, and never fails the job', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-mark-'));
+  const cases = [
+    ['pocp-approve-tests\n', 'approvable=true\nneeds=pocp-approve-tests\n'],
+    ['pocp-approve-tests\nverdict=behavior-changed\n', 'approvable=true\nneeds=pocp-approve-tests\nverdict=behavior-changed\n'],
+    ['pocp-approve-tests\nverdict=behavior-changed; touch pwned\nverdict=evil\nverdict=needs-review\n', 'approvable=true\nneeds=pocp-approve-tests\nverdict=needs-review\n'],
+    ['pocp-approve-tests\n verdict=needs-review\n', 'approvable=true\nneeds=pocp-approve-tests\n'],
+    ['not a label\nverdict=needs-review\n', ''],
+  ];
+  for (const file of MARK_FILES) {
+    const script = path.join(dir, 'mark.sh');
+    fs.writeFileSync(script, markScript(readRepo(file)));
+    for (const [content, want] of cases) {
+      fs.writeFileSync(path.join(dir, 'approvable'), content);
+      fs.writeFileSync(path.join(dir, 'out'), '');
+      // GitHub runs `shell: bash` steps with -e and pipefail.
+      const r = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', script], { cwd: dir, encoding: 'utf8', env: { PATH: process.env.PATH, APPROVAL_FILE: path.join(dir, 'approvable'), GITHUB_OUTPUT: path.join(dir, 'out') } });
+      assert.equal(r.status, 0, `${file}: ${r.stderr}`);
+      assert.equal(fs.readFileSync(path.join(dir, 'out'), 'utf8'), want, `${file}: ${JSON.stringify(content)}`);
+      assert.ok(!fs.existsSync(path.join(dir, 'pwned')));
+    }
+  }
 });
