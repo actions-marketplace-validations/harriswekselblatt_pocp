@@ -2,7 +2,8 @@
 // covers a later head that is exactly that head plus base content (a merge into the base with the
 // same tree, a fast-forward, a merge that brings in base-only changes), and only for a
 // review-only hold with the same test files held. A merge whose resolution edits the held tests,
-// or a hold whose old tests fail on the new code, needs an approval of the new head.
+// or a hold whose old tests fail on the new code, needs an approval of the new head. These are
+// the cases a local approval met in practice: approved on a branch, then merged into main.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { git, pocp, read, sampleRepo, write } from './helpers.js';

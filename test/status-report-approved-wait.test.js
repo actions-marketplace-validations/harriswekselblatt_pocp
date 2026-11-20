@@ -1,7 +1,9 @@
 // An approval turns the pocp status green from the run that already waits for it, without running
 // verify again, only when that run was isolated and said it waits for approvals only
 // (`approvable`), and every label it waits for and relied on is given by a writer after this
-// head's first run. Anything else is judged exactly as before.
+// head's first run. Since 1.5 the wait must also be review-only: the run's verdict-needs-review
+// step (the old tests still pass on the new code). A behaviour change re-runs verify with the
+// label. Anything else is judged exactly as before.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decideStatus, predictApproval, runMarker, TEXT, workflowFiles } from '../src/status-report.js';
