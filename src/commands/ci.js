@@ -1,12 +1,16 @@
 // pocp ci: moved from src/cli.js unchanged; main() dispatches here.
 import { EXIT } from '../errors.js';
-import { LIVE_VARIABLE, LOCAL_MODE_TRADE, STATUS_CHECK, applyGithubProtection, checkGithubProtection, goLive, localVerifyCommand, requiredChecksPlan, setPocpWorkflows } from '../ci-github.js';
+import { LIVE_VARIABLE, LOCAL_MODE_TRADE, STATUS_CHECK, applyGithubProtection, checkGithubProtection, goLive, listWorkflows, localVerifyCommand, requiredChecksPlan, setPocpWorkflows } from '../ci-github.js';
+import { billingFailedWorkflows, disabledLines, disabledWorkflows, repoIsPrivate } from '../billing-workflows.js';
+import { billingOffer } from '../cli/billing-offer.js';
 import { UsageError } from '../cli-args.js';
 import { setCiMode } from '../init.js';
 import { applyFailureMessage, out } from '../cli/shared.js';
 
 export async function run({ engine, flags, json, rest }) {
-  if (rest[0] === 'off' || rest[0] === 'on') return switchCi(engine, rest[0] === 'on', json);
+  const disableBilling = Boolean(flags['disable-billing-failed']);
+  if (disableBilling && rest[0] !== 'off') throw new UsageError('--disable-billing-failed goes with pocp ci off (or pocp doctor in local mode)');
+  if (rest[0] === 'off' || rest[0] === 'on') return switchCi(engine, rest[0] === 'on', json, disableBilling);
   if (rest[0] !== 'required') throw new UsageError('usage: pocp ci required [--check | --apply] | pocp ci off | pocp ci on');
   const plan = requiredChecksPlan(engine.root, engine.config());
   plan.github = (await import('../ci-github.js')).protectionPayload(null, plan).payload;
@@ -57,8 +61,9 @@ export async function run({ engine, flags, json, rest }) {
 
 // pocp ci off / on: local mode and back. Disables or enables POCP's workflows on GitHub, then
 // sets or removes ci.mode "local" in .proof/config.json (committed like any policy change).
-// Nothing changes locally unless GitHub did what was asked.
-function switchCi(engine, enable, json) {
+// Nothing changes locally unless GitHub did what was asked. Turning off then looks at the other
+// workflows still running, and offers to disable those failing for billing (billingAfterCiOff).
+async function switchCi(engine, enable, json, disableBilling = false) {
   const plan = requiredChecksPlan(engine.root, engine.config());
   const r = setPocpWorkflows(engine.root, plan, { enable });
   if (!r.ok) {
@@ -83,6 +88,42 @@ function switchCi(engine, enable, json) {
       ...(r.others_active.length ? [`still running on every push (not POCP's, left alone): ${r.others_active.join(', ')}`, ...r.others_active.map((f) => `  to stop it: gh workflow disable ${f.split('/').pop()}`)] : []),
     ]),
   ].join('\n');
-  out(json, { result: r, config_changed: configChanged, mode: enable ? 'github' : 'local' }, human);
-  return EXIT.ok;
+  const data = { result: r, config_changed: configChanged, mode: enable ? 'github' : 'local' };
+  if (enable) {
+    // Back to CI: list the other workflows still disabled on GitHub, so none stays off unnoticed.
+    const { workflows, error } = listWorkflows(r.repo);
+    const off = error ? null : disabledWorkflows(workflows);
+    data.workflows_disabled = off;
+    const note = error ? [`could not list the other workflows disabled on GitHub: ${error}`] : off.length ? disabledLines(r.repo, off) : [];
+    out(json, data, [human, ...note].join('\n'));
+    return EXIT.ok;
+  }
+  if (!r.others_active.length) {
+    if (disableBilling) data.billing_failed = null;
+    out(json, data, human);
+    return EXIT.ok;
+  }
+  // With --json, one document: the offer's outcome goes in it. Otherwise the report comes first.
+  if (!json) out(json, data, human);
+  const billing = await billingAfterCiOff(r.repo, { json, disable: disableBilling });
+  if (json) out(json, { ...data, billing_failed: billing }, human);
+  return billing.failed.length ? EXIT.blocked : EXIT.ok;
+}
+
+// After ci off: the other workflows still running whose jobs GitHub doesn't start for billing,
+// listed with their evidence and offered for disabling (src/billing-workflows.js). Never changes
+// ci off's outcome: a check that can't finish says so and offers nothing.
+async function billingAfterCiOff(repo, { json, disable }) {
+  const say = (line) => !json && out(false, null, line);
+  const { workflows, error } = listWorkflows(repo);
+  const scan = error ? { incomplete: error } : billingFailedWorkflows(repo, workflows);
+  if (scan.incomplete) {
+    say(`could not check whether the other workflows fail for billing: ${scan.incomplete}`);
+    return { found: [], decision: 'unchecked', disabled: [], failed: [], incomplete: scan.incomplete };
+  }
+  const found = scan.found.filter((w) => !w.pocp);
+  if (!found.length) return { found, decision: 'report-only', disabled: [], failed: [], unchecked: scan.unchecked };
+  if (!json) process.stdout.write('\n');
+  const r = await billingOffer({ repo, found, isPrivate: repoIsPrivate(repo), disable, json, retry: 'pocp ci off --disable-billing-failed' });
+  return { ...r, unchecked: scan.unchecked };
 }

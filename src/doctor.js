@@ -10,6 +10,7 @@ import { policyKeyWarnings } from './schema.js';
 import { validateConfig } from './store.js';
 import { APPROVE_INCONCLUSIVE_LABEL, APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL } from './remedies.js';
 import { APPROVE_WORKFLOW_LABEL } from './status-report.js';
+import { billingCheck, disabledCheck } from './billing-workflows.js';
 import { versionChecks } from './upgrade.js';
 
 // Every approval label, and what a maintainer approves with it (for `gh label create`).
@@ -23,7 +24,8 @@ export const APPROVAL_LABELS = Object.freeze({
 
 // `pocp doctor`: the adoption pitfalls, checked. Each check is
 //   { id, status: "ok" | "problem" | "warning" | "skipped", what, why?, fix? }
-// Read-only: it never changes the repository, the host, or GitHub.
+// Read-only: it never changes the repository, the host, or GitHub. (The doctor command, after
+// the report, may offer to disable workflows failing for billing: src/billing-workflows.js.)
 
 function gh(root, args) {
   const r = spawnSync(process.env.POCP_GH || 'gh', args, { cwd: root, encoding: 'utf8' });
@@ -103,28 +105,6 @@ export function adoptionScope(root, base, cfg) {
   const isAdoptionFile = (f) => g.isProofPath(f) || ciGlobs.some((gl) => matchGlob(f, gl));
   const files = [...new Set([...committed, ...staged])].sort();
   return { base, known: true, adopted: false, files, extra: files.filter((f) => !isAdoptionFile(f)) };
-}
-
-// The annotation GitHub puts on a job it never started because of the account's billing.
-const ACTIONS_BILLING = /recent account payments have failed|spending limit/i;
-
-/**
- * Whether GitHub Actions jobs are failing before they start, for billing: the latest finished
- * run of a workflow that is still enabled failed, with a job that ran no steps, whose annotation
- * is GitHub's billing message. Three gh calls; null when not (or when anything can't be read).
- */
-function actionsBlocked(root, repo, workflows) {
-  const active = new Set(workflows.filter((w) => w.state === 'active').map((w) => w.path));
-  if (!active.size) return null;
-  const runs = gh(root, ['api', `repos/${repo}/actions/runs?per_page=20&status=completed`]);
-  const latest = (runs.json?.workflow_runs || []).find((r) => active.has(r.path));
-  if (!latest || latest.conclusion !== 'failure') return null;
-  const jobs = gh(root, ['api', `repos/${repo}/actions/runs/${latest.id}/jobs`]);
-  const job = (jobs.json?.jobs || []).find((j) => j.conclusion === 'failure' && !(j.steps || []).length);
-  if (!job) return null;
-  const notes = gh(root, ['api', `repos/${repo}/check-runs/${job.id}/annotations`]);
-  const hit = (Array.isArray(notes.json) ? notes.json : []).find((a) => ACTIONS_BILLING.test(a.message || ''));
-  return hit ? { message: hit.message, active: [...active].sort() } : null;
 }
 
 export async function runDoctor(engine, { base, offline = false } = {}) {
@@ -295,13 +275,11 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
         if (local && active.length) add({ id: 'ci-mode', status: 'warning', what: `local mode, but POCP's workflows still run on ${repo}: ${active.join(', ')}`, why: 'each push spends Actions minutes on checks nothing requires', fix: 'pocp ci off' });
         else if (local && disabled.length) add({ id: 'ci-mode', status: 'ok', what: `POCP's workflows are off on ${repo}, as local mode expects` });
         else if (!local && disabled.length) add({ id: 'ci-mode', status: 'problem', what: `POCP's workflows are disabled on ${repo}: ${disabled.join(', ')}`, why: 'nothing checks pull requests, and .proof/config.json does not say local mode', fix: 'pocp ci on; or, for no CI, pocp ci off and commit .proof/config.json' });
-        const blocked = actionsBlocked(root, repo, listed.workflows);
-        if (blocked) {
-          const others = blocked.active.filter((f) => !ours.includes(f));
-          const steps = [...(blocked.active.some((f) => ours.includes(f)) ? ['pocp ci off (local mode)'] : []), ...others.map((f) => `gh workflow disable ${path.basename(f)}`)];
-          add({ id: 'actions-billing', status: 'problem', what: `GitHub Actions jobs on ${repo} are not starting: ${blocked.message.split(/\.\s/)[0]}`, why: `every push starts ${blocked.active.length} workflow(s) that fail at once and email you: ${blocked.active.join(', ')}`, fix: `${steps.join(', then ')}; or fix billing in Settings → Billing and plans` });
-        }
-      }
+        const billing = billingCheck({ repo, workflows: listed.workflows, local, isPrivate: repoInfo.json.isPrivate });
+        if (billing) add(billing);
+        const off = disabledCheck({ repo, workflows: listed.workflows });
+        if (off) add(off);
+      } else if (local) add({ id: 'actions-billing', status: 'skipped', what: `could not check whether workflows fail for billing: ${listed.error}` });
       if (local) {
         add({ id: 'github', status: 'skipped', what: 'local mode: Action access, labels and branch protection not checked' });
         return { ok: !checks.some((c) => c.status === 'problem'), checks };

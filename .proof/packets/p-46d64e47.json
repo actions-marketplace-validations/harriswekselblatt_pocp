@@ -1,0 +1,487 @@
+{
+  "pocp": 1,
+  "id": "p-46d64e47",
+  "intent": "Local mode offers to disable workflows failing for billing; the plugin refuses switching checks off on GitHub",
+  "touches": [
+    "plugins/pocp/scripts/guard.mjs",
+    "src/billing-workflows.js",
+    "src/cli-args.js",
+    "src/cli.js",
+    "src/cli/billing-offer.js",
+    "src/commands/ci.js",
+    "src/commands/doctor.js",
+    "src/doctor.js",
+    "test/billing-workflows.test.js",
+    "test/claude-plugin.test.js",
+    "test/fixtures/github-billing/README.md",
+    "test/fixtures/github-billing/billing-annotations.json",
+    "test/fixtures/github-billing/billing-jobs.json",
+    "test/fixtures/github-billing/ordinary-annotations.json",
+    "test/fixtures/github-billing/ordinary-jobs.json"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T08:08:46.182Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-20T08:24:05.680Z",
+      "duration_ms": 1200151,
+      "stdout_sha256": "21ccdebc74ac1373d9725839929114b9e2ed9ce960290b1cd352a727ed8c0002",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-d9c59745",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:84eee0e61c217094d5b75441190986cdb2aa5b5e688baef7d95a7c8e0cf86b02",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T08:44:08.163Z",
+      "duration_ms": 2318426,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1, timed out), so there is nothing to compare",
+        "base": "65e8ce997c69d05090edde5375c64f999ed6af6a",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/billing-workflows.test.js",
+            "test/claude-plugin.test.js",
+            "-test/fixtures/github-billing/README.md",
+            "-test/fixtures/github-billing/billing-annotations.json",
+            "-test/fixtures/github-billing/billing-jobs.json",
+            "-test/fixtures/github-billing/ordinary-annotations.json",
+            "-test/fixtures/github-billing/ordinary-jobs.json"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 1100110,
+              "failed_tests": [
+                "eval --corpus marks a check that times out as timeout, not a catch"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/billing-workflows.test.js",
+            "test/fixtures/github-billing/README.md",
+            "test/fixtures/github-billing/billing-annotations.json",
+            "test/fixtures/github-billing/billing-jobs.json",
+            "test/fixtures/github-billing/ordinary-annotations.json",
+            "test/fixtures/github-billing/ordinary-jobs.json"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/billing-workflows.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "timed_out": true,
+              "duration_ms": 1200499,
+              "failed_tests": [
+                "eval --corpus marks a check that times out as timeout, not a catch"
+              ]
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 2318426,
+        "timings": {
+          "setup_ms": 9384,
+          "new_baseline": {
+            "wall_ms": 1206732,
+            "run_ms": 1200499,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 1102306,
+            "run_ms": 1100110,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 4634,
+            "count": 1
+          },
+          "copy": {
+            "ms": 9994,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 2952,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:20:57.311Z",
+      "duration_ms": 298551,
+      "stdout_sha256": "466102be117b7d97cfb8f3dc3412ac2345e7fe6d1c91f0780986e657fd45267d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-b28b731f",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:84eee0e61c217094d5b75441190986cdb2aa5b5e688baef7d95a7c8e0cf86b02",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T10:25:56.036Z",
+      "duration_ms": 352711,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (test/billing-workflows.test.js: a test file was added (it runs with the others and can change their outcome); test/claude-plugin.test.js: lines were added to an existing test; test/fixtures/github-billing/README.md: a test file was added (it runs with the others and can change their outcome); and 4 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "65e8ce997c69d05090edde5375c64f999ed6af6a",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "-test/billing-workflows.test.js",
+            "test/claude-plugin.test.js",
+            "-test/fixtures/github-billing/README.md",
+            "-test/fixtures/github-billing/billing-annotations.json",
+            "-test/fixtures/github-billing/billing-jobs.json",
+            "-test/fixtures/github-billing/ordinary-annotations.json",
+            "-test/fixtures/github-billing/ordinary-jobs.json"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 351837
+            }
+          ],
+          "left_out": [
+            "test/billing-workflows.test.js",
+            "test/fixtures/github-billing/README.md",
+            "test/fixtures/github-billing/billing-annotations.json",
+            "test/fixtures/github-billing/billing-jobs.json",
+            "test/fixtures/github-billing/ordinary-annotations.json",
+            "test/fixtures/github-billing/ordinary-jobs.json"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/billing-workflows.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/billing-workflows.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/claude-plugin.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/fixtures/github-billing/README.md",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/fixtures/github-billing/billing-annotations.json",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/fixtures/github-billing/billing-jobs.json",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/fixtures/github-billing/ordinary-annotations.json",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/fixtures/github-billing/ordinary-jobs.json",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            }
+          ]
+        },
+        "duration_ms": 352711,
+        "timings": {
+          "setup_ms": 562,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 352109,
+            "run_ms": 351837,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 362,
+            "count": 1
+          },
+          "copy": {
+            "ms": 310,
+            "count": 2
+          },
+          "cleanup": {
+            "ms": 353,
+            "count": 3
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:f9890ca01d5a7084dbcf16425b7c1c6cbfd23941e4365d42c0286bdb264f94fd",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T19:12:29.910Z",
+      "duration_ms": 438710,
+      "stdout_sha256": "9be7540f6d496b2ede797fe01ae199f4e8db3fb5070965019206a60852b42645",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-0bebe41b",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T08:08:46.182Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T08:08:46.182Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T08:44:06.819Z",
+      "event": "proof_failed",
+      "obligation": "o1",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T09:22:47.294Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T09:22:47.413Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T09:22:48.251Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T10:31:49.052Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T10:31:49.131Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0"
+    },
+    {
+      "at": "2026-11-20T19:12:28.620Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:84eee0e61c217094d5b75441190986cdb2aa5b5e688baef7d95a7c8e0cf86b02",
+      "subject": "sha256:4724858e3c24953c55403efe4f302f69bcd9eebff0f0a5bd256a0c3897b673b0",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T09:22:48.251Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1, timed out), so there is nothing to compare"
+    }
+  ]
+}

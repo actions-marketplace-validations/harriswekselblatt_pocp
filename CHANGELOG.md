@@ -117,6 +117,24 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   hooks, the gate and the Claude Code plugin's guard make no network calls, and POCP has no
   background update check.
 
+- **Local mode offers to switch off the workflows that fail for billing.** When Actions can't
+  run for billing (no minutes left, a spending limit reached), GitHub fails each job without
+  starting it, so every push brings red ✗s and failure emails. `pocp ci off`, and `pocp doctor`
+  in local mode, now find the repository's other workflows in that state. A workflow counts only
+  when its latest run failed with an unstarted job carrying GitHub's billing annotation. Each one
+  is listed with that run and GitHub's message, and one question asks before disabling them
+  through GitHub's reversible "disable workflow" call (`gh workflow enable <file>` undoes it). No
+  workflow file is edited or deleted. Without a terminal or with `--json` they only report;
+  `--disable-billing-failed` acts without asking. If `gh` is missing, logged out or rate-limited,
+  they say so and offer nothing. The evidence is the default branch's latest run, from this
+  repository and not for a pull request, so a pull request branch can't fake it.
+- **Disabled workflows aren't forgotten.** `pocp doctor` and `pocp ci on` list every workflow
+  that isn't POCP's and is disabled on GitHub, each with `gh workflow enable <file>`: one
+  disabled while billing blocked it stays off after billing is fixed.
+- **The Claude Code plugin refuses the switches that turn checks off on GitHub without a pull
+  request**: `pocp ci off`, `pocp init --local`, `gh workflow disable` (and its `gh api` form) and
+  `--disable-billing-failed`. Claude is told to ask you to run them.
+
 ### Changed
 
 - **A test approval turns the status green without running verify again.** Adding

@@ -183,7 +183,7 @@
     {
       "obligation": "o1",
       "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
       "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
       "run": "node --test test/*.test.js",
       "mode": "clean",
@@ -191,11 +191,11 @@
       "signal": null,
       "timed_out": false,
       "passed": true,
-      "started_at": "2026-11-20T18:19:27.355Z",
-      "duration_ms": 550298,
-      "stdout_sha256": "0cf56eb88691bcca070df2062178d78c3ca86c06b2dcae1ce80bd42dbd2c6737",
+      "started_at": "2026-11-20T18:05:38.751Z",
+      "duration_ms": 411892,
+      "stdout_sha256": "5c9d2c46b3cac29dab34ad0e3bb633fad2f578e937cfc2a4d0851399516f66e6",
       "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-47c3bc37",
+      "run_id": "r-0486e8c1",
       "runner": {
         "pocp": "1.4.0",
         "node": "22.13.1",
@@ -235,18 +235,18 @@
       "subject": "sha256:7aab1f826d051da66caf1019e739f74a28f231ef0af144d5ef29ba675d749a65"
     },
     {
-      "at": "2026-11-20T18:08:39.590Z",
+      "at": "2026-11-20T18:05:38.566Z",
       "event": "guard_replaced",
       "removed": [
         "o2"
       ]
     },
     {
-      "at": "2026-11-20T18:28:37.798Z",
+      "at": "2026-11-20T18:12:30.746Z",
       "event": "state",
       "from": "open",
       "to": "proven",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280"
     }
   ],
   "deferrals": [

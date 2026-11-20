@@ -42,11 +42,30 @@
       "id": "o2",
       "kind": "guard",
       "files": [
-        "test/helpers.js"
+        "test/adopter-workflows.test.js",
+        "test/bench-tamper-deep.test.js",
+        "test/demo.test.js",
+        "test/e2e-cli.test.js",
+        "test/helpers.js",
+        "test/privacy.test.js",
+        "test/runner-git-env.test.js",
+        "test/runner-lifecycle.test.js",
+        "test/runner-orphans.test.js",
+        "test/runner-zombies.test.js",
+        "test/store-lock.test.js",
+        "test/summary-footer.test.js",
+        "test/sweep-temp.js",
+        "test/temp-cleanup.test.js",
+        "test/temp-sweep.test.js",
+        "test/temp.js",
+        "test/unit-more.test.js",
+        "test/workflow-approvals.test.js",
+        "test/workflow-status.test.js",
+        "test/workflows-hardening.test.js"
       ],
       "mutants": 0,
       "seed": 1,
-      "text": "Existing tests or test setup changed (test/helpers.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "text": "Existing tests or test setup changed (test/adopter-workflows.test.js, test/bench-tamper-deep.test.js, test/demo.test.js, test/e2e-cli.test.js, test/helpers.js, test/privacy.test.js, test/runner-git-env.test.js, test/runner-lifecycle.test.js and 12 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
       "source": "guard:tests"
     }
   ],
@@ -303,175 +322,6 @@
         },
         "checks_from": "rules"
       }
-    },
-    {
-      "obligation": "o1",
-      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "run": "node --test test/*.test.js",
-      "mode": "clean",
-      "exit": 0,
-      "signal": null,
-      "timed_out": false,
-      "passed": true,
-      "started_at": "2026-11-20T18:19:27.355Z",
-      "duration_ms": 550298,
-      "stdout_sha256": "0cf56eb88691bcca070df2062178d78c3ca86c06b2dcae1ce80bd42dbd2c6737",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-47c3bc37",
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      }
-    },
-    {
-      "obligation": "o2",
-      "obligation_digest": "sha256:1110a8fa4bac7bce79eb9d6c94abcc2a8755b36b6620988f8c6e8b192bb9546e",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "kind": "guard",
-      "mode": "snapshot",
-      "passed": false,
-      "started_at": "2026-11-20T18:38:12.430Z",
-      "duration_ms": 890269,
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      },
-      "guard": {
-        "pocp": 1,
-        "verdict": "behavior-changed",
-        "passed": false,
-        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; test/bench-tamper-deep.test.js; test/demo.test.js; test/privacy.test.js; test/runner-git-env.test.js; test/runner-lifecycle.test.js; test/runner-orphans.test.js; test/runner-zombies.test.js; test/store-lock.test.js; test/summary-footer.test.js: behavior changed, so a person must approve it",
-        "base": "4480ab2e93e563675d79fe150d684be866c12efd",
-        "checks": [
-          {
-            "id": "test-suite",
-            "run": "node --test test/*.test.js"
-          }
-        ],
-        "old_tests": {
-          "result": "fail",
-          "restored": [
-            "test/helpers.js"
-          ],
-          "runs": [
-            {
-              "check": "test-suite",
-              "passed": false,
-              "exit": 1,
-              "duration_ms": 424347,
-              "failed_tests": [
-                "test/adopter-workflows.test.js",
-                "test/bench-tamper-deep.test.js",
-                "test/demo.test.js",
-                "test/privacy.test.js",
-                "test/runner-git-env.test.js",
-                "test/runner-lifecycle.test.js",
-                "test/runner-orphans.test.js",
-                "test/runner-zombies.test.js",
-                "test/store-lock.test.js",
-                "test/summary-footer.test.js"
-              ]
-            }
-          ],
-          "left_out": [
-            "test/hold.test.js",
-            "test/sticky-approval-git.test.js",
-            "test/sticky-approval-local.test.js",
-            "test/sticky-approval-verify.test.js",
-            "test/sticky-approval.test.js",
-            "test/sweep-temp.js",
-            "test/temp-sweep.test.js",
-            "test/temp.js",
-            "test/upgrade.test.js"
-          ],
-          "changed_tests": {
-            "result": "not-used",
-            "reason": "test/helpers.js is named in eval/e1/test/batch.test.js, so it may be test setup"
-          }
-        },
-        "new_tests": {
-          "result": "pass",
-          "runs": [
-            {
-              "check": "test-suite",
-              "passed": true,
-              "reused": true,
-              "duration_ms": 0
-            }
-          ]
-        },
-        "baseline": {
-          "result": "pass",
-          "runs": [
-            {
-              "check": "test-suite",
-              "passed": true,
-              "exit": 0,
-              "duration_ms": 463327
-            }
-          ]
-        },
-        "detection": {
-          "result": "not-run",
-          "budget": 0,
-          "seed": 1
-        },
-        "duration_ms": 890269,
-        "timings": {
-          "setup_ms": 1166,
-          "new_baseline": {
-            "wall_ms": 0,
-            "run_ms": 0,
-            "runs": 0
-          },
-          "old_baseline": {
-            "wall_ms": 424659,
-            "run_ms": 424347,
-            "runs": 1
-          },
-          "plan_ms": 0,
-          "mutants": {
-            "wall_ms": 0,
-            "old": {
-              "run_ms": 0,
-              "runs": 0,
-              "retries": 0
-            },
-            "new": {
-              "run_ms": 0,
-              "runs": 0,
-              "retries": 0
-            }
-          },
-          "base_check": {
-            "wall_ms": 464224,
-            "run_ms": 463327,
-            "runs": 1
-          },
-          "snapshot": {
-            "ms": 1398,
-            "count": 2
-          },
-          "copy": {
-            "ms": 533,
-            "count": 3
-          },
-          "cleanup": {
-            "ms": 992,
-            "count": 5
-          }
-        },
-        "checks_from": "rules"
-      }
     }
   ],
   "attestations": [],
@@ -525,34 +375,6 @@
       "obligation": "o2",
       "by": "harriswekselblatt",
       "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671"
-    },
-    {
-      "at": "2026-11-20T18:08:39.522Z",
-      "event": "guard_replaced",
-      "removed": [
-        "o2"
-      ]
-    },
-    {
-      "at": "2026-11-20T18:08:39.522Z",
-      "event": "requirements_synced",
-      "added": [
-        "o2"
-      ],
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
-    },
-    {
-      "at": "2026-11-20T18:53:03.175Z",
-      "event": "proof_failed",
-      "obligation": "o2",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
-    },
-    {
-      "at": "2026-11-20T18:53:04.031Z",
-      "event": "deferred",
-      "obligation": "o2",
-      "by": "harriswekselblatt",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
     }
   ],
   "deferrals": [
@@ -564,15 +386,6 @@
       "at": "2026-11-20T10:13:49.535Z",
       "to": "ci-approval",
       "reason": "the old tests pass on the new code; a person must review the test change (test/adopter-workflows.test.js: lines were added to an existing test; test/bench-tamper-deep.test.js: lines were added to an existing test; test/demo.test.js: lines were added to an existing test; and 17 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
-    },
-    {
-      "obligation": "o2",
-      "obligation_digest": "sha256:1110a8fa4bac7bce79eb9d6c94abcc2a8755b36b6620988f8c6e8b192bb9546e",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "by": "harriswekselblatt",
-      "at": "2026-11-20T18:53:04.031Z",
-      "to": "ci-approval",
-      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; test/bench-tamper-deep.test.js; test/demo.test.js; test/privacy.test.js; test/runner-git-env.test.js; test/runner-lifecycle.test.js; test/runner-orphans.test.js; test/runner-zombies.test.js; test/store-lock.test.js; test/summary-footer.test.js: behavior changed, so a person must approve it"
     }
   ]
 }

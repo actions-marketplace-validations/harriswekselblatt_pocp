@@ -66,19 +66,22 @@
     },
     {
       "id": "o4",
-      "kind": "test",
-      "run": "node --test test/*.test.js",
-      "changed_test_command": [
-        "node",
-        "--test",
-        "{tests}"
+      "kind": "guard",
+      "files": [
+        "test/status-report-approved-wait.test.js",
+        "test/sticky-approval-local.test.js",
+        "test/sticky-approval-verify.test.js",
+        "test/sticky-approval.test.js"
       ],
-      "source": "rule:test-suite"
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/status-report-approved-wait.test.js, test/sticky-approval-local.test.js, test/sticky-approval-verify.test.js, test/sticky-approval.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
     }
   ],
-  "state": "proven",
-  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "state": "open",
+  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
   "opened_at": "2026-11-20T03:23:16.911Z",
   "opened_by": "harriswekselblatt",
   "proofs": [
@@ -573,102 +576,6 @@
         },
         "checks_from": "rules"
       }
-    },
-    {
-      "obligation": "o1",
-      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
-      "mode": "clean",
-      "exit": 0,
-      "signal": null,
-      "timed_out": false,
-      "passed": true,
-      "started_at": "2026-11-20T18:28:37.819Z",
-      "duration_ms": 2663,
-      "stdout_sha256": "6fc2a5b574ff06b9ffe9fa4110fbf0fb10e2d2c089f0a69fbc214b0c1eb84960",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-322d51e1",
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      }
-    },
-    {
-      "obligation": "o2",
-      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "run": "node --test test/engine.test.js",
-      "mode": "clean",
-      "exit": 0,
-      "signal": null,
-      "timed_out": false,
-      "passed": true,
-      "started_at": "2026-11-20T18:28:40.558Z",
-      "duration_ms": 51209,
-      "stdout_sha256": "2a7c60dac7d2a848851a1138033e690f6367fa8c531225bc92bae5cac72201e2",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-a871542a",
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      }
-    },
-    {
-      "obligation": "o3",
-      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "run": "npm test --silent",
-      "mode": "clean",
-      "exit": 0,
-      "signal": null,
-      "timed_out": false,
-      "passed": true,
-      "started_at": "2026-11-20T18:29:31.875Z",
-      "duration_ms": 520223,
-      "stdout_sha256": "91b6a440168c83e226b7953b12fc27460b8950fd28f44d8cc790df4a64a4d119",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-c70820c1",
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      }
-    },
-    {
-      "obligation": "o4",
-      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
-      "run": "node --test test/*.test.js",
-      "mode": "clean",
-      "exit": 0,
-      "signal": null,
-      "timed_out": false,
-      "passed": true,
-      "started_at": "2026-11-20T18:19:27.355Z",
-      "duration_ms": 550298,
-      "stdout_sha256": "0cf56eb88691bcca070df2062178d78c3ca86c06b2dcae1ce80bd42dbd2c6737",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "run_id": "r-47c3bc37",
-      "runner": {
-        "pocp": "1.4.0",
-        "node": "22.13.1",
-        "platform": "darwin-arm64",
-        "ci": false,
-        "lockfile_sha256": null
-      }
     }
   ],
   "attestations": [],
@@ -741,28 +648,6 @@
       "obligation": "o4",
       "by": "harriswekselblatt",
       "subject": "sha256:2cdf2c0d72108ca5d20df60c384973ef5dbec9e8753c3e5e642a966ff2d002c2"
-    },
-    {
-      "at": "2026-11-20T18:08:39.452Z",
-      "event": "guard_replaced",
-      "removed": [
-        "o4"
-      ]
-    },
-    {
-      "at": "2026-11-20T18:08:39.452Z",
-      "event": "requirements_synced",
-      "added": [
-        "o4"
-      ],
-      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
-    },
-    {
-      "at": "2026-11-20T18:38:12.271Z",
-      "event": "state",
-      "from": "open",
-      "to": "proven",
-      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
     }
   ],
   "deferrals": [
