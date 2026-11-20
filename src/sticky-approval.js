@@ -24,6 +24,7 @@
 
 import crypto from 'node:crypto';
 import { git } from './git.js';
+import { HOLD_VERDICTS } from './hold.js';
 import { ciProtects, DEFAULT_CI_FILES } from './store.js';
 
 /** The labels that can stick, and the hold each approves. */
@@ -41,6 +42,12 @@ const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
 export const isPolicyPath = (f) => f.startsWith('.proof/') && !f.startsWith('.proof/packets/');
 const short = (sha) => (sha ? String(sha).slice(0, 12) : '(none)');
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+// The only test-guard verdict an approval may ride without a new run, or carry to a later head:
+// the old tests still pass on the new code, and a person only has to read the edit. A hold whose
+// old tests fail on the new code (behavior-changed), whose edited tests catch less
+// (detection-dropped), or whose old tests already failed (baseline-red) is a decision about
+// behaviour: it is made again, with a run, on each head.
+export const REVIEW_ONLY = 'needs-review';
 
 // What each verdict other than `same` means: the status reason, verify's log, the docs.
 export const DIFFERS = Object.freeze({
@@ -78,7 +85,7 @@ export function recordLines({ heldTests, approvals = {} }) {
  * didn't succeed, or two that disagree, counts as missing.
  */
 export function readRecords(job) {
-  const out = { any: false, held: {}, approvals: {} };
+  const out = { any: false, held: {}, approvals: {}, verdict: verdictOf(job?.steps) };
   const clash = new Set();
   for (const s of job?.steps || []) {
     const name = String(s.name || '');
@@ -101,6 +108,18 @@ export function readRecords(job) {
   if (clash.has('held')) delete out.held.tests;
   for (const l of clash) delete out.approvals[l];
   return out;
+}
+
+/**
+ * The test guard's typed verdict in a run's steps (the approval-reasons steps, verdict-<v>), by
+ * the reporter's rule (status-report.js runVerdict): only with the approvable step, which comes
+ * from the same file isolated checks can't reach, and exactly one verdict step. Else null.
+ */
+export function verdictOf(steps) {
+  const ok = (name) => (steps || []).some((st) => st.name === name && st.conclusion === 'success');
+  if (!ok('approvable')) return null;
+  const hit = HOLD_VERDICTS.filter((v) => ok(`verdict-${v}`));
+  return hit.length === 1 ? hit[0] : null;
 }
 
 /** The base a run's one marker step names for pull request `number`, or null. */
@@ -165,17 +184,29 @@ export function stickyVerdict(facts, label, sha) {
   const s = facts.sticky?.[label];
   if (!s) return no(false, `no data on the head ${label} was given for`);
   if (!s.complete) return no(false, `couldn't tell which head ${label} was given for (${s.reason || 'a list was cut short'})`);
-  if (!s.head) return no(false, `no run of the workflow before ${label} was applied`);
+  // Which head was approved: the head of the newest run before the label, confirmed by the run
+  // the label's own event started (the first run at or after it), with no force-push between.
+  // A head pushed in the seconds before the label, whose run didn't exist yet, shows up as a
+  // mismatch: the label may have been given for either, so it holds for neither.
+  if (!s.head || !s.confirmed) return { applies: false };
+  if (s.confirmed !== s.head) return no(true, `${label} was added while the head was moving (${short(s.head)}, then ${short(s.confirmed)}), so which one was approved isn't clear: review and re-apply it`);
+  if ((facts.force_pushes || []).some((t) => String(t) > String(s.head_run_at) && String(t) < String(s.at))) return no(true, `the pull request was force-pushed just before ${label} was added, so which head was approved isn't clear: review and re-apply it`);
   if (!now) return no(false, `no finished evaluation of ${short(sha)} yet`);
+  // From here the head's evaluation has finished. What it couldn't settle (verify couldn't
+  // compare, or compared with another head; the approved head's run left no usable record) is
+  // judged as before: the label doesn't count for this head and is removed, so adding it again
+  // approves it, instead of a label that stays on and a status asking for it.
   const v = now.approvals[label];
-  if (!v) return no(false, `verify didn't compare ${short(sha)} with ${short(s.head)}, the head ${label} was given for`);
-  if (v.head !== s.head) return no(false, `verify compared with ${short(v.head)}, not ${short(s.head)}, the head ${label} was given for`);
+  if (!v || v.head !== s.head) return { applies: false };
   if (v.verdict !== 'same') return no(true, `${label} was given for ${short(s.head)}, and ${DIFFERS[v.verdict] || v.verdict}: review and re-apply it`);
   if (kind === 'tests') {
     if (facts.records_now && !now.held.tests) return no(false, "which test changes this head holds is known once its checks ran: the trusted reporter decides from this run's record");
-    if (!s.records)return no(false, `couldn't read the record of ${short(s.head)}'s run`);
-    if (!s.records.any) return no(true, `${short(s.head)}'s run predates sticky approvals, so it doesn't say which test changes were approved: re-apply ${label}`);
-    if (!s.records.held.tests || !now.held.tests) return no(false, 'a run did not record which test files it held');
+    // Only a review-only hold carries over, on both heads: a behaviour change is approved again,
+    // with a run (the label's own event re-runs verify, and the run accepts it).
+    const serious = [now.verdict, s.records?.verdict].find((v) => v && v !== REVIEW_ONLY);
+    if (serious) return no(true, `${label} carries over to a new head only for a review-only hold (the old tests still pass), and the test guard found ${serious}: review the new head and re-apply it, and verify re-runs with it`);
+    if (s.records?.any === false) return no(true, `${short(s.head)}'s run predates sticky approvals, so it doesn't say which test changes were approved: re-apply ${label}`);
+    if (!s.records?.held.tests || !now.held.tests || now.verdict !== REVIEW_ONLY || s.records.verdict !== REVIEW_ONLY) return { applies: false };
     if (s.records.held.tests !== now.held.tests) return no(true, `${label} was given for ${short(s.head)}, but other files count as test changes now (the base changed what counts as a test): review and re-apply it`);
   }
   return { applies: true, ok: true, stale: false, from: s.head };
@@ -184,8 +215,9 @@ export function stickyVerdict(facts, label, sha) {
 /**
  * For each sticky label among `labels`: the head it was given for (A: the head of the newest run
  * of the workflow on the pull request's head branch created before the label's last
- * application), the base A's run evaluated (its marker), and that run's records:
- * { label: { complete, reason, head, at, base, records } }. From GitHub's API only; never throws
+ * application), when that run was created, the head of the first run at or after the label (its
+ * own event's run, which must be A too), the base A's run evaluated (its marker), and that run's
+ * records: { label: { complete, reason, head, head_run_at, confirmed, at, base, records } }. From GitHub's API only; never throws
  * (an error or a list cut short leaves the label incomplete).
  */
 export async function gatherSticky(gh, repo, { number, headRef, headRepo, workflow, labels, labelEvents, verifyJob = 'verify' }) {
@@ -223,7 +255,8 @@ export async function gatherSticky(gh, repo, { number, headRef, headRepo, workfl
       continue;
     }
     const before = runs.filter((r) => String(r.created_at) < String(last.created_at)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)) || b.id - a.id);
-    const entry = { complete: true, reason: null, head: before[0]?.head_sha || null, at: last.created_at, base: null, records: null };
+    const after = runs.filter((r) => String(r.created_at) >= String(last.created_at)).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)) || a.id - b.id);
+    const entry = { complete: true, reason: null, head: before[0]?.head_sha || null, head_run_at: before[0]?.created_at || null, confirmed: after[0]?.head_sha || null, at: last.created_at, base: null, records: null };
     try {
       for (const r of before.filter((x) => x.head_sha === entry.head && x.status === 'completed').slice(0, 5)) {
         const steps = await stepsOf(r.id);
@@ -278,9 +311,11 @@ export function cleanMergeTree(root, a, b) {
  * Whether `head` is exactly the approved head `approved` plus base content, for a pull request
  * into `base`: { verdict, files, why }. verdict is 'same', a key of DIFFERS, or null when it
  * can't tell (nothing is recorded then). `approvedBase` is the base A's run evaluated (its
- * marker): the base's policy files must be the same there and at `base`.
+ * marker): the base's policy files must be the same there and at `base`. `local`: for a local
+ * approval (`--accept-test-change=<sha>`), which rests on no run's record, so the approved head
+ * may change CI files (a CI change still needs its own approval).
  */
-export function compareWithApproved(root, { approved, head, base, approvedBase = null, baseConfig = null }) {
+export function compareWithApproved(root, { approved, head, base, approvedBase = null, baseConfig = null, local = false }) {
   const unknown = (why) => ({ verdict: null, files: [], why });
   const H = commitOf(root, head);
   const B = commitOf(root, base);
@@ -297,7 +332,7 @@ export function compareWithApproved(root, { approved, head, base, approvedBase =
   // A's own changes touch no CI file: its run's steps came from the base's workflow.
   const own = namesBetween(root, mbA, A);
   if (own === null) return unknown("couldn't list the approved head's changes");
-  const ci = ciFilesOf(splitZ(own), baseConfig);
+  const ci = local ? [] : ciFilesOf(splitZ(own), baseConfig);
   if (ci.length) return { verdict: 'ci', files: ci, why: DIFFERS.ci };
   // The base's policy now, against the policy A's run was judged by.
   const pb = approvedBase && commitOf(root, approvedBase) ? approvedBase : mbA;
@@ -318,4 +353,20 @@ export function compareWithApproved(root, { approved, head, base, approvedBase =
   if (merged.conflict) return { verdict: 'conflict', files: [], why: DIFFERS.conflict };
   if (merged.tree === tH) return { verdict: 'same', files: [], why: null };
   return { verdict: 'content', files: splitZ(namesBetween(root, merged.tree, H)), why: DIFFERS.content };
+}
+
+/**
+ * The test guard's verdicts in a verify result (every mechanical check of the held tests: the net
+ * change's, and each commit's), for a local approval given for another head: it carries only when
+ * every one is review-only. 'passed' (the check proved the tests still catch what they caught)
+ * holds nothing. Empty when no check ran (verify without --rerun): then it doesn't carry.
+ */
+export function guardVerdicts(result) {
+  const out = [];
+  const from = (g) => { for (const m of g?.mechanical || []) out.push(m.verdict ?? null); };
+  if (!result) return out;
+  from(result.net?.test_guard);
+  for (const c of result.commits || []) from(c.test_guard);
+  from(result.test_guard);
+  return out;
 }

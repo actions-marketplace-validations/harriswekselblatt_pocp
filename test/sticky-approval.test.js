@@ -37,10 +37,12 @@ const run = (job, over = {}) => ({
   status: 'completed', conclusion: job.conclusion, created_at: '2026-11-07T12:00:00Z', run_started_at: '2026-11-07T12:00:00Z', run_attempt: 1, html_url: 'u', job, ...over,
 });
 const given = (at = T, permission = 'write', label = LABEL) => ({ label, actor: 'maintainer', permission, created_at: at });
-const approvedAt = (over = {}) => ({ [LABEL]: { complete: true, reason: null, head: A, at: T, base: BASE, records: readRecords({ steps: [ran(held())] }), ...over } });
+const A_RUN = '2026-11-07T10:00:00Z';
+// The approved head's run: it waited for a review-only hold (the old tests still pass).
+const approvedAt = (over = {}) => ({ [LABEL]: { complete: true, reason: null, head: A, head_run_at: A_RUN, confirmed: A, at: T, base: BASE, records: readRecords({ steps: [ran('approvable'), ran('verdict-needs-review'), ran(held())] }), ...over } });
 
 // H is a merge of the base into A, made after the label: not fresh, so only stickiness can approve it.
-function facts({ steps = ['needs-tests', 'approvable', held(), approval()], labels = [LABEL], events = [given()], sticky = approvedAt(), runs } = {}) {
+function facts({ steps = ['needs-tests', 'approvable', 'verdict-needs-review', held(), approval()], labels = [LABEL], events = [given()], sticky = approvedAt(), runs } = {}) {
   return {
     event_sha: H, repository: 'o/r', workflow: WF, ci_globs: workflowFiles(null), base_sha: BASE, head_prs: [7], incomplete: [],
     pr: { number: 7, state: 'open', head_sha: H, labels, author: 'author' },
@@ -59,7 +61,7 @@ test('Update branch after an approval: green from the waiting run, naming the he
 
 test("the pull request's own changes differ (a commit, an evil merge, a conflict, a force-push): stale, with what changed", () => {
   for (const [verdict, words] of [['content', /changed since then/], ['conflict', /resolved by hand/], ['gone', /force-pushed away/], ['ci', /changed CI files/], ['policy', /policy changed since the approval/]]) {
-    const f = facts({ steps: ['needs-tests', 'approvable', held(), approval(verdict)] });
+    const f = facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review', held(), approval(verdict)] });
     const d = decideStatus(f);
     assert.equal(d.state, 'pending', verdict);
     const v = labelFreshness(f, LABEL, H);
@@ -68,8 +70,37 @@ test("the pull request's own changes differ (a commit, an evil merge, a conflict
   }
 });
 
+test('only a review-only hold carries over: a behaviour change, on either head, is approved again with a run', () => {
+  for (const v of ['behavior-changed', 'detection-dropped', 'baseline-red']) {
+    // This head's run found it.
+    const now = facts({ steps: ['needs-tests', 'approvable', `verdict-${v}`, held(), approval()] });
+    assert.equal(decideStatus(now).state, 'pending', v);
+    const why = labelFreshness(now, LABEL, H);
+    assert.equal(why.stale, true, v);
+    assert.match(why.why, new RegExp(`only for a review-only hold .*found ${v}`));
+    // The approved head's run found it.
+    const then = facts({ sticky: approvedAt({ records: readRecords({ steps: [ran('approvable'), ran(`verdict-${v}`), ran(held())] }) }) });
+    assert.equal(decideStatus(then).state, 'pending', v);
+    assert.equal(labelFreshness(then, LABEL, H).stale, true, v);
+  }
+  // No verdict this reporter can read (an older workflow, or two verdict steps): judged as before.
+  const unknown = facts({ steps: ['needs-tests', 'approvable', held(), approval()] });
+  assert.equal(decideStatus(unknown).state, 'pending');
+  assert.match(labelFreshness(unknown, LABEL, H).why, /added before this commit/);
+  const two = facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review', 'verdict-behavior-changed', held(), approval()] });
+  assert.equal(decideStatus(two).state, 'pending');
+});
+
+test('the fast path itself (a fresh label, no new run) is only for a review-only hold', () => {
+  const fresh = (steps) => facts({ steps, events: [given('2026-11-07T12:30:00Z')], sticky: approvedAt({ head: H }) });
+  assert.equal(decideStatus(fresh(['needs-tests', 'approvable', 'verdict-needs-review'])).state, 'success');
+  const d = decideStatus(fresh(['needs-tests', 'approvable', 'verdict-behavior-changed']));
+  assert.equal(d.state, 'pending');
+  assert.equal(decideStatus(fresh(['needs-tests', 'approvable'])).state, 'pending');
+});
+
 test('a base update that changes which files count as held voids it', () => {
-  const f = facts({ steps: ['needs-tests', 'approvable', held(heldFingerprint(['test/a.test.js', 'test/helper.js'])), approval()] });
+  const f = facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review', held(heldFingerprint(['test/a.test.js', 'test/helper.js'])), approval()] });
   assert.equal(decideStatus(f).state, 'pending');
   assert.match(labelFreshness(f, LABEL, H).why, /other files count as test changes now/);
   assert.equal(labelFreshness(f, LABEL, H).stale, true);
@@ -94,12 +125,14 @@ test('removing the label revokes the approval; re-adding it binds it to the head
 });
 
 test('records from a run that names another pull request or base, or that did not succeed, do not count', () => {
-  // Verify compared with another head than the one the label was given for: undecided.
-  const other = facts({ steps: ['needs-tests', 'approvable', held(), approval('same', 'd'.repeat(40))] });
+  // Verify compared with another head than the one the label was given for: judged as before
+  // (the label doesn't count, and is removed so adding it again approves this head).
+  const other = facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review', held(), approval('same', 'd'.repeat(40))] });
   assert.equal(decideStatus(other).state, 'pending');
-  assert.equal(labelFreshness(other, LABEL, H).stale, false);
+  assert.match(labelFreshness(other, LABEL, H).why, /added before this commit/);
+  assert.equal(labelFreshness(other, LABEL, H).stale, true);
   // A record step that failed, or two that disagree, is missing.
-  const job = waitingJob(['needs-tests', 'approvable', held()]);
+  const job = waitingJob(['needs-tests', 'approvable', 'verdict-needs-review', held()]);
   job.steps.push({ name: approval(), conclusion: 'failure' });
   assert.equal(decideStatus(facts({ runs: [run(job)] })).state, 'pending');
   const clash = readRecords({ steps: [ran(approval()), ran(approval('content'))] });
@@ -113,11 +146,43 @@ test("while the head's run is underway, or its records are missing, the label is
   assert.equal(labelFreshness(underway, LABEL, H).stale, false);
   assert.equal(labelFreshness(facts({ sticky: null }), LABEL, H).stale, false);
   assert.equal(labelFreshness(facts({ sticky: approvedAt({ complete: false, reason: 'cut short' }) }), LABEL, H).stale, false);
-  assert.equal(labelFreshness(facts({ sticky: approvedAt({ records: null }) }), LABEL, H).stale, false);
+});
+
+test("a finished run that couldn't settle it is judged as before: the label is removed, never left on under a status asking for it", () => {
+  // The approved head's run left no record found, or verify made no comparison (an old git, two
+  // merge bases): the old rule, so re-adding the label approves this head.
+  for (const f of [facts({ sticky: approvedAt({ records: null }) }), facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review', held()] })]) {
+    const v = labelFreshness(f, LABEL, H);
+    assert.equal(v.stale, true, v.why);
+    assert.match(v.why, /added before this commit/);
+    const d = decideStatus(f);
+    assert.equal(d.state, 'pending');
+    assert.match(d.description, /^Waiting for approval/);
+  }
+});
+
+test('a head pushed seconds before the label, before its run existed, never lets the label bind to the older head', () => {
+  // H1 (a bad test edit) ran; H2 replaced it but had no run yet when the maintainer, looking at
+  // H2, added the label; then the head went back to H1's content. The newest run before the label
+  // is H1's, but the label's own run is on H2: the label holds for neither.
+  const H2 = 'd'.repeat(40);
+  const f = facts({ sticky: approvedAt({ confirmed: H2 }) });
+  assert.equal(decideStatus(f).state, 'pending');
+  const v = labelFreshness(f, LABEL, H);
+  assert.equal(v.stale, true);
+  assert.match(v.why, /added while the head was moving/);
+  // A force-push between the approved head's run and the label: the same.
+  const fp = { ...facts(), force_pushes: ['2026-11-07T10:10:00Z'] };
+  assert.equal(decideStatus(fp).state, 'pending');
+  assert.match(labelFreshness(fp, LABEL, H).why, /force-pushed just before/);
+  // A force-push long before the approved head's run doesn't matter.
+  assert.equal(decideStatus({ ...facts(), force_pushes: ['2026-11-07T09:00:00Z'] }).state, 'success');
+  // No run after the label at all (its event's run never started): judged as before.
+  assert.match(labelFreshness(facts({ sticky: approvedAt({ confirmed: null }) }), LABEL, H).why, /added before this commit/);
 });
 
 test('a run from a workflow without records is judged exactly as before (the label is stale)', () => {
-  const f = facts({ steps: ['needs-tests', 'approvable'] });
+  const f = facts({ steps: ['needs-tests', 'approvable', 'verdict-needs-review'] });
   assert.equal(decideStatus(f).state, 'pending');
   assert.deepEqual(labelFreshness(f, LABEL, H), { ok: false, stale: true, why: 'pocp-approve-tests was added before this commit: review the new commits and re-apply it' });
 });
@@ -138,7 +203,7 @@ test('a head that changes CI files still needs pocp-approve-workflow: its record
 test('pocp-approve-policy sticks the same way, without a held-set record (its holds are the policy files the merge rule compares)', () => {
   const label = 'pocp-approve-policy';
   const f = {
-    ...facts({ steps: [approval('same', A, label)], labels: [label], events: [given(T, 'write', label)], sticky: { [label]: { complete: true, head: A, at: T, base: BASE, records: readRecords({ steps: [] }) } } }),
+    ...facts({ steps: [approval('same', A, label)], labels: [label], events: [given(T, 'write', label)], sticky: { [label]: { complete: true, head: A, head_run_at: A_RUN, confirmed: A, at: T, base: BASE, records: readRecords({ steps: [] }) } } }),
   };
   assert.equal(labelFreshness(f, label, H).how, 'sticky');
   // pocp-approve-inconclusive and -coverage never stick.
@@ -151,7 +216,7 @@ test('verify decides for itself before its run: its own comparison stands in for
   f.records_now = { any: true, held: {}, approvals: { 'pocp-approve-policy': { verdict: 'same', head: A } } };
   f.pr.labels.push('pocp-approve-policy');
   f.label_events.push(given(T, 'write', 'pocp-approve-policy'));
-  f.sticky['pocp-approve-policy'] = { complete: true, head: A, at: T, base: BASE, records: null };
+  f.sticky['pocp-approve-policy'] = { complete: true, head: A, head_run_at: A_RUN, confirmed: A, at: T, base: BASE, records: null };
   assert.equal(labelFreshness(f, 'pocp-approve-policy', H).how, 'sticky');
   // The test label waits for the reporter: verify can't know what it holds before its checks.
   const t = labelFreshness(f, LABEL, H);
@@ -204,12 +269,15 @@ test('the approved head is the head of the newest run before the label, on this 
     ghRun(1, 'e'.repeat(40), '2026-11-07T09:00:00Z'),
     ghRun(2, A, '2026-11-07T10:00:00Z'),
     ghRun(3, 'f'.repeat(40), '2026-11-07T10:15:00Z', { head_repository: { full_name: 'fork/r' } }), // a fork's branch of the same name
+    ghRun(5, A, '2026-11-07T10:30:04Z'), // the label's own run
     ghRun(4, H, '2026-11-07T11:00:00Z'), // after the label
   ];
   const jobs = { 2: [ran(runMarker(7, BASE)), { name: 'verify', conclusion: 'failure' }, ran(held())] };
   const out = await gatherSticky(fakeGh(runs, jobs), '/repos/o/r', { number: 7, headRef: 'topic', headRepo: 'o/r', workflow: WF, labels: [LABEL, 'pocp-approve-coverage'], labelEvents: [given()] });
   assert.deepEqual(Object.keys(out), [LABEL]);
   assert.equal(out[LABEL].head, A);
+  assert.equal(out[LABEL].confirmed, A);
+  assert.equal(out[LABEL].head_run_at, '2026-11-07T10:00:00Z');
   assert.equal(out[LABEL].base, BASE);
   assert.equal(out[LABEL].records.held.tests, HELD);
   // A run of A for another pull request (a shared branch) is not A's record.
@@ -231,8 +299,8 @@ test('predictApproval sees the same facts: an approval that sticks skips the re-
   const runA = ghRun(2, A, '2026-11-07T10:00:00Z');
   const runH = { ...ghRun(5, H, '2026-11-07T12:00:00Z'), workflow_id: WF.id, repository: { full_name: 'o/r' }, conclusion: 'success', run_started_at: '2026-11-07T12:00:00Z', run_attempt: 1 };
   const jobs = {
-    2: [ran(runMarker(7, BASE)), { name: 'verify', conclusion: 'failure' }, ran(held())],
-    5: waitingJob(['needs-tests', 'approvable', held(), approval()]).steps,
+    2: [ran(runMarker(7, BASE)), { name: 'verify', conclusion: 'failure' }, ran('approvable'), ran('verdict-needs-review'), ran(held())],
+    5: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review', held(), approval()]).steps,
   };
   const gh = {
     async get(url) {
@@ -245,7 +313,7 @@ test('predictApproval sees the same facts: an approval that sticks skips the re-
       if (url.includes('/pulls?state=open')) return { items: [pr], complete: true };
       if (url.includes('/pulls/7/files')) return { items: [{ filename: 'test/a.test.js' }], complete: true };
       if (url.includes('runs?head_sha=')) return { items: [runH], complete: true };
-      if (url.includes('runs?event=pull_request&branch=topic')) return { items: [runA, runH], complete: true };
+      if (url.includes('runs?event=pull_request&branch=topic')) return { items: [runA, ghRun(3, A, '2026-11-07T10:30:04Z'), runH], complete: true };
       if (url.includes('/issues/7/events')) return { items: [{ event: 'labeled', label: { name: LABEL }, actor: { login: 'maintainer' }, created_at: T }], complete: true };
       if (url.includes('/commits/')) return { items: [], complete: true };
       const id = Number(/runs\/(\d+)\/jobs/.exec(url)?.[1]);

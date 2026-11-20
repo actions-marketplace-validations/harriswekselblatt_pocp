@@ -40,6 +40,14 @@ history or commit with `--no-verify` to get past it: none of these clears an app
 rewriting proven commits invalidates their proofs. To bring in the base branch, merge it
 rather than rebasing: during a merge only the conflict resolutions need proof.
 
+When POCP says a person must approve, relay POCP's reason and command to the user word for
+word, before anything of your own: the `why:` line and the approve command that `pocp fix`
+and `pocp gate` print, or `hold.line` and `hold.command` from `pocp gate --json`,
+`pocp fix --json` or `pocp approvals --json`. Don't shorten, soften or reword it, and don't
+hand over a bare label command without its reason: the person adding the label needs to know
+what they are accepting. The same reason is on the pull request's `pocp` status and in POCP's
+comment on it.
+
 **Never**
 
 - Edit files in `.proof/packets/` or `.proof/runs/` by hand. Proofs are hashed and can be signed;

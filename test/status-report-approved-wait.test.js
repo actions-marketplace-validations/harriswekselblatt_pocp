@@ -45,16 +45,24 @@ function facts({ job, labels = [], events, runs, files = [{ filename: 'src/a.js'
 }
 
 test('a wait for approvals only, all given by a writer after the first run: green, from that run', () => {
-  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'] }));
+  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'] }));
   assert.equal(d.state, 'success', d.reason);
   assert.equal(d.description, TEXT.approved);
   assert.match(d.reason, /waited only for pocp-approve-tests/);
 });
 
+test('only a review-only wait turns green without a new run: a behaviour change, or no readable verdict, re-runs verify with the label', () => {
+  for (const extra of [['verdict-behavior-changed'], ['verdict-detection-dropped'], ['verdict-baseline-red'], []]) {
+    const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', ...extra]), labels: ['pocp-approve-tests'] }));
+    assert.equal(d.state, 'pending', extra.join() || 'no verdict');
+    assert.notEqual(d.description, TEXT.approved);
+  }
+});
+
 test('an inconclusive run never turns green on a label: a run that finishes decides', () => {
   const d = decideStatus(facts({ job: waitingJob(['needs-inconclusive', 'approvable'], { outcome: 'inconclusive' }), labels: ['pocp-approve-inconclusive'] }));
   assert.equal(d.state, 'pending', d.reason);
-  const tests = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable'], { outcome: 'inconclusive' }), labels: ['pocp-approve-tests'] }));
+  const tests = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review'], { outcome: 'inconclusive' }), labels: ['pocp-approve-tests'] }));
   assert.equal(tests.state, 'pending', tests.reason);
 });
 
@@ -73,14 +81,14 @@ test('a wait that needs a policy approval is decided by a new run, even with eve
 
 test('a label given before the head first ran, or by someone without write access, does not count', () => {
   for (const [why, ev] of [['before the first run', given('pocp-approve-tests', '2026-11-07T09:00:00Z')], ['triage', given('pocp-approve-tests', AFTER, 'triage')]]) {
-    const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'], events: [ev] }));
+    const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'], events: [ev] }));
     assert.equal(d.state, 'pending', why);
   }
 });
 
 test('an approval the waiting run already relied on must still be on, and fresh', () => {
   // The run was judged with the policy label already given, and still waits for tests.
-  const job = waitingJob(['approval-policy', 'needs-tests', 'approvable']);
+  const job = waitingJob(['approval-policy', 'needs-tests', 'approvable', 'verdict-needs-review']);
   const gone = decideStatus(facts({ job, labels: ['pocp-approve-tests'] }));
   assert.equal(gone.state, 'pending', gone.reason);
   const kept = decideStatus(facts({ job, labels: ['pocp-approve-tests', 'pocp-approve-policy'] }));
@@ -90,7 +98,7 @@ test('an approval the waiting run already relied on must still be on, and fresh'
 });
 
 test('a failed run never turns green, whatever steps it has', () => {
-  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable'], { outcome: 'failed' }), labels: ['pocp-approve-tests'] }));
+  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review'], { outcome: 'failed' }), labels: ['pocp-approve-tests'] }));
   assert.equal(d.state, 'failure');
 });
 
@@ -101,22 +109,22 @@ test('an approvable step that names no label does not turn green', () => {
 
 test("a pull request that changes CI files: the run's steps don't count until the workflow is approved", () => {
   const files = [{ filename: '.github/workflows/pocp.yml' }];
-  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'], files }));
+  const d = decideStatus(facts({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'], files }));
   assert.equal(d.state, 'pending');
   assert.match(d.reason, /CI files changed/);
 });
 
 test('a newer run still underway, or a newer run that was cancelled: pending', () => {
-  const job = waitingJob(['needs-tests', 'approvable']);
+  const job = waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']);
   const underway = decideStatus(facts({ job, labels: ['pocp-approve-tests'], runs: [run(job), run({ status: 'in_progress', conclusion: null, steps: [] }, { id: 101, status: 'in_progress', conclusion: null, created_at: AFTER, run_started_at: AFTER })] }));
   assert.equal(underway.state, 'pending');
-  const cancelledJob = { ...waitingJob(['needs-tests', 'approvable']), conclusion: 'cancelled' };
+  const cancelledJob = { ...waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), conclusion: 'cancelled' };
   const cancelled = decideStatus(facts({ job, labels: ['pocp-approve-tests'], runs: [run(job), run(cancelledJob, { id: 101, conclusion: 'cancelled', created_at: AFTER, run_started_at: AFTER })] }));
   assert.equal(cancelled.state, 'pending');
 });
 
 test('a run whose prediction skipped verify (approved-without-run) counts as no evaluation', () => {
-  const job = waitingJob(['needs-tests', 'approvable']);
+  const job = waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']);
   const skippedJob = { status: 'completed', conclusion: 'success', steps: [
     { name: runMarker(7, BASE), conclusion: 'success' }, { name: 'approved-without-run', conclusion: 'success' },
     { name: 'verify', conclusion: 'skipped' }, { name: 'verified', conclusion: 'skipped' }, { name: 'waiting', conclusion: 'skipped' },
@@ -131,7 +139,7 @@ test('a run whose prediction skipped verify (approved-without-run) counts as no 
 });
 
 test('a label run whose verify job was skipped counts as no evaluation: the waiting run decides', () => {
-  const job = waitingJob(['needs-tests', 'approvable']);
+  const job = waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']);
   const skipped = run({ status: 'completed', conclusion: 'skipped', steps: [] }, { id: 101, conclusion: 'success', created_at: AFTER, run_started_at: AFTER });
   const d = decideStatus(facts({ job, labels: ['pocp-approve-tests'], runs: [run(job), skipped] }));
   assert.equal(d.state, 'success', d.reason);
@@ -170,7 +178,7 @@ function fakeGh({ job, labels, events, head = SHA, workflows = {} }) {
 }
 
 test('predictApproval: skip when the waiting run would go green; its own run is left out', async () => {
-  const gh = fakeGh({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')] });
+  const gh = fakeGh({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')] });
   const p = await predictApproval(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, runId: 200 });
   assert.equal(p.skip, true, p.reason);
   // Without leaving its own run out, it is underway: verify runs.
@@ -199,7 +207,7 @@ test('predictApproval: skip when the pull request has moved past the event head 
 test("predictApproval as the status action: skip only when the reporter's status action is at the same ref", async () => {
   const reporter = (ref) => `on:\n  workflow_run:\n    workflows: [pocp]\njobs:\n  report:\n    steps:\n      - uses: harriswekselblatt/pocp/status@${ref}\n`;
   const prediction = 'on:\n  pull_request:\njobs:\n  approval:\n    steps:\n      - uses: harriswekselblatt/pocp/status@v9\n        with:\n          predict-approval: true\n';
-  const ask = (workflows) => predictApproval(fakeGh({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')], workflows }), { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, runId: 200, asAction: true, actionRef: 'v2' });
+  const ask = (workflows) => predictApproval(fakeGh({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')], workflows }), { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, runId: 200, asAction: true, actionRef: 'v2' });
   assert.equal((await ask({ 'pocp-status.yml': reporter('v2'), 'pocp.yml': prediction })).skip, true, 'same ref; the prediction in pocp.yml is not the reporter');
   const older = await ask({ 'pocp-status.yml': reporter('v1'), 'pocp.yml': prediction });
   assert.equal(older.skip, false);
@@ -208,7 +216,7 @@ test("predictApproval as the status action: skip only when the reporter's status
 });
 
 test('predictApproval as the status action with no ref: verify runs (never skipped on an unknown ref)', async () => {
-  const gh = fakeGh({ job: waitingJob(['needs-tests', 'approvable']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')] });
+  const gh = fakeGh({ job: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review']), labels: ['pocp-approve-tests'], events: [given('pocp-approve-tests')] });
   const p = await predictApproval(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, runId: 200, asAction: true, actionRef: '' });
   assert.equal(p.skip, false);
   assert.match(p.reason, /ref is unknown/);

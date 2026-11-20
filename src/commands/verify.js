@@ -11,13 +11,15 @@ import { errWrite, evidenceSummary, list, out, writeGithubSummary } from '../cli
 import { failedOutputLines } from '../output-tail.js';
 import { git, resolveRev, showFile } from '../git.js';
 import { approvalLines, approvalPlan, APPROVE_WORKFLOW_LABEL, explainWorkflow, sortLabels } from '../explain.js';
+import { gravestVerdict, HOLD_VERDICTS } from '../hold.js';
 import { withDefaults } from '../store.js';
 import { changedWorkflowFiles, FAST_PATH_LABELS, githubClient, workflowFiles } from '../status-report.js';
 import { readCiResults } from '../ci-results.js';
 import { shortDigest } from '../hash.js';
 import { UsageError } from '../cli-args.js';
 import { freshnessFacts, labelFreshness } from '../label-freshness.js';
-import { compareWithApproved, heldTestFiles, recordLines } from '../sticky-approval.js';
+import { compareWithApproved, guardVerdicts, heldFingerprint, heldTestFiles, recordLines, REVIEW_ONLY } from '../sticky-approval.js';
+import { withFacts } from '../finding.js';
 
 // Which label gives each approval (examples/github/pocp.yml).
 const APPROVAL_LABELS = Object.freeze({
@@ -42,6 +44,15 @@ export function approvalFileLabels({ result, flags, secure, waitingOnly }) {
   // written it), so a wait that rests on it is never approvable.
   const ok = approvableWait({ waitingOnly, outcome: result.approval?.outcome, secure, labels: result.labels_needed, trusting: [].concat(flags['ci-results'] ?? []).length > 0 });
   return ok ? result.labels_needed : null;
+}
+
+/**
+ * The approval file's text: the labels on the first line (all an older workflow reads), then
+ * `key=value` lines the workflow's `mark` step accepts only in their exact form. `verdict`: the
+ * test guard's gravest typed verdict (hold.js HOLD_VERDICTS), for the words on the pocp status.
+ */
+export function approvalFileBody({ labels, verdict = null }) {
+  return `${labels.join(',')}\n${HOLD_VERDICTS.includes(verdict) ? `verdict=${verdict}\n` : ''}`;
 }
 
 export function approvableWait({ waitingOnly, outcome, secure, labels, trusting = false }) {
@@ -98,6 +109,35 @@ async function labelVerdicts(engine, flags, headRev, token, compared = {}) {
     for (const label of labels) verdicts[label] = { ok: false, stale: false, why: `couldn't check ${label} against GitHub (${e.message}): re-run this job` };
   }
   return verdicts;
+}
+
+// Approvals naming a commit that may cover a later head with the same own changes.
+const LOCAL_CARRY = new Set(['accept-test-change', 'accept-policy-change']);
+
+/**
+ * A test approval given for an earlier head (`--accept-test-change=<sha>`) covers this head only
+ * if, after its checks, it holds the same test files as that head did, and every test-guard
+ * verdict is review-only (the old tests still pass on the new code). Otherwise the approval is
+ * taken back: a blocking test_change finding saying why, so verify waits for an approval of this
+ * head. Returns the reason, or null when it carries.
+ */
+async function localCarryCheck(engine, result, carry) {
+  const verdicts = guardVerdicts(result);
+  const serious = verdicts.find((v) => v !== REVIEW_ONLY && v !== 'passed');
+  let why = null;
+  if (!verdicts.length) why = 'no test-guard check ran on this head (verify with --rerun), so nothing shows the hold is review-only';
+  else if (serious !== undefined) why = `the test guard found ${serious || 'no verdict'} on this head, and only a review-only hold (the old tests still pass) carries to a new head`;
+  else {
+    const then = heldTestFiles(await engine.verifyRange(`${carry.base}..${carry.from}`, { rerun: false }));
+    const now = heldTestFiles(result);
+    if (heldFingerprint(then) !== heldFingerprint(now)) why = `different files count as test changes now (${[...new Set([...then, ...now])].filter((f) => !(then.includes(f) && now.includes(f))).slice(0, 5).join(', ')})`;
+  }
+  if (!why) return null;
+  const files = heldTestFiles(result);
+  const detail = `existing tests or test setup changed (${files.join(', ')}); the approval for ${carry.from.slice(0, 12)} doesn't cover this head: ${why}. Re-run with --accept-test-change once a person approves this head`;
+  (result.findings ||= []).push(withFacts({ code: 'test_change', detail, blocking: true }, { approval: 'tests', files }));
+  result.ok = false;
+  return why;
 }
 
 /** The range given to verify (its first argument), or ''. */
@@ -209,9 +249,30 @@ export async function run({ engine, flags, isolated, json, rest }) {
     const head = resolveRev(engine.root, headRev);
     const given = /^[0-9a-f]{7,64}$/i.test(v) ? git(engine.root, ['rev-parse', '--verify', '--quiet', `${v}^{commit}`], { allowFail: true }) : null;
     if (given === head) return true;
+    // An approval for an earlier head covers this one when this head is exactly that head plus
+    // base content (a merge into the base, a fast-forward, an update from it): the same rule as a
+    // sticky label (sticky-approval.js). For a test approval, what this head holds is checked
+    // after its checks (localCarryCheck): the same test files, and a review-only hold.
+    const base = rest[0] && rest[0].includes('..') ? rest[0].split(/\.\.\.?/)[0] : null;
+    if (given && base && LOCAL_CARRY.has(name)) {
+      let c;
+      try {
+        c = compareWithApproved(engine.root, { approved: given, head, base: resolveRev(engine.root, base), baseConfig: baseConfigAt(engine.root, base), local: true });
+      } catch (e) {
+        c = { verdict: null, files: [], why: e.message };
+      }
+      if (c.verdict === 'same') {
+        carried[name] = { from: given, base };
+        errWrite(`pocp: the approval for ${given.slice(0, 12)} covers ${head.slice(0, 12)}: it is that head plus base content only (--${name})\n`);
+        return true;
+      }
+      errWrite(`pocp: approval for ${v} does not cover ${head.slice(0, 12)}, the head being verified: ${c.why || 'it is not that head plus base content'}${c.files?.length ? ` (${c.files.slice(0, 5).join(', ')}${c.files.length > 5 ? ', ...' : ''})` : ''}; approve this head after reviewing it (--${name})\n`);
+      return false;
+    }
     errWrite(`pocp: approval for ${v} does not cover ${head.slice(0, 12)}, the head being verified: a push after the approval needs a new one (--${name})\n`);
     return false;
   };
+  const carried = {};
   const vopts = {
     rerun: flags['rerun-unsigned'] ? 'unsigned' : Boolean(flags.rerun),
     requireCoverage: Boolean(flags['require-coverage']),
@@ -260,6 +321,10 @@ export async function run({ engine, flags, isolated, json, rest }) {
   let rows;
   if (rest[0] && rest[0].includes('..')) {
     result = await engine.verifyRange(rest[0], vopts);
+    if (carried['accept-test-change']) {
+      const why = await localCarryCheck(engine, result, carried['accept-test-change']);
+      if (why) errWrite(`pocp: the approval for ${carried['accept-test-change'].from.slice(0, 12)} doesn't cover this head: ${why}\n`);
+    }
     // The range's net change (all commits and merges as one change) is judged like a commit.
     rows = [...result.commits, ...(result.net ? [result.net] : [])];
     if (!result.ok) steps = nextSteps([...rows, { findings: rangeFindings(result) }]);
@@ -325,7 +390,7 @@ export async function run({ engine, flags, isolated, json, rest }) {
     try {
       fs.rmSync(file, { force: true });
       const labels = approvalFileLabels({ result, flags, secure: isolation.secure, waitingOnly });
-      if (labels) fs.writeFileSync(file, `${labels.join(',')}\n`, { mode: 0o600, flag: 'wx' });
+      if (labels) fs.writeFileSync(file, approvalFileBody({ labels, verdict: gravestVerdict((result.approval?.needs || []).flatMap((n) => n.verdicts || [])) }), { mode: 0o600, flag: 'wx' });
     } catch (err) {
       try { fs.rmSync(file, { force: true }); } catch { /* the mark step finds no valid file */ }
       errWrite(`pocp: couldn't write the approval file (${err.message}); an approval will re-run verify\n`);
