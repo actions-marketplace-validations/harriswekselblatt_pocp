@@ -73,6 +73,25 @@ export function ruleWarnings(rules, root) {
   return out;
 }
 
+/**
+ * Requirements whose globs match none of the given files: a rule that guards nothing. Only
+ * `pocp rules check` calls this (it needs the tracked file list, which the commit hot path
+ * doesn't pay for). An empty list means nothing to compare against, so it warns about nothing.
+ */
+export function coverageWarnings(rules, files) {
+  if (!Array.isArray(files) || files.length === 0) return [];
+  const out = [];
+  for (const req of rules.requirements || []) {
+    if (!req) continue;
+    const globs = globsOf(req).filter((g) => typeof g === 'string');
+    if (globs.length === 0) continue;
+    if (!files.some((f) => globs.some((g) => matchGlob(f, g)))) {
+      out.push(`requirement "${req.id}" matches no tracked file (${globs.join(', ')}), so it guards nothing yet; point its globs at the code its check tests`);
+    }
+  }
+  return out;
+}
+
 function normalizeHostTriggers(raw) {
   if (!raw) return { globs: [] };
   if (Array.isArray(raw)) return { globs: raw };

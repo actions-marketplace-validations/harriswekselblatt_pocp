@@ -123,3 +123,10 @@ test("the setup skill names only real pocp commands, and keeps approvals the use
   const never = skill.slice(skill.indexOf('**Never**'));
   for (const s of ['pocp-approve-', 'pocp approve', '--accept-', '--no-verify', 'core.hooksPath']) assert.ok(never.includes(s), s);
 });
+
+test('the setup skill has the user confirm the first rule and treats an uncovered rule as a mistake', () => {
+  const skill = fs.readFileSync(path.join(PLUGIN, 'skills', 'setup', 'SKILL.md'), 'utf8');
+  assert.match(skill, /the user decides it, not you/);
+  assert.match(skill, /confirm or correct it before you go on/);
+  assert.match(skill, /matches no tracked file/);
+});

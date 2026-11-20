@@ -1,0 +1,76 @@
+{
+  "pocp": 1,
+  "id": "p-7519fb88",
+  "intent": "Pin test-suite (o3) and verify.require_ci to node --test test/*.test.js, so the base rules fix the command and a PR's package.json test script can't narrow it",
+  "touches": [
+    ".proof/config.json",
+    ".proof/rules.json"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node bin/pocp.js rules check",
+      "source": "author"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+  "policy_repo": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+  "opened_at": "2026-11-20T04:30:46.663Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:8fe636c4ada65fcc58dffa26b7826c6f6f00e30bc6bc9db5a02fb37fe1ced44c",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191",
+      "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553",
+      "run": "node bin/pocp.js rules check",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T04:30:47.538Z",
+      "duration_ms": 309,
+      "stdout_sha256": "e1906351c5cdf52ebfd2b6b3440f39f6c4162e8f3787bf8fa2ab4d48867caaf2",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-1b31611c",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T04:30:46.663Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T04:30:46.663Z",
+      "event": "obligation_added",
+      "obligation": "o1",
+      "source": "author",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T04:30:46.663Z",
+      "event": "requirements_synced",
+      "added": [],
+      "policy": "sha256:3b67f1a7f790a8a6b2390fd1199be4bb00e03708ad4eb894636078cee35f5553"
+    },
+    {
+      "at": "2026-11-20T04:30:48.078Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:27a2bd0d5fbbfb5ea61b03d19237355f89ae12855b28abb86a269dd873291191"
+    }
+  ]
+}

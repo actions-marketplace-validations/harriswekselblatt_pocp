@@ -23,6 +23,8 @@ Locally, a git hook blocks a commit that touches `src/billing/**` until a packet
 Proof-Of-Change: p-2f007850 subject=sha256:2ad8c12023b7 policy=sha256:f21acbea749e proven=1/1 attested=0/0
 ```
 
+With several checkouts on one machine (worktrees, agents working side by side), their checks take turns: by default one pocp process runs checks at a time. The time a check spends waiting for its turn doesn't count toward its time limit. See [REFERENCE.md](REFERENCE.md#several-checkouts-on-one-machine).
+
 In CI, `pocp verify origin/main..HEAD --require-coverage --rerun` (the base branch, then the pull request's head):
 
 - re-runs every required check itself, instead of trusting the packets, which are only pointers;

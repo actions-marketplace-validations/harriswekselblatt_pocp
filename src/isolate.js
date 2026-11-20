@@ -47,7 +47,9 @@ export class IsolationError extends PocpBaseError {
 // What a check's environment may hold under isolation, whatever run.env says: these, the
 // names in run.env_allow, and the worker's own HOME/TMPDIR/USER. Never the job's tokens or
 // files, whatever run.env_allow lists.
-const SAFE_ENV = ['PATH', 'LANG', 'LANGUAGE', 'TZ', 'TERM', 'CI', 'GITHUB_ACTIONS', 'NODE_ENV', 'POCP', 'POCP_OBLIGATION'];
+// POCP_MACHINE_SLOT: a pocp the check starts must not wait for a machine-wide slot this
+// verify's own process holds for it (src/machine-slots.js).
+const SAFE_ENV = ['PATH', 'LANG', 'LANGUAGE', 'TZ', 'TERM', 'CI', 'GITHUB_ACTIONS', 'NODE_ENV', 'POCP', 'POCP_OBLIGATION', 'POCP_MACHINE_SLOT'];
 const NEVER_ENV = (k) => k.startsWith('ACTIONS_') || k.startsWith('RUNNER_') || CI_STEP_VARS.includes(k)
   || ['GITHUB_TOKEN', 'GH_TOKEN', 'POCP_GITHUB_TOKEN', 'GITHUB_EVENT_PATH', 'SSH_AUTH_SOCK', 'GIT_ASKPASS', 'SSH_ASKPASS'].includes(k) || k.startsWith('POCP_SIGN');
 

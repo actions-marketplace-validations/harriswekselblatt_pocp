@@ -7,6 +7,7 @@ import { createIndexSnapshot } from '../workspace.js';
 import { isGuard, isRunnable, obligationDigest } from '../obligations.js';
 import { ranAndFailed, runOutcome } from '../run-result.js';
 import { signProof, verifyProofSignature } from '../sign.js';
+import { keepMachineSlot } from '../machine-slots.js';
 
 /** Proving for one engine, given the check runner, guard and signing helpers it uses. */
 export function createProve({ store, activePackets, cleanProblems, config, emit, evaluate, guardCacheKey, guardCheckFor, guardInputs, loadPacket, localSigners, mutexAsync, nowFn, readGuardCache, requiredFor, root, runObligation, runnerIdentity, savePacket, signingSetup, stagedForCoverage, stagedGuard, writeGuardCache }) {
@@ -28,7 +29,16 @@ export function createProve({ store, activePackets, cleanProblems, config, emit,
    */
   /** Prove under the repo lock so two agents can't overwrite each other's proofs. */
   async function prove(args = {}) {
-    return mutexAsync(() => proveUnlocked(args));
+    return mutexAsync(async () => {
+      // Once a check takes this process's machine-wide slot, keep it until the prove ends: the
+      // test guard runs after the plain checks and shouldn't wait in line a second time.
+      const keep = keepMachineSlot();
+      try {
+        return await proveUnlocked(args);
+      } finally {
+        keep.done();
+      }
+    });
   }
 
   async function proveUnlocked({ ids, mode, force = false, only, stage = true, retryFailed = true } = {}) {
@@ -192,9 +202,9 @@ export function createProve({ store, activePackets, cleanProblems, config, emit,
           }
           let res = cache.get(d);
           if (!res) {
-            const startedAt = new Date().toISOString();
             emit('proof.started', { id: packet.id, obligation: ob.id });
-            res = { ...(await runObligation(ob, dir)), started_at: startedAt };
+            // started_at is when the check started, after any wait for a machine-wide slot.
+            res = await runObligation(ob, dir);
             ran++;
             // Did anything move underneath the run?
             const afterSubject = g.subjectHashIndex(root);
