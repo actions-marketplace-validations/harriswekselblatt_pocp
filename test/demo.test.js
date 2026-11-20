@@ -2,6 +2,7 @@
 // report that the old test fails on the new code. Then the agent puts the test back and fixes
 // add(), and verify passes. If POCP's verdict or wording changes, the demo must change with it,
 // and docs/demo.svg must be re-recorded: the last test fails when it shows other text.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

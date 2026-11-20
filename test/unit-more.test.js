@@ -1,5 +1,6 @@
 // Focused, fast tests for boundaries and error paths in the pure modules.
 // Written to kill mutants that the end-to-end suite lets survive.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

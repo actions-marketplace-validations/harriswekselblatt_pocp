@@ -1,5 +1,6 @@
 // verify's GitHub job summary, which the `pocp` status links to, ends with one quiet line
 // pointing at how POCP works. Nothing else gets it.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

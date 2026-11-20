@@ -201,6 +201,17 @@ To set the limit for every terminal, hook and agent on your account, write it to
 
 This is scheduling only: what runs and what is recorded are unchanged. It can't limit other load on the machine, such as test suites run outside pocp or a pocp older than this version. While a `prove` waits for a slot, it keeps its repository's lock. Another pocp command in the same repository that needs the lock (`ready`, `attest`, `abandon`) waits up to 10 seconds, as it would during a long check.
 
+### Temporary folders
+
+Checks run in copies of your files in the temp folder (`pocp-snap-*`, `pocp-tree-*`, `pocp-copy-*`). pocp removes them when it finishes, and when it is stopped with Ctrl-C, SIGTERM or SIGHUP. SIGKILL, a crash or the OOM killer leaves no chance to clean up, so a killed pocp leaves its copy behind. Before this version, nothing ever removed it.
+
+Each folder's name now records the process that made it: `pocp-copy-<pid>-<start>-XXXXXX`, where `<start>` is that process's start time. A pocp that makes a temporary folder first removes leftovers whose owner is gone. Their process ID is no longer running, or it is running again as a process that started at another time, which means the ID was reused. This sweep runs at most once an hour per user, and for at most 5 seconds. Its stamp is `temp-sweep` in `pocp/` in the cache folder (`$POCP_SWEEP_DIR` overrides the folder).
+
+- **A live run's folder is never removed.** If `ps` can't say when a running process started, its folders are kept.
+- **Only pocp's own folders are touched.** That means direct children of the temp folder, named exactly as above, that are real folders (not symlinks) owned by you.
+- **Folders from older versions** (`pocp-copy-XXXXXX`, with no owner in the name) are removed once neither they nor anything directly inside them has changed for a day.
+- **Not in CI** (`CI` set). A CI job's machine starts empty. Containers that share one temp folder while each has its own process IDs would make a live owner in another container look gone.
+
 ## Misses and the ratchet
 
 ```bash

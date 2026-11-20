@@ -2,6 +2,7 @@
 // already in it; one whose owner can't be read (empty: a holder between creating the file and
 // writing its pid, as older versions did) counts as held unless it is old. Two writers never
 // hold it at once, including while an abandoned lock is being broken.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
