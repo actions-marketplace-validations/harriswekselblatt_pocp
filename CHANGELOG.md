@@ -13,6 +13,20 @@ re-run verify as before.
 
 ### Added
 
+- **Approvals stick to what was approved.** With "require branches to be up to date", every merge
+  to the base made the other open pull requests update, and each update voided their approvals.
+  `pocp-approve-tests` and `pocp-approve-policy` are now bound to the pull request's own changes
+  at the head they were given for: a later head that is exactly that head plus base content (its
+  tree is the clean merge of the two, which verify checks with git before any check runs) keeps
+  them, through any number of updates. Any change of the pull request's own voids them, as do a
+  hand-resolved conflict, a base policy change, an approved head that changed CI files, and, for
+  tests, a base update that changes which files count as test changes. The verify job records what
+  it found as `pocp-held` and `pocp-approval` steps (verify `--record-file`, from isolated checks
+  only), and the reporter checks them. Upgrading: `pocp init --github --force`; pull requests
+  approved before the upgrade need one more re-label. docs/STATUS.md has the rule, and
+  docs/THREAT-MODEL.md the attacks it was tested against. Not yet run on GitHub: whether the
+  jobs API returns a record step's name with its `steps.*` value filled in. If it doesn't, no
+  record reads, and labels are judged as before.
 - **An opt-in README badge.** The first `pocp init` at a terminal asks once whether to show a
   `tests | POCP verified` badge (a plain shields.io badge linking to this repository). The
   default is no; a yes prints the markdown to paste, and no file is changed. Never asked in CI,

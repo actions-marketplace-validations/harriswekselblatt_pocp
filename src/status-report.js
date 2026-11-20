@@ -10,6 +10,7 @@
 import { ciProtects, DEFAULT_CI_FILES } from './store.js';
 import { addLabelsCommand, APPROVE_WORKFLOW_LABEL, sortLabels } from './explain.js';
 import { approvedByWriter, CARRYABLE, carriedOver, COMPARE_FILES_CAP, gatherCarry, gatherLabelEvents, labelFreshness, listAll, MARKER_PREFIX } from './label-freshness.js';
+import { gatherSticky, RECORD_PREFIXES, STICKY } from './sticky-approval.js';
 
 // The label rule lives in label-freshness.js, shared with verify.
 export { CARRYABLE, carriedOver, COMPARE_FILES_CAP };
@@ -205,7 +206,7 @@ export function approvedWait(facts, run, sha) {
   if (unauthorized.length) return { ok: false, why: `${unauthorized.join(', ')} last applied by someone without write access, before this head's first run, before a force-push, or not readable` };
   return { ok: true, labels };
 }
-const isPocpStep = (s) => POCP_STEPS.has(s.name) || String(s.name || '').startsWith(MARKER_PREFIX);
+const isPocpStep = (s) => POCP_STEPS.has(s.name) || [MARKER_PREFIX, ...RECORD_PREFIXES].some((p) => String(s.name || '').startsWith(p));
 
 /**
  * Whether a run was cancelled before its verify job evaluated anything: the run and its verify
@@ -355,19 +356,22 @@ export function decideStatus(facts) {
     const unauthorized = approvals.filter((l) => !labelFreshness(facts, l, sha).ok);
     if (unauthorized.length) return status('pending', TEXT.approvalUnverified, `run ${newest.id} relied on ${unauthorized.join(', ')}, last applied by someone without write access, before this head's first run, before a force-push, or not readable${via}`, newest);
     const carried = approvals.filter((l) => labelFreshness(facts, l, sha).how === 'carried');
-    const how = carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : '';
+    const sticky = approvals.filter((l) => labelFreshness(facts, l, sha).how === 'sticky');
+    const how = `${carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : ''}${stickyText(facts, sticky)}`;
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
   }
   if (outcome === 'failed') return status('failure', TEXT.failed, `run ${newest.id} failed (${stepSummary(newest.job)})${via}`, newest);
   // A wait for approvals only, now given: green from this run, without running verify again.
   // Only a wait (code 4); an inconclusive run is decided by a run that finishes.
   const given = outcome === 'waiting' ? approvedWait(facts, newest, sha) : { ok: false };
-  if (given.ok) return status('success', TEXT.approved, `run ${newest.id} waited only for ${given.labels.join(', ')}, now given by a writer after this head's first run${via}`, newest);
+  if (given.ok) return status('success', TEXT.approved, `run ${newest.id} waited only for ${given.labels.join(', ')}, now given by a writer after this head's first run${stickyText(facts, given.labels.filter((l) => labelFreshness(facts, l, sha).how === 'sticky'))}${via}`, newest);
   if (outcome === 'waiting') return status('pending', waitingText(runNeeds(newest.job), { number: pr.number, repository: facts.repository }), `run ${newest.id} is waiting${via}`, newest);
   return status('pending', TEXT[outcome], `run ${newest.id} is ${outcome}${via}`, newest);
 }
 
 const short = (sha) => (sha ? String(sha).slice(0, 12) : '(none)');
+// For the reason: which approvals were given for an earlier head with the same own changes.
+const stickyText = (facts, labels) => labels.map((l) => `; ${l} given for ${short(facts.sticky?.[l]?.head)}, and this head is that head plus base content only`).join('');
 
 /** A minimal GitHub REST client over fetch. */
 export function githubClient({ token, api = 'https://api.github.com', fetchImpl = globalThis.fetch } = {}) {
@@ -470,6 +474,8 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
     Object.assign(facts, await gatherLabelEvents(gh, repo, pr.number, approvalLabels));
   }
   if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow, VERIFY_JOB);
+  // The head each sticky approval was given for, and its run's records (sticky-approval.js).
+  if (facts.pr.labels.some((l) => STICKY[l])) facts.sticky = await gatherSticky(gh, repo, { number: pr.number, headRef: pr.head.ref || null, headRepo: pr.head.repo?.full_name ?? null, workflow: facts.workflow, labels: facts.pr.labels, labelEvents: facts.label_events, verifyJob: VERIFY_JOB });
   return facts;
 }
 

@@ -163,9 +163,11 @@ jobs:
           # Isolated checks (see the top of this file). This repo has no dependencies to install;
           # a project with some passes --install "<command>" too, so its install runs isolated.
           rm -f "$APPROVAL_FILE"
+          rm -f "$RECORD_FILE"
           if [ "$PLAN_ISOLATE" = "true" ]; then
             set -- "$@" --isolate
             if node ../verifier/bin/pocp.js help verify 2>&1 | grep -q -- '--approval-file'; then set -- "$@" --approval-file="$APPROVAL_FILE"; fi
+            if node ../verifier/bin/pocp.js help verify 2>&1 | grep -q -- '--record-file'; then set -- "$@" --record-file="$RECORD_FILE"; fi
           else
             echo "::warning title=POCP isolation::the base branch's verifier predates --isolate, so this run's checks ran as the job's own user (not the secure profile)"
           fi
@@ -186,6 +188,7 @@ jobs:
           POCP_GITHUB_TOKEN: ${{ github.token }}
           PLAN_ISOLATE: ${{ steps.plan.outputs.isolate }}
           APPROVAL_FILE: ${{ runner.temp }}/pocp-approvable
+          RECORD_FILE: ${{ runner.temp }}/pocp-records
       # Which approvals verify was given (the reporter re-checks each label is still on).
       - name: approval-tests
         if: steps.predict.outputs.skip != 'true' && (env.APPROVE_TESTS != 'false')
@@ -230,6 +233,35 @@ jobs:
       # when the checks were isolated (decided by `plan` before any of the pull request's code ran).
       - name: approvable
         if: steps.predict.outputs.skip != 'true' && (steps.mark.outputs.approvable == 'true')
+        run: 'true'
+      # What an approval of this head binds to (src/sticky-approval.js): the files it holds as
+      # test changes, and, for a sticky label given for an earlier head, whether this head is
+      # exactly that head plus base content. From verify's record file (written only when the
+      # checks ran isolated, which can't reach it), read by a step that prints nothing of the pull
+      # request's, each line checked against a fixed pattern. The reporter reads them back from
+      # the step names below, from a head that changes no CI file.
+      - id: records
+        if: steps.predict.outputs.skip != 'true' && (steps.plan.outputs.isolate == 'true')
+        run: |
+          [ -f "$RECORD_FILE" ] || exit 0
+          while IFS= read -r line; do
+            if printf '%s' "$line" | grep -Eqx 'held tests [0-9a-f]{64}'; then
+              echo "held_tests=${line#held tests }" >> "$GITHUB_OUTPUT"
+            elif printf '%s' "$line" | grep -Eqx 'approval pocp-approve-(tests|policy) (same|content|conflict|ci|policy|gone) [0-9a-f]{40}'; then
+              rest=${line#approval pocp-approve-}
+              echo "approval_${rest%% *}=${rest#* }" >> "$GITHUB_OUTPUT"
+            fi
+          done < "$RECORD_FILE"
+        env:
+          RECORD_FILE: ${{ runner.temp }}/pocp-records
+      - name: pocp-held tests ${{ steps.records.outputs.held_tests }}
+        if: steps.predict.outputs.skip != 'true' && (steps.records.outputs.held_tests != '')
+        run: 'true'
+      - name: pocp-approval pocp-approve-tests ${{ steps.records.outputs.approval_tests }}
+        if: steps.predict.outputs.skip != 'true' && (steps.records.outputs.approval_tests != '')
+        run: 'true'
+      - name: pocp-approval pocp-approve-policy ${{ steps.records.outputs.approval_policy }}
+        if: steps.predict.outputs.skip != 'true' && (steps.records.outputs.approval_policy != '')
         run: 'true'
       # Exactly one of verified / waiting / inconclusive / failed runs. "verified" needs the
       # verify step's own exit status; the code output can only turn a result into a wait

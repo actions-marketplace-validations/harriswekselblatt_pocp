@@ -17,6 +17,7 @@ import { readCiResults } from '../ci-results.js';
 import { shortDigest } from '../hash.js';
 import { UsageError } from '../cli-args.js';
 import { freshnessFacts, labelFreshness } from '../label-freshness.js';
+import { compareWithApproved, heldTestFiles, recordLines } from '../sticky-approval.js';
 
 // Which label gives each approval (examples/github/pocp.yml).
 const APPROVAL_LABELS = Object.freeze({
@@ -53,7 +54,7 @@ export function approvableWait({ waitingOnly, outcome, secure, labels, trusting 
  * reporter uses (src/label-freshness.js), from GitHub's API. { label: verdict } for the
  * approvals given. One GitHub can't settle is refused, never assumed.
  */
-async function labelVerdicts(engine, flags, headRev, token) {
+async function labelVerdicts(engine, flags, headRev, token, compared = {}) {
   if (flags['label-freshness'] !== 'github') throw new UsageError(`--label-freshness takes "github", not "${flags['label-freshness']}"`);
   if (!token) throw new UsageError("--label-freshness=github needs a token in POCP_GITHUB_TOKEN (the action's github-token input)");
   const repository = flags.repo || process.env.GITHUB_REPOSITORY;
@@ -66,11 +67,50 @@ async function labelVerdicts(engine, flags, headRev, token) {
   const sha = resolveRev(engine.root, headRev);
   try {
     const facts = await freshnessFacts(githubClient({ token, api: process.env.GITHUB_API_URL || undefined }), { repository, prNumber, sha, labels });
+    // A sticky label given for an earlier head: is this head exactly that head plus base content?
+    // Decided here, with git, before any of the pull request's code runs; recorded for the
+    // reporter (--record-file). verify itself applies only pocp-approve-policy this way: which
+    // test changes it holds is known after the checks, so the reporter decides the test label.
+    const range = /\.\./.test(rest0(flags)) ? rest0(flags).split(/\.\.\.?/)[0] : null;
+    facts.records_now = { any: true, held: {}, approvals: {} };
+    for (const [label, s] of Object.entries(facts.sticky || {})) {
+      if (!s.complete || !s.head || !range) continue;
+      let c;
+      try {
+        c = compareWithApproved(engine.root, { approved: s.head, head: sha, base: resolveRev(engine.root, range), approvedBase: s.base, baseConfig: baseConfigAt(engine.root, range) });
+      } catch (e) {
+        // Only this label's comparison is lost: every other label is judged as before.
+        c = { verdict: null, files: [], why: e.message };
+      }
+      if (!c.verdict) {
+        errWrite(`pocp: ${label}: couldn't compare this head with ${s.head.slice(0, 12)}, the head it was given for: ${c.why}\n`);
+        continue;
+      }
+      compared[label] = { verdict: c.verdict, head: s.head };
+      facts.records_now.approvals[label] = compared[label];
+      if (c.verdict === 'same') errWrite(`pocp: ${label} was given for ${s.head.slice(0, 12)}; this head is that head plus base content only\n`);
+      else errWrite(`pocp: ${label} was given for ${s.head.slice(0, 12)}, and ${c.why}${c.files.length ? ` (${c.files.slice(0, 5).join(', ')}${c.files.length > 5 ? ', ...' : ''})` : ''}\n`);
+    }
+    // Only a label verify compared is judged by the sticky rule here; any other, as before.
+    facts.records_now.any = Object.keys(facts.records_now.approvals).length > 0;
     for (const label of labels) verdicts[label] = labelFreshness(facts, label, sha);
   } catch (e) {
     for (const label of labels) verdicts[label] = { ok: false, stale: false, why: `couldn't check ${label} against GitHub (${e.message}): re-run this job` };
   }
   return verdicts;
+}
+
+/** The range given to verify (its first argument), or ''. */
+const rest0 = (flags) => String(flags._range || '');
+
+/** The base's .proof/config.json, with defaults, or null when it has none or it can't be read. */
+function baseConfigAt(root, rev) {
+  try {
+    const text = showFile(root, rev, '.proof/config.json');
+    return text === null ? null : withDefaults(JSON.parse(text));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -124,7 +164,9 @@ export async function run({ engine, flags, isolated, json, rest }) {
   const ghToken = process.env.POCP_GITHUB_TOKEN || '';
   delete process.env.POCP_GITHUB_TOKEN;
   const headRev = rest[0] && rest[0].includes('..') ? rest[0].split(/\.\.\.?/)[1] || 'HEAD' : rest[0] || 'HEAD';
-  const verdicts = flags['label-freshness'] ? await labelVerdicts(engine, flags, headRev, ghToken) : null;
+  // Sticky approvals this run compared with the head they were given for (labelVerdicts).
+  const compared = {};
+  const verdicts = flags['label-freshness'] ? await labelVerdicts(engine, { ...flags, _range: rest[0] || '' }, headRev, ghToken, compared) : null;
   // Before any of the pull request's code runs: set up and probe the isolation. If it
   // can't be set up, this throws and verify fails; it never falls back.
   const isolation = isolated ? isolated.isolation : COOPERATIVE;
@@ -287,6 +329,22 @@ export async function run({ engine, flags, isolated, json, rest }) {
     } catch (err) {
       try { fs.rmSync(file, { force: true }); } catch { /* the mark step finds no valid file */ }
       errWrite(`pocp: couldn't write the approval file (${err.message}); an approval will re-run verify\n`);
+    }
+  }
+  // --record-file: what an approval given for this head binds to (sticky-approval.js): the set
+  // of files held as test changes, and how this head compares with the head each sticky label was
+  // given for. Like --approval-file, only from isolated checks (which can't reach the file);
+  // otherwise it is removed. Any error leaves no file, and the label is judged as before.
+  if (flags['record-file']) {
+    const file = flags['record-file'];
+    try {
+      fs.rmSync(file, { force: true });
+      if (isolation.secure === true && ![].concat(flags['ci-results'] ?? []).length) {
+        fs.writeFileSync(file, `${recordLines({ heldTests: heldTestFiles(result), approvals: compared }).join('\n')}\n`, { mode: 0o600, flag: 'wx' });
+      }
+    } catch (err) {
+      try { fs.rmSync(file, { force: true }); } catch { /* the records step finds no file */ }
+      errWrite(`pocp: couldn't write the record file (${err.message}); approvals given for this head won't carry over to a base update\n`);
     }
   }
   if (steps.length) result.next_steps = steps;

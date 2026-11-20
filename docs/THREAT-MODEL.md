@@ -297,6 +297,40 @@ same rule (src/label-freshness.js) and removes such a label. Anything GitHub can
 API error, a list cut short, an unreadable permission) refuses the approval. (A label added in
 the seconds between a push and that head's first run is refused too: add it again.)
 
+**Sticky approvals (1.5).** `pocp-approve-tests` and `pocp-approve-policy` are bound to the pull
+request's own changes at the head they were given for (STATUS.md, "Approvals stick to what was
+approved"), so updating the branch doesn't void them. What must hold: the new head's tree is
+exactly the clean merge of the approved head with base content (verify, with git, before any of
+the pull request's code runs; merge drivers from `.gitattributes` off), the approved head changed
+no CI file, the base's policy is the one the approval was judged by, and, for tests, the same files
+are held as test changes. The attacks this is tested against (test/sticky-approval-git.test.js,
+test/sticky-approval.test.js):
+
+- a merge commit that adds test edits, or any file, of its own: not the clean merge, voided;
+- a merge that keeps the pull request's side (`-s ours`) and so undoes a test the base added: its
+  tree is the approved head's, but not the merge's, voided;
+- a conflict resolved by hand: voided, even when the result matches the approved content;
+- a later commit of the pull request's own, test or source: voided (a reviewer judged the test
+  change against the code it came with);
+- a force-push: different content, or a force-push back to an earlier head, voids it; so does an
+  approved head that is no longer fetched (`gone`, the usual case after a rebase on GitHub). A
+  rebase with the same content keeps it only while the approved head is still in the checkout;
+- canonicalisation tricks: trees are compared by object id, so a mode, line endings, trailing
+  space, a rename, a binary or a submodule is a difference;
+- a base update that changes which files count as held (a new glob, an import, a newer verifier):
+  the held sets recorded by the two runs differ, voided; a base policy change voids it outright;
+- a forged record: records are step names from the base's workflow, read from a file isolated
+  checks can't reach and checked against fixed patterns; a head that changes a CI file (or an
+  approved head that did) has its records ignored, and a record naming another approved head than
+  the one GitHub's data gives doesn't count;
+- labels by someone without write access never stick, and a non-writer re-applying a writer's
+  label takes it over; removing the label revokes the approval.
+
+Missing data never approves and never removes a label. What it doesn't cover: the approved head
+is "the head when the label was added", so a push in the seconds before a label is added binds the
+label to that push, as before; and an agent with the maintainer's own token can still add labels
+as the maintainer (see "Who can approve a workflow change" in STATUS.md).
+
 The token for those reads (`actions: read`, `pull-requests: read`) is set only in the verify
 step's environment. verify takes it out of its own environment before it installs or runs
 anything, and isolated checks get an allowlisted environment that never includes it, nor can
