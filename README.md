@@ -56,7 +56,7 @@ Install the verifier outside the checkout and run it with `node`, as the GitHub 
 /plugin install pocp@pocp
 ```
 
-In a repository that uses POCP, it stops Claude from going around it: no `git commit --no-verify` or `core.hooksPath` change to skip the gate, no force-push over proven commits, and no approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`). Each refusal tells Claude what to do instead. It also teaches Claude the POCP workflow. It guards against an agent cutting corners, not one set on hiding what it does; CI is still the check.
+Run `/pocp:setup` in a repository that doesn't use POCP yet: Claude finds your test command, asks where the checks should run, installs POCP and writes a first rule, asking before it commits or pushes. In a repository that uses POCP, the plugin stops Claude from going around it: no `git commit --no-verify` or `core.hooksPath` change to skip the gate, no force-push over proven commits, and no approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`). Each refusal tells Claude what to do instead. It also teaches Claude the POCP workflow. It guards against an agent cutting corners, not one set on hiding what it does; CI is still the check.
 
 **Codex, Cursor and other agents.** Paste [examples/agent-instructions.md](examples/agent-instructions.md) into the agent's instructions: `AGENTS.md` for Codex, a file in `.cursor/rules/` for Cursor. Instructions guide the agent; the git hooks and CI enforce.
 
