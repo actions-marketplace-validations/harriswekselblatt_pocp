@@ -1,0 +1,101 @@
+{
+  "total_count": 4,
+  "jobs": [
+    {
+      "id": 7001,
+      "run_id": 5001,
+      "workflow_name": "test",
+      "head_branch": "feature",
+      "head_sha": "0000000000000000000000000000000000000001",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-19T23:39:01Z",
+      "started_at": "2026-11-19T23:39:01Z",
+      "completed_at": "2026-11-19T23:39:02Z",
+      "name": "test (macos-latest, 22)",
+      "steps": [],
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 0,
+      "runner_name": "",
+      "runner_group_id": 0,
+      "runner_group_name": "",
+      "run_attempt": 1,
+      "html_url": "https://github.com/me/site/actions/runs/5001/job/7001",
+      "check_run_url": "https://api.github.com/repos/me/site/check-runs/7001"
+    },
+    {
+      "id": 7002,
+      "run_id": 5001,
+      "workflow_name": "test",
+      "head_branch": "feature",
+      "head_sha": "0000000000000000000000000000000000000001",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-19T23:39:01Z",
+      "started_at": "2026-11-19T23:39:01Z",
+      "completed_at": "2026-11-19T23:39:02Z",
+      "name": "test (macos-latest, 20)",
+      "steps": [],
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 0,
+      "runner_name": "",
+      "runner_group_id": 0,
+      "runner_group_name": "",
+      "run_attempt": 1,
+      "html_url": "https://github.com/me/site/actions/runs/5001/job/7002",
+      "check_run_url": "https://api.github.com/repos/me/site/check-runs/7002"
+    },
+    {
+      "id": 7003,
+      "run_id": 5001,
+      "workflow_name": "test",
+      "head_branch": "feature",
+      "head_sha": "0000000000000000000000000000000000000001",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-19T23:39:01Z",
+      "started_at": "2026-11-19T23:39:01Z",
+      "completed_at": "2026-11-19T23:39:03Z",
+      "name": "test (ubuntu-latest, 20)",
+      "steps": [],
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 0,
+      "runner_name": "",
+      "runner_group_id": 0,
+      "runner_group_name": "",
+      "run_attempt": 1,
+      "html_url": "https://github.com/me/site/actions/runs/5001/job/7003",
+      "check_run_url": "https://api.github.com/repos/me/site/check-runs/7003"
+    },
+    {
+      "id": 7004,
+      "run_id": 5001,
+      "workflow_name": "test",
+      "head_branch": "feature",
+      "head_sha": "0000000000000000000000000000000000000001",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-19T23:39:01Z",
+      "started_at": "2026-11-19T23:39:01Z",
+      "completed_at": "2026-11-19T23:39:02Z",
+      "name": "test (ubuntu-latest, 22)",
+      "steps": [],
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 0,
+      "runner_name": "",
+      "runner_group_id": 0,
+      "runner_group_name": "",
+      "run_attempt": 1,
+      "html_url": "https://github.com/me/site/actions/runs/5001/job/7004",
+      "check_run_url": "https://api.github.com/repos/me/site/check-runs/7004"
+    }
+  ]
+}

@@ -67,9 +67,9 @@ export const COMMANDS = {
   },
   doctor: {
     summary: 'check an adoption: hooks, policy, Action access, labels, branch protection',
-    usage: ['doctor [--base <rev>] [--offline]'],
+    usage: ['doctor [--base <rev>] [--offline] [--disable-billing-failed]'],
     engine: true,
-    flags: { base: str('rev', 'compare against this base revision'), offline: bool("don't query GitHub") },
+    flags: { base: str('rev', 'compare against this base revision'), offline: bool("don't query GitHub"), 'disable-billing-failed': bool("local mode: disable, without asking, the workflows failing because Actions can't start for billing (gh workflow enable undoes it)") },
   },
   approvals: {
     summary: "open PRs whose verify fails only for a maintainer's label, or add that label",
@@ -159,9 +159,9 @@ export const COMMANDS = {
   },
   ci: {
     summary: 'which CI checks must pass to merge (from .proof/config.json "ci"); or turn CI off (local mode) and on',
-    usage: ['ci required [--check | --apply]', 'ci off', 'ci on'],
+    usage: ['ci required [--check | --apply]', 'ci off [--disable-billing-failed]', 'ci on'],
     engine: true,
-    flags: { check: bool("read GitHub's branch protection; exit 1 on any gap"), apply: bool('set them as GitHub branch protection via gh') },
+    flags: { check: bool("read GitHub's branch protection; exit 1 on any gap"), apply: bool('set them as GitHub branch protection via gh'), 'disable-billing-failed': bool("ci off: also disable, without asking, the other workflows failing because Actions can't start for billing (gh workflow enable undoes it)") },
   },
   'ci-run': {
     summary: 'CI: run a command on HEAD and record a result bound to its code',

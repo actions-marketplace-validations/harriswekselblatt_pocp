@@ -67,6 +67,20 @@ const RULES = [
     why: 'Uninstalling POCP\'s hooks turns off its gate.',
     instead: 'Leave the hooks in place; ask the user if they want them removed.',
   },
+  // Switches on GitHub's side that take effect at once, with no pull request for anyone to review:
+  // a workflow disabled while billing blocks it stays disabled, and its checks silently stop.
+  {
+    test: () => new RegExp(String.raw`\bpocp\b${SEG}\bci\s+off\b`).test(bare) || new RegExp(String.raw`\bpocp\b${SEG}\binit\b${SEG}--local\b`).test(bare),
+    why: 'Switching to local mode turns off POCP\'s checks on GitHub at once, with no pull request to review.',
+    instead: 'Ask the user to run it themselves if they want local mode.',
+  },
+  {
+    test: () => /--disable-billing-failed\b/.test(bare)
+      || new RegExp(String.raw`\bgh\s+workflow\s+disable\b`).test(bare)
+      || (/\bgh\s+api\b/.test(raw) && /actions\/workflows\/[^\s'"]+\/disable\b/.test(raw)),
+    why: 'Disabling a GitHub workflow stops its checks at once, with no pull request to review, and it stays off after the cause is fixed.',
+    instead: 'Tell the user which workflows fail and why, and ask them to run the command themselves (`pocp doctor` lists them).',
+  },
 ];
 
 const hit = RULES.find((r) => r.test());

@@ -1,0 +1,94 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 7101,
+      "run_id": 5002,
+      "workflow_name": "lint",
+      "head_branch": "feature",
+      "head_sha": "0000000000000000000000000000000000000001",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-28T01:30:51Z",
+      "started_at": "2026-10-28T01:30:53Z",
+      "completed_at": "2026-10-28T01:32:26Z",
+      "name": "lint",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-28T01:30:54Z",
+          "completed_at": "2026-10-28T01:30:55Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-28T01:30:55Z",
+          "completed_at": "2026-10-28T01:30:58Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-28T01:30:58Z",
+          "completed_at": "2026-10-28T01:31:00Z"
+        },
+        {
+          "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-28T01:31:00Z",
+          "completed_at": "2026-10-28T01:31:04Z"
+        },
+        {
+          "name": "Run npm run lint",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-28T01:31:04Z",
+          "completed_at": "2026-10-28T01:32:23Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-28T01:32:23Z",
+          "completed_at": "2026-10-28T01:32:23Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-28T01:32:23Z",
+          "completed_at": "2026-10-28T01:32:23Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-28T01:32:23Z",
+          "completed_at": "2026-10-28T01:32:23Z"
+        }
+      ],
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1,
+      "runner_name": "GitHub Actions 1",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions",
+      "run_attempt": 1,
+      "html_url": "https://github.com/me/site/actions/runs/5002/job/7101",
+      "check_run_url": "https://api.github.com/repos/me/site/check-runs/7101"
+    }
+  ]
+}
