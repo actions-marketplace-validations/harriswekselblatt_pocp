@@ -50,6 +50,8 @@ export function validateRules(rules) {
     } catch (err) {
       problems.push(`requirements[${i}] (${r.id}): ${err.message}`);
     }
+    if (r.defer !== undefined && r.defer !== 'ci') problems.push(`requirements[${i}] (${r.id}): "defer" must be "ci" (hand this check to CI when ci.defer_heavy is on) or left out`);
+    else if (r.defer === 'ci' && ['guard', 'manual'].includes(r.obligation?.kind)) problems.push(`requirements[${i}] (${r.id}): only a runnable check can be handed to CI ("defer": "ci")`);
   }
   return problems;
 }
@@ -187,7 +189,8 @@ export function normalizeRequirement(req, { defaultSource } = {}) {
   const source = req.source || defaultSource || 'author';
   const obSource = source.startsWith('host:') ? source : source === 'guard' ? 'guard:tests' : `rule:${req.id}`;
   const obligation = normalizeObligation({ ...req.obligation, source: undefined }, { source: obSource });
-  return { id: req.id, globs, obligation, source, digest: obligationDigest(obligation) };
+  // `defer` isn't part of the check (its digest): it says where the check may run, under ci.defer_heavy.
+  return { id: req.id, globs, obligation, source, digest: obligationDigest(obligation), ...(req.defer === 'ci' ? { defer: 'ci' } : {}) };
 }
 
 /**
@@ -266,6 +269,13 @@ export function strictUnion(base, head) {
       headNorm[idx] = norm(target);
     }
   }
+  // A check is handed to CI only when the base marks the same check "defer": "ci" too.
+  const baseDeferred = new Set((base.requirements || []).map(norm).filter((n) => n?.defer === 'ci').map((n) => n.digest));
+  for (const r of out.requirements || []) {
+    if (r?.defer === undefined) continue;
+    const n = norm(r);
+    if (!n || !baseDeferred.has(n.digest) || !headNorm.some((h) => h && h.digest === n.digest && h.defer === 'ci')) delete r.defer;
+  }
   const bt = base.triggers || {};
   const ht = out.triggers;
   const minPos = (a, b) => [a, b].filter((n) => Number.isInteger(n) && n > 0).reduce((m, n) => Math.min(m, n), Infinity);
@@ -316,6 +326,11 @@ export function policyWeakening(base, head) {
     // Globs are compared as written: rewriting one, even to something broader, needs approval.
     const missing = b.globs.filter((gl) => !hg.has(gl));
     if (missing.length) out.push(`requirement "${b.id}" no longer guards ${missing.map((gl) => `"${gl}"`).join(', ')}`);
+  }
+  // Marking a check "defer": "ci" stops it running at commit (under ci.defer_heavy): a loosening.
+  const baseDeferred = new Set(reqs(base).filter((b) => b.defer === 'ci').map((b) => b.digest));
+  for (const h of reqs(head)) {
+    if (h.defer === 'ci' && !baseDeferred.has(h.digest)) out.push(`requirement "${h.id}" now hands its check to CI ("defer": "ci")`);
   }
   const bt = base.triggers || {};
   const ht = head.triggers || {};

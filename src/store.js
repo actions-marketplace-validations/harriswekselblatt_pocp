@@ -59,7 +59,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   sign: { key: null, principal: null },
   guard: { tests: DEFAULT_GUARD_MODE, test_globs: null, runner_globs: null, mutants: DEFAULT_GUARD_MUTANTS, seed: DEFAULT_GUARD_SEED },
   verify: { fail_on: [...FINDING_CODES], require_ci: [] },
-  ci: { files: [...DEFAULT_CI_FILES], files_except: [], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent', mode: 'github' },
+  ci: { files: [...DEFAULT_CI_FILES], files_except: [], branch: null, required_checks: [], require_pull_request: true, enforce_admins: true, require_up_to_date: true, workflow_approver: 'independent', mode: 'github', defer_heavy: false },
 });
 
 // Calibrated on real history: counting only code and config, these thresholds asked for
@@ -417,6 +417,16 @@ export function validateConfig(config) {
   if (ci.reporter_app_id != null && !(Number.isInteger(ci.reporter_app_id) && ci.reporter_app_id > 0)) problems.push('ci.reporter_app_id must be a GitHub App id (a positive whole number)');
   if (!['independent', 'any-writer'].includes(ci.workflow_approver)) problems.push('ci.workflow_approver must be "independent" or "any-writer"');
   if (!['github', 'local'].includes(ci.mode)) problems.push('ci.mode must be "github" (CI checks every pull request) or "local" (the git hooks only)');
+  if (ci.defer_heavy !== undefined && typeof ci.defer_heavy !== 'boolean') problems.push('ci.defer_heavy must be true or false');
+  // Handing checks to CI is only sound where CI re-runs them and blocks the merge: never in local
+  // mode (the hooks are the only gate there), and never where a deferred check's failure, or one
+  // never run, would only warn.
+  if (ci.defer_heavy === true) {
+    if (ci.mode !== 'github') problems.push('ci.defer_heavy needs ci.mode "github": in local mode the git hooks are the only gate, so every check runs at commit');
+    const failOn = new Set(isStrArray(v.fail_on) ? v.fail_on : []);
+    const missing = ['unproven', 'rerun_failed', 'test_change'].filter((code) => !failOn.has(code));
+    if (missing.length) problems.push(`ci.defer_heavy needs verify.fail_on to include ${missing.map((m) => `"${m}"`).join(', ')}: a check handed to CI must block the merge when CI doesn't run it or it fails`);
+  }
   const globLists = { 'guard.test_globs': guard.test_globs, 'guard.runner_globs': guard.runner_globs, 'guard.extra_test_globs': guard.extra_test_globs, 'guard.extra_runner_globs': guard.extra_runner_globs, 'ci.files': ci.files, 'ci.files_except': ci.files_except, 'eval.exclude': c.eval?.exclude };
   for (const [k, list] of Object.entries(globLists)) {
     if (!isStrArray(list)) continue;
@@ -441,6 +451,8 @@ export function configWeakening(base, head) {
   if (Number.isInteger(base.guard?.seed) && head.guard?.seed !== base.guard.seed) out.push(`guard.seed changed from ${base.guard.seed}`);
   // Local mode turns off what doctor checks of CI and makes you the approver: a change can't choose it for itself.
   if ((base.ci?.mode ?? 'github') !== 'local' && head.ci?.mode === 'local') out.push('ci.mode switched to "local" (no CI)');
+  // Checks marked defer stop running at commit and run only in CI: a change can't choose that for itself.
+  if (base.ci?.defer_heavy !== true && head.ci?.defer_heavy === true) out.push('ci.defer_heavy turned on (checks marked "defer": "ci" run in CI, not at commit)');
   for (const gl of base.ci?.files || []) if (!(head.ci?.files || []).includes(gl)) out.push(`ci.files no longer protects "${gl}"`);
   const exempt = (c) => (Array.isArray(c?.ci?.files_except) ? c.ci.files_except : []);
   for (const gl of exempt(head)) if (!exempt(base).includes(gl)) out.push(`ci.files_except now exempts "${gl}"`);
@@ -469,6 +481,14 @@ export function configWeakening(base, head) {
   return out;
 }
 
+/**
+ * Whether a config hands checks marked `"defer": "ci"` to CI: `ci.defer_heavy` on, in GitHub CI
+ * mode. Local mode never defers: the git hooks are the only gate there.
+ */
+export function deferAllowed(cfg) {
+  return cfg?.ci?.defer_heavy === true && (cfg.ci.mode ?? 'github') === 'github';
+}
+
 /** The stricter of two configs for verification settings (union of what fails or is required). */
 export function strictConfig(base, head) {
   if (!base) return head;
@@ -486,6 +506,8 @@ export function strictConfig(base, head) {
   out.ci.require_pull_request = base.ci?.require_pull_request === true || head.ci?.require_pull_request === true;
   out.ci.enforce_admins = base.ci?.enforce_admins === true || head.ci?.enforce_admins === true;
   out.ci.workflow_approver = [base.ci?.workflow_approver, head.ci?.workflow_approver].includes('independent') || !base.ci?.workflow_approver || !head.ci?.workflow_approver ? 'independent' : 'any-writer';
+  // Checks are handed to CI only when both sides allow it, both in GitHub CI mode.
+  out.ci.defer_heavy = deferAllowed(base) && deferAllowed(head);
   if (base.ci?.branch) out.ci.branch = base.ci.branch;
   if (base.ci?.reporter_app_id != null) out.ci.reporter_app_id = base.ci.reporter_app_id;
   const bg = effectiveGuardGlobs(base);

@@ -4,6 +4,8 @@ import { evalLine, guardLines, list, out } from '../cli/shared.js';
 import { shortDigest } from '../hash.js';
 
 export async function run({ engine, flags, json, rest }) {
+  // Run every check here, including any the rules hand to CI (src/handoff.js).
+  if (flags['no-defer']) process.env.POCP_DEFER = 'off';
   const r = await engine.prove({ ids: rest, mode: flags.mode, force: Boolean(flags.force), only: list(flags.only), stage: !flags['no-stage'] });
   // Exit 1 only when a check failed or a run was thrown away; pending sign-offs are not failures.
   const anyFail = r.packets.some((p) => p.evaluation.failed.length || p.runs.some((x) => x.discarded));
@@ -13,7 +15,7 @@ export async function run({ engine, flags, json, rest }) {
         `subject ${shortDigest(r.subject)} (${r.mode} mode)`,
         ...r.packets.flatMap((p) => [
           `${p.id}: ${p.state} · ${evalLine(p.evaluation)}`,
-          ...p.runs.map((x) => `  ${x.obligation}: ${x.skipped ? `skipped (${x.skipped})` : x.discarded ? `DISCARDED (${x.discarded.join('; ')})` : x.guard ? `test guard ${x.passed ? 'pass' : x.guard} (${x.duration_ms}ms): ${x.summary}` : x.passed ? `pass (${x.duration_ms}ms)` : `FAIL exit=${x.exit}${x.timed_out ? ' timed out' : ''} · log .proof/runs/${x.run_id}.log`}`),
+          ...p.runs.map((x) => `  ${x.obligation}: ${x.handed_to_ci ? `handed to CI, not run here (ci.defer_heavy; CI's verify --rerun runs it before merge)` : x.skipped ? `skipped (${x.skipped})` : x.discarded ? `DISCARDED (${x.discarded.join('; ')})` : x.guard ? `test guard ${x.passed ? 'pass' : x.guard} (${x.duration_ms}ms): ${x.summary}` : x.passed ? `pass (${x.duration_ms}ms)` : `FAIL exit=${x.exit}${x.timed_out ? ' timed out' : ''} · log .proof/runs/${x.run_id}.log`}`),
           ...(() => {
             const guardIds = (p.evaluation.guard || []).map((x) => x.id);
             const plain = p.evaluation.unattested.filter((x) => !guardIds.includes(x));

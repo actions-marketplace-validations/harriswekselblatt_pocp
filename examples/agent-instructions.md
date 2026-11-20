@@ -23,6 +23,9 @@ the checks itself and ties each result to the exact staged code.
   packet. Then `git commit`. Run it again after every change; it never re-runs a check that
   already passed (or failed) on the same code.
 - If a check fails, fix the code, not the tests, and run `pocp fix` again.
+- If `pocp fix` says a check was *handed to CI* (`ci.defer_heavy`), it did not run here and is
+  not proven: CI runs it before merge, and a failure there is yours to fix. Never describe it as
+  passed. `pocp fix --no-defer` runs it here first.
 - Every block says what is wrong, why, and the next command. `pocp gate` shows it without
   committing.
 - `pocp attest <packet> <obligation> --by <name>` records a manual sign-off. Only attest what

@@ -8,6 +8,7 @@ import { ciProtects, rulesWithDefaults, validateConfig, withDefaults } from '../
 import { validateRules } from '../rules.js';
 import { blockingRule, combinePolicy, EXCEPTIONS_FILE, POLICY_FILES, policyLoosenings } from '../policy.js';
 import { policyKeyWarnings } from '../schema.js';
+import { handoffPolicy } from '../handoff.js';
 
 /** Policy readers for one repository at `root`. */
 export function createPolicyAt({ root }) {
@@ -93,7 +94,11 @@ export function createPolicyAt({ root }) {
     let allowedSigners = basePolicy && !accepted ? baseSigners : headSigners;
     if (allowedSignersFile) allowedSigners = fs.readFileSync(allowedSignersFile, 'utf8');
     const { failOn, blocks } = blockingRule(cfgAt);
-    return { policyProblems, weakened, accepted, rulesAt, cfgAt, allowedSigners, failOn, blocks, keyWarnings: headPolicy.keyWarnings };
+    // Which checks may have been handed to CI (ci.defer_heavy): the base's and the commit's
+    // policy combined strictly, even when a loosening is accepted, so a change never hands off
+    // its own checks. None without an enrolled base, or with any policy problem.
+    const handoff = policyProblems.length ? null : handoffPolicy(basePolicy, headPolicy);
+    return { policyProblems, weakened, accepted, rulesAt, cfgAt, allowedSigners, failOn, blocks, keyWarnings: headPolicy.keyWarnings, handoff };
   }
 
   /**
