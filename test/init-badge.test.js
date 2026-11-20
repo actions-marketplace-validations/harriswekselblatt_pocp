@@ -27,7 +27,7 @@ function terminal(answer) {
 }
 
 test('the badge is a plain static shields.io badge linking to the POCP repository', () => {
-  assert.equal(BADGE_MARKDOWN, '[![tests: POCP verified](https://img.shields.io/badge/tests-POCP%20verified-lightgrey)](https://github.com/harriswekselblatt/pocp)');
+  assert.equal(BADGE_MARKDOWN, '[![uses POCP](https://img.shields.io/badge/uses-POCP-lightgrey)](https://github.com/harriswekselblatt/pocp)');
   assert.doesNotMatch(BADGE_MARKDOWN, /logo|labelColor|style=/, 'no logo, no colours of its own');
 });
 

@@ -13,8 +13,12 @@ re-run verify as before.
 
 ### Added
 
+- **`pocp rules check` warns when a requirement guards nothing.** A requirement whose globs match
+  no tracked file is reported, so a first rule that points at the wrong folder is caught before
+  every later change is judged by it. Only `rules check` looks (the commit path doesn't pay for it).
 - **An opt-in README badge.** The first `pocp init` at a terminal asks once whether to show a
-  `tests | POCP verified` badge (a plain shields.io badge linking to this repository). The
+  `uses POCP` badge (a plain shields.io badge linking to this repository; it says the repository
+  uses POCP, not that anything passed). The
   default is no; a yes prints the markdown to paste, and no file is changed. Never asked in CI,
   without a terminal, with `--json` or on a re-run. `pocp init --badge` prints it for scripts.
 - **verify's job summary ends with one line:** `Checked by POCP · how this works`, linking to
