@@ -170,7 +170,7 @@ test('pocp approvals lists every PR waiting for a label across your repos, and c
 
   const human = pocp(dir, ['approvals'], { env: { POCP_GH: gh.bin } });
   assert.match(human.stdout, /1 pull request\(s\) waiting for an approval in 1 repository/);
-  assert.match(human.stdout, /me\/site#1 {2}Loosen a test\n.*\n {4}needs pocp-approve-tests: existing tests or test setup changed\n.*2 of 10 planted bugs.*\n {6}test\/math\.test\.js {2}\+1 -2\n {4}to approve: pocp approvals --approve me\/site#1/);
+  assert.match(human.stdout, /me\/site#1 {2}Loosen a test\n.*\n {4}needs pocp-approve-tests: Existing tests or test setup were edited, .*read the verify run before approving\.\n.*2 of 10 planted bugs.*\n {6}test\/math\.test\.js {2}\+1 -2\n {4}to approve: pocp approvals --approve me\/site#1 \(or: gh pr edit 1 -R me\/site --add-label pocp-approve-tests\)/);
   assert.match(human.stdout, /approved, waiting for verify to run again:\n {4}me\/site#3/);
   assert.match(human.stdout, /a label will not fix these\):\n {4}me\/site#2 {2}Broken change/);
   assert.doesNotMatch(human.stdout, /All good/);

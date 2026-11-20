@@ -73,6 +73,9 @@ outputs:
   approvable_needs:
     description: "With approvable: the labels the wait needs, from the same file (comma-separated)."
     value: ${{ steps.mark.outputs.needs }}
+  approvable_verdict:
+    description: "With approvable: what the test guard found (behavior-changed, detection-dropped, baseline-red or needs-review), from the same file, for the pocp status's words only. Empty when verify wrote none."
+    value: ${{ steps.mark.outputs.verdict }}
 runs:
   using: composite
   steps:
@@ -170,5 +173,8 @@ runs:
           labels=$(head -n 1 "$APPROVAL_FILE")
           if printf '%s' "$labels" | grep -Eqx 'pocp-approve-[a-z]+(,pocp-approve-[a-z]+)*'; then
             { echo "approvable=true"; echo "needs=$labels"; } >> "$GITHUB_OUTPUT"
+            # The test guard's verdict, one of four fixed words (an older verify writes none).
+            verdict=$(grep -Ex 'verdict=(behavior-changed|detection-dropped|baseline-red|needs-review)' "$APPROVAL_FILE" | head -n 1 | cut -d= -f2 || true)
+            if [ -n "$verdict" ]; then echo "verdict=$verdict" >> "$GITHUB_OUTPUT"; fi
           fi
         fi
