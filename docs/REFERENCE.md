@@ -1,6 +1,6 @@
 # POCP reference
 
-The details behind [the README](../README.md): rules, obligations, how proof is tied to code, CI, signed proofs, agents, misses and measuring. The protocol itself is in [SPEC.md](../SPEC.md).
+The details behind [the README](../README.md): rules, obligations, how proof is tied to code, CI, signed proofs, upgrading, agents, misses and measuring. The protocol itself is in [SPEC.md](../SPEC.md).
 
 ## Rules
 
@@ -159,6 +159,35 @@ Nothing here assumes GitHub Actions or a test matrix. [`examples/`](../examples/
 ```
 
 Proofs are signed with `ssh-keygen` (the same mechanism git uses for SSH commit signing; a `.pub` key signs through ssh-agent). Put trusted keys in `.proof/allowed_signers`. A signed proof says who ran the check and that the record hasn't been edited since; CI can trust it instead of re-running. Agent runs usually aren't signed, so CI re-runs those.
+
+## Upgrading
+
+```bash
+pocp upgrade --dry-run     # what would change; changes nothing
+pocp upgrade               # the latest release on npm
+pocp upgrade --to 1.5.0    # a release you choose (no registry lookup)
+```
+
+`pocp upgrade` moves a repository to a newer release:
+
+- **The dependency.** It installs `proof-of-change@<version>` with the repository's package manager (`packageManager` in `package.json`, else its lockfile: npm, pnpm, yarn or bun), in the field it was in (`devDependencies` or `dependencies`), keeping an exact pin exact. When the repository has no dependency on POCP and npm has a global install, it upgrades that (`npm install --global`): every repository on the machine that runs `pocp` from `PATH` gets it. A git, tarball or path dependency is reported, not converted.
+- **The workflows.** Every step in `.github/workflows` that uses `harriswekselblatt/pocp` or `harriswekselblatt/pocp/status` at a release tag is re-pinned to the new tag, exactly as `pocp init --github --pocp-ref <tag>` writes it, so `pocp.yml` and `pocp-status.yml` keep one ref. Commit pins and branch pins are left alone, with the command to re-pin them: `--pocp-ref <commit>` re-pins every POCP step to that commit (a `# v1.2.3` comment after a commit pin is updated to the new release). Tags newer than the target are never moved back. When a re-pinned workflow differs from the new release's template, it says so: a re-pin doesn't bring template changes (`pocp init --github --force` does).
+- **The hooks.** pocp's own git hooks are refreshed with the new release's `pocp hooks install`. Hooks run by the pre-commit framework are not: `pre-commit autoupdate --repo https://github.com/harriswekselblatt/pocp` moves their `rev`.
+- **Not edited, only reported:** other CI systems' `proof-of-change@<version>` installs (`.gitlab-ci.yml`, `Jenkinsfile`, …), which pocp didn't write.
+
+It installs first, so a failed install (offline, say) leaves everything else as it was, and it pins the version it actually installed. It refuses when tracked files other than the ones it writes have uncommitted changes, so the upgrade is a change of its own; an interrupted upgrade can be run again, and a run with nothing to do changes nothing. It only moves forward: an older `--to` is refused.
+
+**The pull request needs approvals.** Re-pinned workflows are a CI change, so the pull request needs `pocp-approve-workflow` (from a maintainer who isn't its author, by default) and `pocp-approve-policy`. That is intended: an upgrade changes what judges your code. In local mode there are usually no workflows to re-pin, and nothing to approve.
+
+**From 1.4.0 or older**, which have no `upgrade`: install the new release yourself (`npm install --save-dev proof-of-change@latest`), then run `npx pocp upgrade` to re-pin the workflows.
+
+### Knowing a release is out
+
+POCP doesn't check for updates in the background. The git hooks, the gate and the Claude Code plugin's guard make no network calls. Instead:
+
+- **`pocp doctor` compares the copies of POCP the repository uses**, from local files only: the local pocp (`node_modules`, else `pocp` on `PATH`, else the copy the hooks recorded), the lockfile, the release tag the workflows pin (not in local mode), the pre-commit `rev` and other CI files' pins. When they differ (after a teammate's upgrade, or when Dependabot bumped the workflows but not `package.json`), the hooks and CI can judge a commit differently, so it says so, with `pocp upgrade` as the fix (`npm install` when only `node_modules` is behind the lockfile). It can't tell that every copy is old.
+- **`pocp upgrade --dry-run`** answers that: it asks the npm registry (`npm view proof-of-change version`). This, and the install itself, are the only times POCP contacts the registry, and only when you run the command; `--to <version>` skips the lookup. (`doctor` and `init --github` also call GitHub through `gh`; `doctor --offline` doesn't.)
+- **Dependabot or Renovate**, if you want to be told: both update the `proof-of-change` dependency and the `uses: harriswekselblatt/pocp@v…` pins. They open separate pull requests per ecosystem unless grouped; `pocp doctor` notes the drift between them, and the workflow pull request needs the same approvals as above.
 
 ## Coding agents
 

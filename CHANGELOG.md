@@ -85,6 +85,23 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   `pocp gate` (the pre-commit hook) now starts 26 instead of 31, and a one-check `pocp fix`
   starts 78 instead of 89. pocp no longer asks whether HEAD exists before each diff against
   it, and asks where MERGE_HEAD lives once per run. The answers are the same.
+- **`pocp upgrade`.** Moves a repository to a newer release in one step: it bumps the
+  `proof-of-change` dependency (npm, pnpm, yarn or bun; or the global npm install), re-pins the
+  POCP action in `.github/workflows` to the new release tag (what `init --pocp-ref` writes),
+  refreshes pocp's git hooks, and says what changed and which approvals the pull request needs
+  (`pocp-approve-workflow` and `pocp-approve-policy`: it changes CI files). `--dry-run` changes
+  nothing; `--to <version>` skips the registry lookup; it refuses when other files have
+  uncommitted changes, and a second run changes nothing. Commit pins, branch pins, git
+  dependencies and other CI systems' pins are reported, not edited. Works in local mode. From
+  1.4.0 or older: install the new release yourself, then `pocp upgrade` re-pins the workflows.
+- **`pocp doctor` compares the copies of POCP a repository uses**: the local pocp (node_modules,
+  PATH, or the hooks' recorded copy), the lockfile, the release the workflows pin and the
+  pre-commit rev, from local files only. When they differ it says so, with `pocp upgrade` (or
+  `npm install`, when only node_modules is behind the lockfile) as the fix.
+- **Network:** `pocp upgrade` is the only command that contacts the npm registry: `npm view
+  proof-of-change version` when `--to` isn't given, and the package manager's install. The git
+  hooks, the gate and the Claude Code plugin's guard make no network calls, and POCP has no
+  background update check.
 
 ### Changed
 

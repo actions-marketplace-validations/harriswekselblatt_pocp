@@ -65,6 +65,15 @@ export const COMMANDS = {
       badge: bool('print a README badge to paste (at a terminal, a first init asks instead, default no)'),
     },
   },
+  upgrade: {
+    summary: 'move this repository to a newer POCP release: the dependency, the workflow pins, the hooks',
+    usage: ['upgrade [--dry-run] [--to <version>] [--pocp-ref <tag|sha>]'],
+    flags: {
+      'dry-run': bool('show what would change, change nothing'),
+      to: str('version', 'upgrade to this release instead of the latest on npm (no registry lookup)'),
+      'pocp-ref': str('tag|sha', 'pin the workflows to this ref (a commit, say) instead of the release tag'),
+    },
+  },
   doctor: {
     summary: 'check an adoption: hooks, policy, Action access, labels, branch protection',
     usage: ['doctor [--base <rev>] [--offline]'],
