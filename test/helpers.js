@@ -18,8 +18,14 @@ export const GIT_ENV = {
   POCP_BIN: `${process.execPath} ${BIN}`,
 };
 Object.assign(process.env, GIT_ENV);
-// Tests behave the same locally and inside CI: no host, no GitHub job summary or annotations.
-for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY', 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
+// The CI job's step files (GITHUB_OUTPUT and the others), as the job set them. No test and no
+// pocp a test starts may write to them: `pocp verify` appends needs= lines to GITHUB_OUTPUT
+// whenever it is set, which changed the real job's outputs and raced isolation.test.js, which
+// snapshots these files. Only isolation.test.js uses the real paths, to show a check can't reach them.
+const STEP_FILE_VARS = ['GITHUB_OUTPUT', 'GITHUB_ENV', 'GITHUB_PATH', 'GITHUB_STATE', 'GITHUB_STEP_SUMMARY'];
+export const RUNNER_STEP_FILES = Object.freeze(Object.fromEntries(STEP_FILE_VARS.filter((k) => process.env[k]).map((k) => [k, process.env[k]])));
+// Tests behave the same locally and inside CI: no host, no GitHub job summary, outputs or annotations.
+for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', ...STEP_FILE_VARS, 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
 
 // Temporary folders. Every test process gets one root folder and points TMPDIR at it, so
 // everything it (and every pocp it starts) puts in os.tmpdir() lands inside. A folder made
