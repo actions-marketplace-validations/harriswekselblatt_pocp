@@ -13,6 +13,50 @@ re-run verify as before.
 
 ### Added
 
+Upgrading for the verdict on GitHub: `pocp init --github --force` (the `mark` step and the
+`verdict-*` steps in `pocp.yml`), with the action and the status action at the same release.
+An older `pocp.yml` keeps working; its status and comment say the verdict isn't known.
+
+- **Why a person must approve, wherever you work.** Every approval hold now has one plain
+  reason, built in one place (`src/hold.js`) and shown in `pocp fix`, `pocp gate`, the
+  pre-commit hook, `pocp approvals`, the `pocp` status and a pull request comment. Where the test
+  guard's verdict is known, the words say what it found, so a test edit whose old tests now
+  **fail** on the new code never reads like one whose old tests still pass: "Test file edited;
+  the old tests fail on the new code, so the code now behaves differently and the edited tests
+  accept that." versus "Test file edited; the old tests still pass on the new code, but POCP
+  can't show on its own that the edited tests check as much as before, so a person signs off on
+  test edits." The status says it in a few words beside the command
+  (`Waiting for approval (old tests FAIL on new code). Run: gh pr edit …`), within 140
+  characters, and when it must choose, keeps "FAIL" over the command. On GitHub the verdict is
+  typed end to end: verify writes it into its isolated approval file (`verdict=…`), the `mark`
+  step accepts only the four fixed words, and four `verdict-*` steps carry it; the reporter
+  believes one only behind the `approvable` step. Without it (checks not isolated, or a wait for
+  more than tests) the words say the verdict isn't known and point at the verify run. The trusted
+  reporter keeps one comment on each waiting pull request, updated in place, with the reason,
+  the files and lines to look at, what the label approves and the command; it says "approved,
+  nothing waiting" once cleared. Only a marker comment by the reporter's own identity counts,
+  and any extra one by that identity is deleted. It uses the token the reporter already has; turn it off with
+  `"ci": { "pr_comment": false }`. `pocp gate --json`, `pocp fix --json` and
+  `pocp approvals --json` carry it as `hold`, and the agent instructions ask agents to relay it
+  word for word.
+- **Approvals stick to what was approved.** With "require branches to be up to date", every merge
+  to the base made the other open pull requests update, and each update voided their approvals.
+  `pocp-approve-tests` and `pocp-approve-policy` are now bound to the pull request's own changes
+  at the head they were given for: a later head that is exactly that head plus base content (its
+  tree is the clean merge of the two, which verify checks with git before any check runs) keeps
+  them, through any number of updates. Any change of the pull request's own voids them, as do a
+  hand-resolved conflict, a base policy change, an approved head that changed CI files, and, for
+  tests, a base update that changes which files count as test changes. Only a review-only hold
+  (the test guard's typed verdict: the old tests still pass on the new code) carries over, and only
+  it turns green without a new run (#98's fast path); a behaviour change is approved, with a run,
+  on the head that shows it. Local approvals (`--accept-test-change=<sha>`) follow the same rule,
+  so an approval given on a branch survives its merge into main. The verify job records what
+  it found as `pocp-held` and `pocp-approval` steps (verify `--record-file`, from isolated checks
+  only), and the reporter checks them. Upgrading: `pocp init --github --force`; pull requests
+  approved before the upgrade need one more re-label. docs/STATUS.md has the rule, and
+  docs/THREAT-MODEL.md the attacks it was tested against. Not yet run on GitHub: whether the
+  jobs API returns a record step's name with its `steps.*` value filled in. If it doesn't, no
+  record reads, and labels are judged as before.
 - **`pocp rules check` warns when a requirement guards nothing.** A requirement whose globs match
   no tracked file is reported, so a first rule that points at the wrong folder is caught before
   every later change is judged by it. Only `rules check` looks (the commit path doesn't pay for it).
@@ -41,6 +85,23 @@ re-run verify as before.
   `pocp gate` (the pre-commit hook) now starts 26 instead of 31, and a one-check `pocp fix`
   starts 78 instead of 89. pocp no longer asks whether HEAD exists before each diff against
   it, and asks where MERGE_HEAD lives once per run. The answers are the same.
+- **`pocp upgrade`.** Moves a repository to a newer release in one step: it bumps the
+  `proof-of-change` dependency (npm, pnpm, yarn or bun; or the global npm install), re-pins the
+  POCP action in `.github/workflows` to the new release tag (what `init --pocp-ref` writes),
+  refreshes pocp's git hooks, and says what changed and which approvals the pull request needs
+  (`pocp-approve-workflow` and `pocp-approve-policy`: it changes CI files). `--dry-run` changes
+  nothing; `--to <version>` skips the registry lookup; it refuses when other files have
+  uncommitted changes, and a second run changes nothing. Commit pins, branch pins, git
+  dependencies and other CI systems' pins are reported, not edited. Works in local mode. From
+  1.4.0 or older: install the new release yourself, then `pocp upgrade` re-pins the workflows.
+- **`pocp doctor` compares the copies of POCP a repository uses**: the local pocp (node_modules,
+  PATH, or the hooks' recorded copy), the lockfile, the release the workflows pin and the
+  pre-commit rev, from local files only. When they differ it says so, with `pocp upgrade` (or
+  `npm install`, when only node_modules is behind the lockfile) as the fix.
+- **Network:** `pocp upgrade` is the only command that contacts the npm registry: `npm view
+  proof-of-change version` when `--to` isn't given, and the package manager's install. The git
+  hooks, the gate and the Claude Code plugin's guard make no network calls, and POCP has no
+  background update check.
 
 - **Local mode offers to switch off the workflows that fail for billing.** When Actions can't
   run for billing (no minutes left, a spending limit reached), GitHub fails each job without
@@ -90,6 +151,14 @@ re-run verify as before.
 
 ### Fixed
 
+- **A pocp killed mid-proof no longer leaves its copy of the repository behind for good.** SIGKILL,
+  a crash or the OOM killer gave pocp no chance to remove its temp folder. Each folder's name now
+  records its owner (process ID and start time), and the next pocp run that makes a temp folder
+  removes leftovers whose owner is gone, at most once an hour. A live run's folder is never
+  touched. See "Temporary folders" in docs/REFERENCE.md.
+- **POCP's own test suite stopped leaking temp folders.** A test file stopped with SIGTERM,
+  SIGINT or SIGHUP now removes its folder. Every test file keeps its folders inside its own root.
+  Each run sweeps roots left by SIGKILLed runs. One Mac had collected about 12,000 such folders.
 - **`pocp rules check` works in a copy without `.git`.** CI re-runs a packet's checks in such
   a copy, so a check of `pocp rules check` passed locally and failed every re-run with "not
   inside a git repository". Without git it now checks the `.proof/` in the folder it runs in,

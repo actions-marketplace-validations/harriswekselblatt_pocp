@@ -1,6 +1,7 @@
 // What a project adopting POCP copies (examples/github, action.yml, status/action.yml) gives it
 // the same "pocp" status POCP itself runs: the verify job reports through which steps run, a
 // trusted reporter sets the status, and every approval label is removed on push.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

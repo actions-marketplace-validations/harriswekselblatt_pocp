@@ -9,6 +9,8 @@
 // clean merge of the base into the approved head ("Update branch"). Every fact comes from
 // GitHub's API, never from the pull request.
 
+import { gatherSticky, STICKY, stickyVerdict } from './sticky-approval.js';
+
 export const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
 // The first step of a verify run names the pull request and base it evaluated (runMarker).
 export const MARKER_PREFIX = 'pocp-run ';
@@ -110,6 +112,11 @@ export function labelFreshness(facts, label, sha) {
   if (facts.pr && !(facts.pr.labels || []).includes(label)) return refuse(false, `${label} is not on the pull request`);
   if (approvedByWriter(facts, label, sha)) return { ok: true, how: 'fresh' };
   if (carriedOver(facts, label).ok) return { ok: true, how: 'carried' };
+  // Bound to what was approved, not to a head (sticky-approval.js). A head whose evaluation has
+  // no records (an older workflow) is judged by the rules below, as before.
+  const sticky = stickyVerdict(facts, label, sha);
+  if (sticky.ok) return { ok: true, how: 'sticky', from: sticky.from };
+  if (sticky.applies) return refuse(sticky.stale, sticky.why);
   if (!facts.label_events_complete) return refuse(false, "GitHub's list of the pull request's events was incomplete");
   const last = lastApplied(facts, label);
   if (!last) return refuse(false, `GitHub doesn't say who applied ${label}`);
@@ -197,6 +204,7 @@ export async function freshnessFacts(gh, { repository, prNumber, sha, labels, wo
   const repo = `/repos/${repository}`;
   const pr = await gh.get(`${repo}/pulls/${prNumber}`);
   const facts = { pr: { number: pr.number, head_sha: pr.head?.sha, labels: (pr.labels || []).map((l) => l.name), author: pr.user?.login || null }, base_sha: pr.base?.sha || null, runs: [] };
+  const head = { headRef: pr.head?.ref || null, headRepo: pr.head?.repo?.full_name ?? null };
   const wf = await gh.get(`${repo}/actions/workflows/${encodeURIComponent(workflowPath.split('/').pop())}`);
   if (wf.path !== workflowPath) throw new Error(`the workflow ${workflowPath} was not found (GitHub has ${wf.path})`);
   const runs = await listAll(gh, `${repo}/actions/workflows/${wf.id}/runs?head_sha=${sha}&per_page=100`, 'workflow_runs', 5);
@@ -207,5 +215,8 @@ export async function freshnessFacts(gh, { repository, prNumber, sha, labels, wo
   Object.assign(facts, events);
   // Only a label that isn't fresh needs the merge's facts ("Update branch").
   if (labels.some((l) => CARRYABLE.includes(l) && !approvedByWriter(facts, l, sha))) facts.carry = await gatherCarry(gh, repo, sha, { id: wf.id, path: wf.path });
+  // And the head each sticky label was given for (sticky-approval.js).
+  const sticky = labels.filter((l) => STICKY[l] && !approvedByWriter(facts, l, sha));
+  if (sticky.length) facts.sticky = await gatherSticky(gh, repo, { number: pr.number, ...head, workflow: { id: wf.id, path: wf.path }, labels: sticky, labelEvents: facts.label_events });
   return facts;
 }

@@ -11,6 +11,7 @@ import { validateConfig } from './store.js';
 import { APPROVE_INCONCLUSIVE_LABEL, APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL } from './remedies.js';
 import { APPROVE_WORKFLOW_LABEL } from './status-report.js';
 import { billingCheck, disabledCheck } from './billing-workflows.js';
+import { versionChecks } from './upgrade.js';
 
 // Every approval label, and what a maintainer approves with it (for `gh label create`).
 export const APPROVAL_LABELS = Object.freeze({
@@ -218,6 +219,9 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
     const live = plan.required_checks.includes(STATUS_CHECK);
     if (outdated.length) add({ id: 'workflows-outdated', status: live ? 'warning' : 'problem', what: outdated.join('; '), why: live ? 'an approval label left on after a push passes verify; the reporter still refuses it, so the pocp status stays yellow' : 'with verify as the required check, an approval label left on after a push lets verify pass commits nobody reviewed', fix: 'regenerate with pocp init --github --force (it also removes pocp-labels.yml), then commit .github/workflows' });
   }
+
+  // The copies of POCP this repository uses (hooks, lockfile, workflow pins) agree: local files only.
+  for (const c of versionChecks(root, { local })) add(c);
 
   // 6. What the adoption pull request carries.
   const scope = adoptionScope(root, base || verifyBase(root, plan.branch), cfg);

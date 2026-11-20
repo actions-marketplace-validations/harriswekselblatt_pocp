@@ -281,6 +281,9 @@
               ],
               "plain": [
                 "Old tests that passed before now fail on the new code: the change makes the code do something different from what those tests checked, and the edited tests accept the new behaviour. Approve only if that change in behaviour is intended."
+              ],
+              "verdicts": [
+                "behavior-changed"
               ]
             }
           ],

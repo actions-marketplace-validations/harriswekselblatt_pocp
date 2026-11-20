@@ -1,6 +1,7 @@
 // A finished process that hasn't been reaped (a zombie) is not a running check. The runner's
 // watchdog is an orphan once the check exits, so only PID 1 can reap it: about 2 s late in
 // some Linux sandboxes, and never in a container without an init.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';

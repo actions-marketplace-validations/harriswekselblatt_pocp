@@ -28,6 +28,8 @@ npx pocp init --hooks --github
 2. **Commit.** If the hook blocks it, run `npx pocp fix --intent "<what the change does>"` and commit again. The commit gets a `Proof-Of-Change` trailer.
 3. **Check the setup** with `npx pocp doctor`, which prints the commands for anything missing.
 
+**Upgrading.** `npx pocp upgrade --dry-run` shows what a newer release would change; `npx pocp upgrade` bumps the dependency (or the global install), re-pins the GitHub workflows to the new release and says which approvals the pull request needs. POCP never checks for updates in the background: `pocp doctor` notes, from local files, when the hooks and CI run different releases, and only `pocp upgrade` asks the npm registry ([docs/REFERENCE.md](docs/REFERENCE.md#upgrading)).
+
 ## Where the checks run
 
 **GitHub CI** (`--github`, above). Run it once the GitHub repository exists, `origin` points at it and `gh` is logged in: `init` then writes the workflows, creates the approval labels and turns on the `pocp` status, which is green when verified, yellow while waiting for a maintainer's approval label and red on a real failure ([docs/STATUS.md](docs/STATUS.md)). Once the workflows are merged, `npx pocp ci required --apply` makes GitHub block merges until `pocp` is green. CI re-runs every check on a clean machine, and approvals are a maintainer's label. The trade: each pull request costs about one extra test run of Actions minutes, and on a free plan's private repository nothing blocks a merge.

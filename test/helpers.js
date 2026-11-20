@@ -3,6 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TEST_TMP } from './temp.js';
+
+export { TEST_TMP };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const BIN = path.join(here, '..', 'bin', 'pocp.js');
@@ -27,13 +30,9 @@ export const RUNNER_STEP_FILES = Object.freeze(Object.fromEntries(STEP_FILE_VARS
 // Tests behave the same locally and inside CI: no host, no GitHub job summary, outputs or annotations.
 for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_ACTIONS', ...STEP_FILE_VARS, 'GITHUB_REF', 'GITHUB_REPOSITORY', 'CI', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'CI_PIPELINE_ID', 'BUILDKITE_BUILD_ID']) delete process.env[k];
 
-// Temporary folders. Every test process gets one root folder and points TMPDIR at it, so
-// everything it (and every pocp it starts) puts in os.tmpdir() lands inside. A folder made
-// elsewhere with fs.mkdtempSync (e.g. under /tmp) is remembered too. All of it is removed when
-// the test file's process exits, so no test needs its own cleanup.
-const SUITE_PREFIX = 'pocp-suite-';
-export const TEST_TMP = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), SUITE_PREFIX)));
-process.env.TMPDIR = TEST_TMP;
+// Temporary folders: test/temp.js gives this process its own root folder (TEST_TMP, also TMPDIR)
+// and removes it, and every folder made with fs.mkdtempSync, on exit or interrupt.
+
 // The machine-wide check limit (src/machine-slots.js) is off in tests, and points into this
 // process's own folder if a test turns it on: the suite's many small pocp runs must never
 // queue behind real ones on this machine. Under pocp's own gate, the suite runs inside a check
@@ -42,36 +41,6 @@ process.env.TMPDIR = TEST_TMP;
 delete process.env.POCP_MACHINE_SLOT;
 process.env.POCP_MACHINE_CHECKS = 'off';
 process.env.POCP_MACHINE_DIR = path.join(TEST_TMP, 'machine-slots');
-const elsewhere = new Set();
-const realMkdtempSync = fs.mkdtempSync;
-fs.mkdtempSync = function mkdtempSync(...args) {
-  const dir = realMkdtempSync.apply(fs, args);
-  const full = path.resolve(typeof dir === 'string' ? dir : String(dir));
-  let real = full;
-  try { real = fs.realpathSync(full); } catch { /* keep as given */ }
-  if (real !== TEST_TMP && !real.startsWith(`${TEST_TMP}${path.sep}`)) elsewhere.add(full);
-  return dir;
-};
-
-function forceRemove(dir) {
-  try {
-    fs.rmSync(dir, { recursive: true, force: true });
-    return;
-  } catch { /* read-only folders inside: make them writable and retry */ }
-  const walk = (d) => {
-    try { fs.chmodSync(d, 0o755); } catch { /* ignore */ }
-    let ents = [];
-    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of ents) if (e.isDirectory() && !e.isSymbolicLink()) walk(path.join(d, e.name));
-  };
-  walk(dir);
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
-}
-
-process.on('exit', () => {
-  for (const d of elsewhere) forceRemove(d);
-  forceRemove(TEST_TMP);
-});
 
 // Repositories a test starts from, built once per test process and copied for each test that
 // asks for one: building a sample repo (git init, a spawned pocp init, a commit) took about

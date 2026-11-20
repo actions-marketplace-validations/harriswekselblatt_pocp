@@ -4,7 +4,7 @@ import * as g from '../git.js';
 import * as P from '../packets.js';
 import { POLICY_FILES, policyChange, policyLoosenings } from '../policy.js';
 import { evaluateTriggers, requirementsFor, ruleWarnings, validateRules } from '../rules.js';
-import { APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL, gateRemedies, laterApproval, pendingApprovals } from '../remedies.js';
+import { APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL, gateRemedies, laterApproval, pendingApprovals, pendingHold } from '../remedies.js';
 import { policyKeyWarnings } from '../schema.js';
 import { protectedChangeText } from './shared.js';
 import { validateConfig } from '../store.js';
@@ -141,7 +141,7 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
         result.warnings.push({ code: 'open_packet', detail: `packet ${e.packet.id} also covers these files and isn't proven for this code`, packet: e.packet.id });
       }
       for (const a of e.ev.awaiting_approval || []) {
-        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, packet: e.packet.id });
+        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, packet: e.packet.id, ...(a.status ? { verdict: a.status } : {}) });
       }
     }
     const blocked = result.uncovered.length > 0 || result.problems.length > 0;
@@ -155,6 +155,10 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
   function finishGate(result, source) {
     result.remedies = gateRemedies(result);
     result.pending_approvals = pendingApprovals(result);
+    // The same plain explanation the pocp status, the PR comment and pocp approvals give (hold.js),
+    // for agents (--json) to relay word for word. Only when something waits for a person.
+    const hold = pendingHold(result);
+    if (hold) result.hold = hold;
     try {
       store.appendLog?.('gate', {
         at: nowFn(),

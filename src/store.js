@@ -413,6 +413,7 @@ export function validateConfig(config) {
   if (!isStrArray(ci.required_checks)) problems.push('ci.required_checks must be an array of check names');
   for (const k of ['require_pull_request', 'enforce_admins']) if (typeof ci[k] !== 'boolean') problems.push(`ci.${k} must be true or false`);
   if (ci.require_up_to_date !== undefined && typeof ci.require_up_to_date !== 'boolean') problems.push('ci.require_up_to_date must be true or false');
+  if (ci.pr_comment !== undefined && typeof ci.pr_comment !== 'boolean') problems.push('ci.pr_comment must be true or false');
   if (ci.reporter_app_id != null && !(Number.isInteger(ci.reporter_app_id) && ci.reporter_app_id > 0)) problems.push('ci.reporter_app_id must be a GitHub App id (a positive whole number)');
   if (!['independent', 'any-writer'].includes(ci.workflow_approver)) problems.push('ci.workflow_approver must be "independent" or "any-writer"');
   if (!['github', 'local'].includes(ci.mode)) problems.push('ci.mode must be "github" (CI checks every pull request) or "local" (the git hooks only)');

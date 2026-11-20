@@ -65,6 +65,15 @@ export const COMMANDS = {
       badge: bool('print a README badge to paste (at a terminal, a first init asks instead, default no)'),
     },
   },
+  upgrade: {
+    summary: 'move this repository to a newer POCP release: the dependency, the workflow pins, the hooks',
+    usage: ['upgrade [--dry-run] [--to <version>] [--pocp-ref <tag|sha>]'],
+    flags: {
+      'dry-run': bool('show what would change, change nothing'),
+      to: str('version', 'upgrade to this release instead of the latest on npm (no registry lookup)'),
+      'pocp-ref': str('tag|sha', 'pin the workflows to this ref (a commit, say) instead of the release tag'),
+    },
+  },
   doctor: {
     summary: 'check an adoption: hooks, policy, Action access, labels, branch protection',
     usage: ['doctor [--base <rev>] [--offline] [--disable-billing-failed]'],
@@ -187,6 +196,7 @@ export const COMMANDS = {
       'accept-inconclusive': approval("a test change whose check didn't finish; =<sha>: only for that head"),
       'exit-detail': bool("exit 4 when only an approval is missing, 5 when something didn't finish"),
       'approval-file': str('path', "with --isolate: when only approvals are missing, write the labels to this file (for pocp.yml's approvable step); otherwise remove it"),
+      'record-file': str('path', 'with --isolate: write what an approval of this head binds to (held test files, and how this head compares with the head a sticky label was given for), for pocp.yml\'s record steps; otherwise remove it'),
       jobs: num('n', 'checks run at once (default: CPU cores - 1, at most 4)'),
       isolate: bool('run each check as a fresh unprivileged user (Linux, passwordless sudo); fail if that is not possible'),
       install: str('cmd', 'with --isolate: install dependencies at the head, isolated, before the checks'),
