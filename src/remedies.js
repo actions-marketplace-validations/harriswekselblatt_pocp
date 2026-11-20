@@ -170,7 +170,7 @@ export function pendingApprovals(r) {
     ? {
         code: 'test_change',
         what: w.detail,
-        why: r.local_mode ? 'the test-change check did not pass, so a person must read and accept the change before it merges.' : 'the test-change check did not pass, and in block mode only a maintainer can accept that.',
+        why: w.why || (r.local_mode ? 'the test-change check did not pass, so a person must read and accept the change before it merges.' : 'the test-change check did not pass, and in block mode only a maintainer can accept that.'),
         next: approvalStep(APPROVE_TESTS_LABEL, { local: r.local_mode }),
         by: 'person',
         ...(r.local_mode ? { who: LOCAL_WHO } : {}),
@@ -216,6 +216,8 @@ export function verifyRemedy(code, detail = '', finding = {}, { local = false } 
     case 'failed_proof':
       if (finding?.unfinished) return { why: UNFINISHED_PROOF.why, next: 're-run the job (or pocp fix and commit the new proof); if it still can\'t finish, fix the hang or raise timeout_ms', by: 'rerun' };
       return { why: 'a required check fails on this code.', next: 'fix the code (not the tests) and commit the fix with "pocp fix" then "git commit"', by: 'agent' };
+    case 'handoff_not_run':
+      return { why: 'the commit handed this check to CI (ci.defer_heavy), so nothing ran it on the author\'s machine; only verify\'s own re-run of it can pass it.', next: 'run verify with --rerun (the default CI recipe); a CI results file or a signature can\'t stand in for a handed-off check', by: 'agent' };
     case 'trailer_mismatch':
       return { why: 'the commit\'s code is not the code that was proven; this happens after a rebase or an edit after proving.', next: 'ask a maintainer how to update this branch; to bring in main, use git merge rather than rebase so proofs stay valid', by: 'person' };
     case 'uncovered':

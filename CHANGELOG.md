@@ -13,6 +13,20 @@ re-run verify as before.
 
 ### Added
 
+- **Heavy checks can be handed to CI at commit (`ci.defer_heavy`, opt-in, GitHub CI mode only).**
+  In a repository where CI's `verify --rerun` re-runs every check behind a required status,
+  `pocp fix` no longer has to run the full suite on the developer's machine first. Mark a rule
+  `"defer": "ci"` in `.proof/rules.json` and set `ci.defer_heavy: true` in `.proof/config.json`:
+  that check, and the test guard's check in block mode, are recorded as *handed to CI* instead
+  of run. A hand-off is never a proof: the trailer lists it apart from `proven=`
+  (`handed-to-ci=o2`), the packet stays `open`, and verify passes it only by re-running it
+  itself (not from `--ci-results` or a signature; `handoff_not_run` otherwise). Which checks may
+  be handed off comes from the base's and the change's policy together, so a change can't hand
+  off its own checks, and turning it on or marking a check is a loosening that needs
+  `pocp-approve-policy`. Local mode never hands off: the setting is refused there, and `pocp ci
+  off` removes it. `pocp fix --no-defer` (or `POCP_DEFER=off`) runs everything here. `pocp doctor`
+  reports when no required status makes a handed-off check block the merge. docs/THREAT-MODEL.md,
+  "Checks handed to CI", says why this keeps every guarantee about what merges.
 - **An opt-in README badge.** The first `pocp init` at a terminal asks once whether to show a
   `tests | POCP verified` badge (a plain shields.io badge linking to this repository). The
   default is no; a yes prints the markdown to paste, and no file is changed. Never asked in CI,

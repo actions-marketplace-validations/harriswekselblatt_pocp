@@ -17,7 +17,7 @@ A rule in `.proof/rules.json` says which files need which checks:
 
 A check is any command, such as `npm test`, `pytest`, `cargo test`, `go test ./...` or `make check`.
 
-Locally, a git hook blocks a commit that touches `src/billing/**` until a packet records that `node --test test/billing.test.js` passed on exactly the staged code. `pocp fix` runs the checks and writes the packet, and the commit gets a trailer that points to it:
+Locally, a git hook blocks a commit that touches `src/billing/**` until a packet records that `node --test test/billing.test.js` passed on exactly the staged code. `pocp fix` runs the checks and writes the packet, and the commit gets a trailer that points to it (a repository whose CI re-runs every check can opt to hand heavy ones to CI instead: below):
 
 ```
 Proof-Of-Change: p-2f007850 subject=sha256:2ad8c12023b7 policy=sha256:f21acbea749e proven=1/1 attested=0/0
@@ -31,6 +31,8 @@ In CI, `pocp verify origin/main..HEAD --require-coverage --rerun` (the base bran
 - judges the pull request by the base branch's rules, so the pull request can't remove or loosen a rule or add its own signing key;
 - when the pull request edits existing tests or test setup, runs the test check once, on the pull request's net change, so a weakening split across commits or placed in a merge commit is judged the same way. It has two modes (below);
 - fails with a named reason, and says when only a maintainer can resolve it, for example by approving an intended test change with a label. On GitHub, a separate trusted workflow turns that into one commit status, **`pocp`**: green when verified, yellow while it waits for a maintainer or a check didn't finish, red on a real failure ([docs/STATUS.md](STATUS.md)).
+
+**Heavy checks can wait for CI (opt-in).** Running the full suite at every commit and again in CI is the same work twice. A repository whose CI runs `verify --rerun` behind a required status can set `ci.defer_heavy` and mark heavy rules `"defer": "ci"`: `pocp fix` then records those checks as *handed to CI* instead of running them, the commit goes ahead, and its trailer says so (`handed-to-ci=o2`), apart from what was proven. Nothing about the merge changes: CI runs every handed-off check itself before the pull request can merge, and a handed-off check is never counted as proven anywhere. Turning it on is a policy loosening a maintainer approves, and local mode (no CI) never does it, because there the hooks are the only gate ([REFERENCE.md](REFERENCE.md#hand-heavy-checks-to-ci-cidefer_heavy), [THREAT-MODEL.md](THREAT-MODEL.md#checks-handed-to-ci)).
 
 ## The test check: fast and deep
 

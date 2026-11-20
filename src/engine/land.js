@@ -18,7 +18,7 @@ export function createLand({ root, store, emit, stagedForCoverage, activePackets
       if (p.state === 'draft' || !staged.some((f) => P.covers(p, f))) continue;
       const ev = await evaluate(p, subject);
       if (!ev.ok) continue;
-      lines.push(formatTrailer({ id: p.id, subject, policy: p.policy, ...ev.counts, runnable: ev.counts.runnable, manual: ev.counts.manual }));
+      lines.push(formatTrailer({ id: p.id, subject, policy: p.policy, ...ev.counts, runnable: ev.counts.runnable, manual: ev.counts.manual, handed: ev.handed_to_ci || [] }));
     }
     return lines;
   }

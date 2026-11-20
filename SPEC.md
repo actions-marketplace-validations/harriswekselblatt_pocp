@@ -491,6 +491,16 @@ is listed under `awaiting_approval`); verify's block-mode check above alone deci
 deferral is not an approval and is ignored outside block mode; a guard that never ran is
 still unproven.
 
+**Handing heavy checks to CI (`ci.defer_heavy`).** In GitHub CI mode, with `ci.defer_heavy`
+on and a rule marking a check `"defer": "ci"` (in the policy at HEAD and in the staged one;
+in CI, the base's and the commit's), `pocp prove` records a deferral with `to: "ci-run"`
+instead of running a check that has no result for the subject; in block mode the guard
+obligation is handed off the same way. Such a check is listed under `handed_to_ci`, not
+`unproven`, so the gate passes; it is never counted as proven, and the packet stays `open`.
+`verify` accepts it only when it re-runs that check itself and the run passes (a CI result
+or a signature never stands in: `handoff_not_run`); without a re-run, or under a policy that
+doesn't allow it, it is `unproven`. Local mode (`ci.mode: "local"`) never hands off.
+
 **Cost.** The check runs only when guarded files change, and never twice for the same code.
 Its "new tests on the new code" baseline is the packet's own passing proof of the same check
 for this subject when there is one. `prove` keeps results in `.proof/runs/guard-cache/`,
@@ -623,6 +633,9 @@ A `prepare-commit-msg` hook (or `pocp land`) adds a trailer for each proven pack
 ```
 Proof-Of-Change: p-7f3a9c21 subject=sha256:4be1c0de9a11 policy=sha256:c71a03be55e2 proven=2/2 attested=1/1
 ```
+
+A packet with checks handed to CI adds them as a field of their own, apart from the proven
+count: `proven=1/2 attested=0/0 handed-to-ci=o2`.
 
 **Landed is derived, never written.** A packet is `landed` when a commit reachable from HEAD
 carries its trailer and that trailer's subject matches the commit. POCP computes this from git

@@ -52,6 +52,7 @@ export function evalLine(ev) {
   const parts = [`proven ${ev.counts.proven}/${ev.counts.runnable}`];
   if (ev.counts.manual) parts.push(`attested ${ev.counts.attested}/${ev.counts.manual}`);
   if (ev.failed.length) parts.push(`failed: ${ev.failed.join(', ')}`);
+  if (ev.handed_to_ci?.length) parts.push(`handed to CI, not run here: ${ev.handed_to_ci.join(', ')}`);
   if (ev.missing_required.length) parts.push(`missing required: ${ev.missing_required.map((m) => m.id).join(', ')}`);
   return parts.join(' · ');
 }
@@ -59,8 +60,10 @@ export function evalLine(ev) {
 export function formatGate(r) {
   const lines = [];
   if (r.decision === 'pass') {
-    const proven = r.packets.filter((p) => p.evaluation.ok).length;
-    lines.push(r.required_files.length ? `pocp: gate passed (${proven} packet(s) proven for ${shortDigest(r.subject)})` : `pocp: gate passed (no packet needed for ${r.files.length} file(s))`);
+    // A packet with checks handed to CI isn't proven: it is said apart.
+    const handed = r.packets.filter((p) => p.evaluation.ok && p.evaluation.handed_to_ci?.length).length;
+    const proven = r.packets.filter((p) => p.evaluation.ok).length - handed;
+    lines.push(r.required_files.length ? `pocp: gate passed (${proven} packet(s) proven${handed ? `, ${handed} with checks handed to CI` : ''} for ${shortDigest(r.subject)})` : `pocp: gate passed (no packet needed for ${r.files.length} file(s))`);
     for (const w of (r.warnings || []).filter((x) => !x.code?.startsWith('awaiting_'))) lines.push(`  note: ${w.detail}`);
     if (r.pending_approvals?.length) {
       lines.push(r.local_mode ? '  needs your approval before you merge (local mode):' : '  CI requires human approval for this commit:');

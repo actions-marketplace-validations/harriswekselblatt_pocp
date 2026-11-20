@@ -262,6 +262,15 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
   else if (wf && wf.jobs.length && !wf.jobs.some((j) => plan.required_checks.includes(j)) && !(plan.required_checks.includes('pocp') && workflows.some((w) => w.reporter))) add({ id: 'required-checks', status: 'problem', what: `ci.required_checks does not include the verify job (${wf.jobs.join(', ')})`, why: 'a pull request that deletes the POCP step would still merge', fix: `add "${wf.jobs[0]}" to ci.required_checks in .proof/config.json, then pocp ci required --apply` });
   else add({ id: 'required-checks', status: 'ok', what: `ci.required_checks: ${plan.required_checks.join(', ')}` });
 
+  // 7b. Checks handed to CI at commit (ci.defer_heavy): sound only where a required status makes
+  // CI's re-run block the merge. Local mode never hands off (the config is refused there).
+  const deferred = cfg.ci?.defer_heavy === true;
+  const deferredIds = deferred ? (engine.rules().requirements || []).filter((r) => r?.defer === 'ci').map((r) => r.id) : [];
+  const requiredStatus = plan.required_checks.includes(STATUS_CHECK) || Boolean(wf && wf.jobs.some((j) => plan.required_checks.includes(j)));
+  if (deferred && local) add({ id: 'defer-heavy', status: 'problem', what: 'ci.defer_heavy is on in local mode', why: 'in local mode the git hooks are the only gate, so no check may be handed to CI; POCP refuses this config', fix: 'remove ci.defer_heavy from .proof/config.json' });
+  else if (deferred && !requiredStatus) add({ id: 'defer-heavy', status: 'problem', what: `ci.defer_heavy hands ${deferredIds.length ? deferredIds.join(', ') : 'checks'} to CI, but ci.required_checks names neither "pocp" nor the verify job`, why: 'a check handed to CI is enforced only by a required status: without one it runs nowhere that blocks a merge', fix: 'add "pocp" to ci.required_checks in .proof/config.json, then pocp ci required --apply' });
+  else if (deferred) add({ id: 'defer-heavy', status: deferredIds.length ? 'ok' : 'warning', what: deferredIds.length ? `ci.defer_heavy: ${deferredIds.join(', ')} (and the test guard, in block mode) are handed to CI at commit; CI's verify --rerun runs them before merge` : 'ci.defer_heavy is on, but no rule marks a check "defer": "ci"', ...(deferredIds.length ? {} : { why: 'only the test guard (block mode) is handed to CI', fix: 'mark heavy checks in .proof/rules.json with "defer": "ci"' }) });
+
   // 8. GitHub: Action access, labels, branch protection.
   const remote = g.git(root, ['remote', 'get-url', 'origin'], { allowFail: true }) || '';
   if (offline || !/github\.com[:/]/.test(remote)) {
@@ -322,6 +331,12 @@ export async function runDoctor(engine, { base, offline = false } = {}) {
       } else add({ id: 'labels', status: 'skipped', what: `could not list labels (${labels.message})` });
 
       const prot = gh(root, ['api', `repos/${repo}/branches/${plan.branch}/protection`]);
+      // ci.defer_heavy: GitHub must actually require the status, or a handed-off check enforces nothing.
+      if (deferred) {
+        const contexts = new Set([...(prot.json?.required_status_checks?.contexts || []), ...(prot.json?.required_status_checks?.checks || []).map((c) => c.context)]);
+        const enforced = prot.ok && prot.json && (contexts.has(STATUS_CHECK) || Boolean(wf && wf.jobs.some((j) => contexts.has(j))));
+        if (!enforced) add({ id: 'defer-heavy-protection', status: prot.ok || /not protected/i.test(prot.message || '') ? 'problem' : 'warning', what: `${repo}@${plan.branch} does not require the "${STATUS_CHECK}" status${prot.ok || /not protected/i.test(prot.message || '') ? '' : ` (could not read branch protection: ${prot.message})`}`, why: 'ci.defer_heavy hands checks to CI at commit; without a required status, a pull request whose handed-off checks fail can still merge', fix: 'pocp ci required --apply' });
+      }
       if (prot.ok && prot.json) {
         // Everything the plan asks of the branch, as `pocp ci required --check` reports it:
         // required checks, pull requests only, admins included, branches up to date.

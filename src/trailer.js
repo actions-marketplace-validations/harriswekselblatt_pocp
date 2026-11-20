@@ -2,8 +2,12 @@ import { shortDigest } from './hash.js';
 
 export const TRAILER_KEY = 'Proof-Of-Change';
 
-export function formatTrailer({ id, subject, policy, proven, runnable, attested, manual }) {
-  return `${id} subject=${shortDigest(subject)} policy=${shortDigest(policy)} proven=${proven}/${runnable} attested=${attested}/${manual}`;
+/**
+ * `handed` lists checks handed to CI (ci.defer_heavy): not run on this code, so not counted in
+ * `proven`; the trailer says so in a field of its own, `handed-to-ci=o3,o4`.
+ */
+export function formatTrailer({ id, subject, policy, proven, runnable, attested, manual, handed = [] }) {
+  return `${id} subject=${shortDigest(subject)} policy=${shortDigest(policy)} proven=${proven}/${runnable} attested=${attested}/${manual}${handed.length ? ` handed-to-ci=${handed.join(',')}` : ''}`;
 }
 
 export function parseTrailerValue(value) {
@@ -19,6 +23,7 @@ export function parseTrailerValue(value) {
       out[k] = { done: a, total: b };
     }
   }
+  if (typeof out['handed-to-ci'] === 'string') out.handed_to_ci = out['handed-to-ci'].split(',').filter(Boolean);
   return out;
 }
 

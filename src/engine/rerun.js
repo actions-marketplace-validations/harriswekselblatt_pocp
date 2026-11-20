@@ -17,7 +17,7 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
    * by an allowed signer. A check with a passing CI result recorded by `pocp ci-run` for
    * this exact subject and command is skipped. Returns failures as [{ packet, problem }].
    */
-  async function rerunAt(commit, packets, { mode = 'all', ciResults = [], subject, signed = new Map(), links, into = [], memo = createRunMemo() }) {
+  async function rerunAt(commit, packets, { mode = 'all', ciResults = [], subject, signed = new Map(), links, into = [], memo = createRunMemo(), mustRun = new Set() }) {
     const subj = subject || g.subjectHashRev(root, commit);
     // The latest record for a command decides: a later failure overrides an earlier pass.
     const ran = new Set(latestCiResults(ciResults.filter((r) => r.subject === subj)).filter((r) => r.passed).map(ciKey));
@@ -33,8 +33,14 @@ export function createRerun({ root, runObligation, flagProblem, runnerIdentity }
     const todo = [];
     const entries = []; // in job order, whatever order the runs finish in
     for (const [d, job] of jobs) {
-      // A CI result can't stand in for a check that also matches output (`expect`).
-      if (ran.has(`${job.ob.cwd || ''}\0${job.ob.run}`) && !job.ob.expect) entries.push({ run: job.ob.run, digest: d, packets: job.packets, status: 'skipped: passing CI result for this code', evidence: 'ci-result' });
+      // A check handed to CI (mustRun) has no proof at all: only a run by this verify counts for
+      // it, never a CI results file (which the change's own tests can write) or a signature.
+      if (mustRun.has(d)) {
+        job.at = entries.length;
+        entries.push(null);
+        todo.push(job);
+        // A CI result can't stand in for a check that also matches output (`expect`).
+      } else if (ran.has(`${job.ob.cwd || ''}\0${job.ob.run}`) && !job.ob.expect) entries.push({ run: job.ob.run, digest: d, packets: job.packets, status: 'skipped: passing CI result for this code', evidence: 'ci-result' });
       else if (mode === 'unsigned' && signed.get(d) === 'valid') entries.push({ run: job.ob.run, digest: d, packets: job.packets, status: 'skipped: signed by an allowed signer', evidence: 'signed' });
       else {
         job.at = entries.length;

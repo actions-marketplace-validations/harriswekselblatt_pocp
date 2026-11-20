@@ -43,10 +43,10 @@ export function combinePolicy({ base, head, accepted = false }) {
 }
 
 // Finding codes that block exactly when their parent code does, so a fail_on list written before
-// they existed can't turn them into warnings: a test change whose check didn't finish, a
+// they existed can't turn them into warnings: a check handed to CI that this verify didn't run, a test change whose check didn't finish, a
 // required CI check whose re-run didn't finish, a proof that didn't finish, a signature
 // ssh-keygen couldn't check.
-const BLOCKS_WITH = Object.freeze({ test_inconclusive: 'test_change', ci_unfinished: 'ci_failed', unfinished_proof: 'failed_proof', signature_unavailable: 'invalid_signature' });
+const BLOCKS_WITH = Object.freeze({ handoff_not_run: 'unproven', test_inconclusive: 'test_change', ci_unfinished: 'ci_failed', unfinished_proof: 'failed_proof', signature_unavailable: 'invalid_signature' });
 
 /** Which findings fail verify under a config: its verify.fail_on, and an invalid policy always. */
 export function blockingRule(config) {

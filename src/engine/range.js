@@ -11,6 +11,8 @@ import { requirementCommands } from '../test-setup.js';
 import { allSettled } from '../guard-check.js';
 import { policyChange, policyFilesTouched } from '../policy.js';
 import { createRunMemo, PocpError, protectedApprovalFiles, protectedChangeText } from './shared.js';
+import { handoffNotRunText, handoffsNotRun } from '../handoff.js';
+import { obligationDigest } from '../obligations.js';
 
 /**
  * Range verification for one engine. It gets the single-commit verify and the policy, rerun and
@@ -97,9 +99,10 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
     // The tip's re-run of every packet's checks. It runs side by side with the test guard (the
     // one-commit range's own, or the net change's); a check both need runs once (memo.share).
     let tipRerun = null;
-    const startTipRerun = (packets, signed) => {
+    const startTipRerun = (packets, signed, handed = []) => {
       const into = [];
-      const done = rerunAt(tip, packets, { mode: rerun, ciResults: options.ciResults || [], signed, links: pol.cfgAt.snapshot.link, into, memo });
+      const mustRun = new Set(handed.map((h) => obligationDigest(h.ob)));
+      const done = rerunAt(tip, packets, { mode: rerun, ciResults: options.ciResults || [], signed, links: pol.cfgAt.snapshot.link, into, memo, mustRun });
       tipRerun = { into, done: done.then((failures) => ({ failures }), (err) => ({ err })) };
     };
     // Exceptions come from the code being merged, and count only with an approval for it.
@@ -110,8 +113,9 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
         // from the merge base, new code from the tip): that check alone decides, so running it
         // again on each commit only multiplied the cost (the slowest part of verify).
         // A one-commit range's tip is that commit: its re-run starts alongside the commit's guard.
-        const alongside = single && rerun ? ({ packets, signed }) => startTipRerun(tipPackets([{ packetData: packets }], null), signed) : null;
-        results.push(await verify(c, { ...options, uncoveredExceptions, policyFrom, rerun: false, guardRerun: synth ? false : (options.rerun || false), testGuardOnNet: Boolean(synth), rulesGuardFallback: single, checkRequiredCiHere: false, ownLoosenings: Boolean(netBase) && c !== tip, guardSeed: single ? seed : undefined, memo, alongside }));
+        const alongside = single && rerun ? ({ packets, signed, handed }) => startTipRerun(tipPackets([{ packetData: packets, handedToCi: handed }], null), signed, handed) : null;
+        // handoffRerun: checks a commit handed to CI are run once, at the tip, like every check.
+        results.push(await verify(c, { ...options, uncoveredExceptions, policyFrom, rerun: false, handoffRerun: Boolean(options.rerun), guardRerun: synth ? false : (options.rerun || false), testGuardOnNet: Boolean(synth), rulesGuardFallback: single, checkRequiredCiHere: false, ownLoosenings: Boolean(netBase) && c !== tip, guardSeed: single ? seed : undefined, memo, alongside }));
       }
     } catch (err) {
       if (tipRerun) await tipRerun.done; // never leave a re-run running in folders being removed
@@ -130,7 +134,9 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
 
     const headResult = tip === lastCommit ? results[results.length - 1] : null;
     // A signature covers the commit it was made on; when the tip is a merge, none covers the tip.
-    if (rerun && !tipRerun) startTipRerun(tipPackets(results, net), headResult ? headResult.signedDigests : new Map());
+    // Checks any commit in the range handed to CI: each is run at the tip, by this verify.
+    const handed = results.flatMap((r) => r.handedToCi || []);
+    if (rerun && !tipRerun) startTipRerun(tipPackets(results, net), headResult ? headResult.signedDigests : new Map(), handed);
     // Started after the tip's re-run, as they ran before: a check they share with it is its run.
     const netGuard = net ? startNetGuard(net, { options, memo, seed }) : null;
     // Required CI results belong to the tip's code: the last commit's result, or the net change's when the tip is a merge.
@@ -153,6 +159,13 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
         else result.warnings = [...(result.warnings || []), ...failures.map((f) => f.problem)];
       }
       if (headResult) applyRerunEvidence(headResult.packets, headResult.packetData || [], result.reruns);
+      // A check handed to CI passes only on this verify's own run of it at the tip.
+      for (const h of handoffsNotRun(handed, tipRerun.into)) {
+        const blocking = pol.blocks('handoff_not_run');
+        result.findings.push({ code: 'handoff_not_run', detail: handoffNotRunText(h), blocking, packet: h.packet });
+        if (blocking) result.ok = false;
+        else result.warnings = [...(result.warnings || []), handoffNotRunText(h)];
+      }
     }
     if (net) {
       result.net = await judgeNetChange(net, { results, merges, lastCommit, policyBase, options: { ...options, uncoveredExceptions }, seed, guardRes: netGuardRes });
@@ -182,6 +195,17 @@ export function createRange({ opts, root, emit, hostName, hostRequirements, host
       for (const p of r.packetData || []) if (!seenIds.has(p.id)) { seenIds.add(p.id); packets.push(p); }
     }
     if (net?.obligations.length) packets.push({ id: 'net-change', obligations: net.obligations });
+    // Checks handed to CI by any commit in the range, run at the tip even when the tip's copy of
+    // their packet no longer lists them.
+    const handed = [];
+    const seenDigest = new Set();
+    for (const r of results) {
+      for (const h of r.handedToCi || []) {
+        const d = obligationDigest(h.ob);
+        if (!seenDigest.has(d)) { seenDigest.add(d); handed.push(h.ob); }
+      }
+    }
+    if (handed.length) packets.push({ id: 'handed-to-ci', obligations: handed });
     return packets;
   }
 

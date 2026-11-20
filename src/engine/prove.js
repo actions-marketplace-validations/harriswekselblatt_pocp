@@ -8,9 +8,10 @@ import { isGuard, isRunnable, obligationDigest } from '../obligations.js';
 import { ranAndFailed, runOutcome } from '../run-result.js';
 import { signProof, verifyProofSignature } from '../sign.js';
 import { keepMachineSlot } from '../machine-slots.js';
+import { canHandOff } from '../handoff.js';
 
 /** Proving for one engine, given the check runner, guard and signing helpers it uses. */
-export function createProve({ store, activePackets, cleanProblems, config, emit, evaluate, guardCacheKey, guardCheckFor, guardInputs, loadPacket, localSigners, mutexAsync, nowFn, readGuardCache, requiredFor, root, runObligation, runnerIdentity, savePacket, signingSetup, stagedForCoverage, stagedGuard, writeGuardCache }) {
+export function createProve({ store, activePackets, actor = 'unknown', cleanProblems, config, emit, evaluate, guardCacheKey, guardCheckFor, guardInputs, handoff = () => null, loadPacket, localSigners, mutexAsync, nowFn, readGuardCache, requiredFor, root, runObligation, runnerIdentity, savePacket, signingSetup, stagedForCoverage, stagedGuard, writeGuardCache }) {
   /** Passing proofs for this subject from any packet, keyed by obligation digest (for reuse). */
   function reusableProofs(subject, exceptId) {
     const out = new Map();
@@ -82,11 +83,24 @@ export function createProve({ store, activePackets, cleanProblems, config, emit,
     const results = [];
     let ran = 0;
     const guardRuns = new Map(); // guard digest + checks -> result (one check per prove)
+    // ci.defer_heavy: checks the policy lets CI run (src/handoff.js). Judged once per prove.
+    const handoffPol = handoff();
+    // Record that a check was handed to CI instead of run. Only when nothing is known about it
+    // on this code: a local result, passed or failed, always stands.
+    function handOff(packet, ob, pr) {
+      if (!canHandOff(ob, handoffPol) || (isGuard(ob) && stagedGuard().mode !== 'block') || P.currentProof(packet, ob, subject)) return false;
+      if (!P.currentDeferral(packet, ob, subject, 'ci-run')) {
+        P.recordHandoff(packet, ob.id, { by: actor, subject, now: nowFn(), reason: isGuard(ob) ? 'ci.defer_heavy: the test guard (block mode) runs in CI' : 'ci.defer_heavy: the rule marks this check "defer": "ci"' });
+      }
+      pr.runs.push({ obligation: ob.id, handed_to_ci: true, ...(isGuard(ob) ? { guard: 'handed to CI' } : { run: ob.run }) });
+      return true;
+    }
 
     // The test guard's mechanical check. It is deterministic for a subject, so a recorded
     // result (pass or fail) stands until the code changes or --force. One that didn't finish
     // (a timeout, a kill, a failed start) says nothing, so it is always run again.
     async function proveGuard(packet, ob, pr) {
+      if (handOff(packet, ob, pr)) return;
       const existing = P.currentProof(packet, ob, subject);
       if (existing && !force && !existing.guard?.unfinished) {
         pr.runs.push({ obligation: ob.id, skipped: `already checked for this subject (${existing.guard?.verdict || (existing.passed ? 'passed' : 'failed')})`, guard: existing.guard?.verdict });
@@ -200,6 +214,8 @@ export function createProve({ store, activePackets, cleanProblems, config, emit,
             pr.runs.push({ obligation: ob.id, passed: true, reused_from: prior.from, duration_ms: 0 });
             continue;
           }
+          // Not run here when the policy hands it to CI (a passing proof above is reused first).
+          if (!existing && !cache.has(d) && handOff(packet, ob, pr)) continue;
           let res = cache.get(d);
           if (!res) {
             emit('proof.started', { id: packet.id, obligation: ob.id });

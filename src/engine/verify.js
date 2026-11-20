@@ -16,6 +16,7 @@ import { parseTrailers } from '../trailer.js';
 import { requirementCommands } from '../test-setup.js';
 import { verifyProofSignature } from '../sign.js';
 import { withFacts } from '../finding.js';
+import { canHandOff, handoffNotRunText, handoffsNotRun, HANDOFF_TO } from '../handoff.js';
 
 /** Single-commit verify for one engine, given the policy readers and re-runs it uses. */
 export function createVerify({ opts, root, emit, hostName, hostRequirements, hostTriggers, guardCheckFor, effectiveFiles, readJsonAt, readRulesAt, policyInForce, notEnrolled, readUncoveredExceptions, applyUncoveredExceptions, acceptedText, changedCiFiles, rerunAt, rerunRequiredCi, checkRequiredCi, applyRerunEvidence }) {
@@ -45,12 +46,15 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
    * obligation again in a clean checkout of that commit. With `requireCoverage`,
    * also require that files the commit changed are covered when the rules say so.
    */
-  async function verify(rev = 'HEAD', { rerun = false, guardRerun, requireCoverage = false, useHost = Boolean(opts.policy), ciResults, policyFrom, acceptPolicyChange = false, acceptTestChange = false, acceptInconclusive = false, acceptUncovered = false, uncoveredExceptions, testGuardOnNet = false, rulesGuardFallback = false, allowedSignersFile, checkRequiredCiHere = true, ownLoosenings = false, guardSeed, jobs, memo = createRunMemo({ jobs }), alongside = null } = {}) {
+  async function verify(rev = 'HEAD', { rerun = false, guardRerun, requireCoverage = false, useHost = Boolean(opts.policy), ciResults, policyFrom, acceptPolicyChange = false, acceptTestChange = false, acceptInconclusive = false, acceptUncovered = false, uncoveredExceptions, testGuardOnNet = false, rulesGuardFallback = false, allowedSignersFile, checkRequiredCiHere = true, ownLoosenings = false, guardSeed, jobs, memo = createRunMemo({ jobs }), alongside = null, handoffRerun } = {}) {
     if (rerun === true) rerun = 'all';
     // The test guard's check compares a commit with its parent, so in a range it re-runs per
     // commit (verifyRange passes guardRerun) rather than once at the head.
     if (guardRerun === undefined) guardRerun = rerun;
     if (guardRerun === true) guardRerun = 'all';
+    // Will this verify (or, in a range, its re-run at the tip) re-run the checks handed to CI?
+    // Only then can a hand-off stand in for a proof until that run.
+    if (handoffRerun === undefined) handoffRerun = Boolean(rerun);
     const commit = g.resolveRev(root, rev);
     const subject = g.subjectHashRev(root, commit);
     const message = g.commitMessage(root, commit);
@@ -60,7 +64,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     // Policy comes from the base (default: the commit's parent), so a change can't loosen
     // the rules it is judged by. Stricter rules from the commit still apply.
     const baseRev = policyFrom === undefined ? g.parentOf(root, commit) : policyFrom ? g.resolveRev(root, policyFrom) : null;
-    const { policyProblems, weakened, accepted, rulesAt, cfgAt, allowedSigners, failOn, blocks, keyWarnings } = policyInForce(commit, baseRev, { acceptPolicyChange, allowedSignersFile });
+    const { policyProblems, weakened, accepted, rulesAt, cfgAt, allowedSigners, failOn, blocks, keyWarnings, handoff } = policyInForce(commit, baseRev, { acceptPolicyChange, allowedSignersFile });
     const commitFinding = findingSink(out, blocks);
     // In a range, a commit answers only for the loosenings it made. One its parent already had
     // (the base tightened after the branch began, or an earlier commit loosened and answers for
@@ -88,6 +92,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     const guardJobs = []; // one per packet that carries the guard obligation
     out.policy = { from: baseRev, weakened, accepted, problems: policyProblems, fail_on: [...failOn] };
     const sigOf = new Map(); // obligation digest -> "valid" when a current proof is validly signed
+    const handedToCi = []; // [{ packet, ob }]: runnable checks handed to CI that this verify must run
 
     if (trailerList.length === 0) out.notes.push('commit has no Proof-Of-Change trailers');
     const packetsAt = [];
@@ -152,7 +157,27 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
       // (an independent pass or a maintainer's approval), not by a sign-off in the packet.
       const ev = P.deferGuardApproval(packet, P.evaluatePacket(packet, { subject, required: [...(useHost ? req.merged : req.repoOnly), ...guardReqs] }), commitGuard.mode);
       for (const m of ev.missing_required) flag('missing_required', `required obligation missing: ${m.id}`);
-      for (const id of ev.unproven) flag('unproven', `no proof for ${id} against this commit`);
+      // A check handed to CI (ci.defer_heavy) stands in for a proof only while this verify will
+      // re-run it, and only under the base's and this commit's policy together. Otherwise it is
+      // what it is: no proof.
+      // The guard only when the mode judging this commit is block: an approved loosening to attest
+      // or warn mode makes checkTestGuard stop deciding, so the guard would pass with nothing run.
+      const handed = new Set(P.applyHandoff(packet, ev, (ob) => canHandOff(ob, handoff) && (!isGuard(ob) || commitGuard.mode === 'block')).handed_to_ci || []);
+      const handedIds = [];
+      for (const id of ev.unproven) {
+        const ob = packet.obligations.find((o) => o.id === id);
+        const record = ob && P.currentDeferral(packet, ob, subject, HANDOFF_TO);
+        if (record && handed.has(id) && handoffRerun) {
+          handedIds.push(id);
+          if (isRunnable(ob)) handedToCi.push({ packet: packet.id, ob });
+          continue;
+        }
+        flag('unproven', !record
+          ? `no proof for ${id} against this commit`
+          : handed.has(id)
+            ? `no proof for ${id} against this commit: it was handed to CI, and only verify --rerun runs it`
+            : `no proof for ${id} against this commit: it was handed to CI, but the policy that judges this commit doesn't allow that (ci.defer_heavy in GitHub CI mode, and a "defer": "ci" rule for the check, on the base and in the commit)`);
+      }
       // A proof that didn't finish says nothing about the code: reported as such (it blocks
       // exactly when failed_proof does), never as a failure of the code.
       for (const id of ev.failed) {
@@ -185,6 +210,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
           const signed = proof && verifyProofSignature(proof, allowedSigners) === 'valid';
           if (proof?.passed) evidence[ob.id] = signed ? `mechanical:signed:${proof.signature.principal}` : 'mechanical:local';
           else if (a) evidence[ob.id] = `attested:${a.by}`;
+          else if (handedIds.includes(ob.id)) evidence[ob.id] = 'handed-to-ci';
           if (!proof?.passed && a) {
             const why = proof?.guard?.summary || 'the mechanical check was not run';
             out.warnings.push(`${packet.id}: test change accepted on a sign-off by ${a.by}, not a mechanical check (${why})`);
@@ -194,6 +220,8 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
           }
         } else if (isRunnable(ob)) {
           const proof = P.currentProof(packet, ob, subject);
+          // Not run here; a re-run by this verify upgrades it to "rerun" (applyRerunEvidence).
+          if (!proof && handedIds.includes(ob.id)) evidence[ob.id] = 'handed-to-ci';
           if (!proof) continue;
           evidence[ob.id] = verifyProofSignature(proof, allowedSigners) === 'valid' ? `signed:${proof.signature.principal}` : 'local';
         } else {
@@ -246,7 +274,8 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     // side (up to the memo's limit), in this order, so a check two of them need runs once: the
     // later one waits for it (memo.share). Their results are then judged in the same order as
     // when they ran one after another, so the findings and their order don't change.
-    const rerunning = rerun && packetsAt.length ? rerunAt(commit, packetsAt, { mode: rerun, ciResults: ciResults || [], subject, signed: sigOf, links: cfgAt.snapshot.link, into: out.reruns, memo }) : null;
+    const mustRun = new Set(handedToCi.map((h) => obligationDigest(h.ob)));
+    const rerunning = rerun && packetsAt.length ? rerunAt(commit, packetsAt, { mode: rerun, ciResults: ciResults || [], subject, signed: sigOf, links: cfgAt.snapshot.link, into: out.reruns, memo, mustRun }) : null;
     const guardOnNet = Boolean(testGuardOnNet && commitGuard.files.length);
     // A one-commit range: test files no packet's guard covers are checked from the base
     // branch's rules, as a range of several commits checks them on its net change.
@@ -260,7 +289,7 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     const guardRunning = guardOnNet ? null : startTestGuard({ commit, out, commitGuard, guardJobs, guardRerun, cfgAt, signed: sigOf, memo, ciResults: ciResults || [], seed: guardSeed, rulesRequired });
     // verifyRange's re-run of a one-commit range's tip, started once this commit's guard has
     // claimed its runs (so the guard's baseline is the one run and the re-run reuses it).
-    if (alongside) alongside({ packets: packetsAt, signed: sigOf });
+    if (alongside) alongside({ packets: packetsAt, signed: sigOf, handed: handedToCi });
     // Required CI results (verify.require_ci). Fails closed: with no results supplied at all,
     // every required command counts as missing. A passing re-run by this verify also counts.
     const requiredCiReruns = [];
@@ -287,6 +316,10 @@ export function createVerify({ opts, root, emit, hostName, hostRequirements, hos
     out.reruns.push(...requiredCiReruns);
     if (checkRequiredCiHere) checkRequiredCi(cfgAt, ciResults, subject, commitFinding, out.reruns, out.notes);
     applyRerunEvidence(out.packets, packetsAt, out.reruns);
+    // Every check handed to CI must have been run by this verify (in a range, at the tip: verifyRange checks).
+    if (rerun) for (const h of handoffsNotRun(handedToCi, out.reruns)) commitFinding('handoff_not_run', handoffNotRunText(h), { packet: h.packet });
+    if (handedToCi.length) out.handed_to_ci = handedToCi.map((h) => ({ packet: h.packet, obligation: h.ob.id, run: h.ob.run }));
+    Object.defineProperty(out, 'handedToCi', { value: handedToCi, enumerable: false });
     Object.defineProperty(out, 'packetData', { value: packetsAt, enumerable: false });
     Object.defineProperty(out, 'addFinding', { value: commitFinding, enumerable: false });
     Object.defineProperty(out, 'signedDigests', { value: sigOf, enumerable: false });

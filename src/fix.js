@@ -95,12 +95,17 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
         actions.push({ action: 'note', detail: 'the working folder differs from what is staged, so a snapshot of exactly the staged code was proven' });
       }
       for (const id of toProve) proved.add(`${id}\0${gate.subject}`);
-      const ran = r.packets.flatMap((p) => p.runs.filter((x) => !x.skipped && !x.cached && !x.reused_from));
+      const ran = r.packets.flatMap((p) => p.runs.filter((x) => !x.skipped && !x.cached && !x.reused_from && !x.handed_to_ci));
       actions.push({
         action: 'prove',
         packets: toProve,
         mode: usedMode || r.mode,
         ran: ran.length,
+        // ci.defer_heavy: checks recorded as handed to CI instead of run here (never proven here).
+        ...(() => {
+          const handed = r.packets.flatMap((p) => p.runs.filter((x) => x.handed_to_ci).map((x) => ({ packet: p.id, obligation: x.obligation, ...(x.run ? { run: x.run } : {}) })));
+          return handed.length ? { handed_to_ci: handed } : {};
+        })(),
         checks: r.packets.reduce((n, p) => n + p.runs.length, 0),
         ms: ran.reduce((a, x) => a + (x.duration_ms || 0), 0),
         failed: r.packets.flatMap((p) => p.runs.filter((x) => x.passed === false || x.failed_before).map((x) => ({
@@ -248,7 +253,9 @@ export function formatFix(r) {
   const head = r.ok
     ? r.needs_person.length
       ? `pocp fix: committable now; ${awaiting}`
-      : 'pocp fix: ready to commit (git commit)'
+      : r.actions.some((a) => a.handed_to_ci?.length) || r.gate?.handed_to_ci?.length
+        ? 'pocp fix: ready to commit (git commit); some checks were handed to CI, which runs them before merge'
+        : 'pocp fix: ready to commit (git commit)'
     : r.needs_person.length && !r.needs_agent.length ? 'pocp fix: needs a person' : 'pocp fix: needs you';
   lines.push(head);
   for (const a of r.actions) {
@@ -257,7 +264,9 @@ export function formatFix(r) {
     else if (a.action === 'sync') lines.push(`  did: added the checks the rules now require to ${a.packets.join(', ')}`);
     else if (a.action === 'prove') {
       const extra = `${a.ran ? `, ${Math.round(a.ms / 1000)}s` : ''}${a.mode === 'snapshot' ? ', snapshot of the staged code' : ''}`;
-      if (!a.failed.length) lines.push(`  did: proved ${a.packets.join(', ')} (${a.ran} check(s) run${a.ran ? '' : '; nothing new to run'}${extra})`);
+      const toCi = a.handed_to_ci || [];
+      if (!a.failed.length && toCi.length) lines.push(`  did: checked ${a.packets.join(', ')} (${a.ran} check(s) run here${extra})`);
+      else if (!a.failed.length) lines.push(`  did: proved ${a.packets.join(', ')} (${a.ran} check(s) run${a.ran ? '' : '; nothing new to run'}${extra})`);
       else {
         // Say what passed and what didn't: a failed check is never counted as proved.
         const handed = a.handed || [];
@@ -266,10 +275,21 @@ export function formatFix(r) {
         const total = Math.max(a.checks ?? a.ran, a.failed.length);
         lines.push(`  did: proved ${total - a.failed.length} of ${total} check(s) for ${a.packets.join(', ')}${extra ? ` (${extra.slice(2)})` : ''}${handed.length ? `; ${handed.join(', ')} ${local ? 'left for your approval' : 'handed to CI'}` : ''}${failing.length ? `; ${failing.join(', ')} failed` : ''}${unfinished.length ? `; ${unfinished.join(', ')} didn't finish` : ''}`);
       }
+      if (toCi.length) {
+        const n = toCi.length;
+        const what = toCi.map((x) => `${x.packet} ${x.obligation}${x.run ? ` (${x.run})` : ' (the test guard)'}`).join(', ');
+        lines.push(`  did: handed ${what} to CI instead of running ${n > 1 ? 'them' : 'it'} here (ci.defer_heavy). Not proven yet: CI's verify --rerun runs ${n > 1 ? 'them' : 'it'} before merge, and the required pocp status holds the merge until ${n > 1 ? 'they pass' : 'it passes'}. To run ${n > 1 ? 'them' : 'it'} here instead: pocp fix --no-defer`);
+      }
     }
     else if (a.action === 'defer') lines.push(local ? `  did: left ${a.packet} ${a.obligations.join(', ')} for your approval: in local mode you approve the test change before merging, through verify` : `  did: handed ${a.packet} ${a.obligations.join(', ')} to CI: a maintainer approves the test change there (no sign-off from you)`);
     else if (a.action === 'stage') lines.push(`  did: staged ${a.packets.map((id) => `.proof/packets/${id}.json`).join(', ')}`);
     else if (a.action === 'note') lines.push(`  note: ${a.detail}`);
+  }
+  // Checks an earlier fix handed to CI for this same code: still not proven, still said.
+  const shown = new Set(r.actions.flatMap((a) => (a.handed_to_ci || []).map((x) => `${x.packet}\0${x.obligation}`)));
+  for (const h of r.gate?.handed_to_ci || []) {
+    const left = h.obligations.filter((o) => !shown.has(`${h.packet}\0${o}`));
+    if (left.length) lines.push(`  note: ${h.packet} ${left.join(', ')} handed to CI, not run here (ci.defer_heavy). Not proven yet: CI's verify --rerun runs ${left.length > 1 ? 'them' : 'it'} before merge. To run ${left.length > 1 ? 'them' : 'it'} here instead: pocp fix --no-defer`);
   }
   for (const x of r.needs_agent) {
     lines.push(`  needs you: ${x.what}`);

@@ -23,7 +23,7 @@ export const RULES_SCHEMA = Object.freeze({
     globs: listOf({ id: LEAF, glob: LEAF, require_packet: LEAF }),
   },
   count_exempt: LEAF,
-  requirements: listOf({ id: LEAF, glob: LEAF, globs: LEAF, obligation: OBLIGATION, source: LEAF }),
+  requirements: listOf({ id: LEAF, glob: LEAF, globs: LEAF, obligation: OBLIGATION, source: LEAF, defer: LEAF }),
 });
 
 export const CONFIG_SCHEMA = Object.freeze({
@@ -36,7 +36,7 @@ export const CONFIG_SCHEMA = Object.freeze({
   sign: { key: LEAF, principal: LEAF },
   guard: { tests: LEAF, test_globs: LEAF, runner_globs: LEAF, extra_test_globs: LEAF, extra_runner_globs: LEAF, mutants: LEAF, seed: LEAF },
   verify: { fail_on: LEAF, require_ci: LEAF },
-  ci: { files: LEAF, files_except: LEAF, branch: LEAF, required_checks: LEAF, require_pull_request: LEAF, enforce_admins: LEAF, require_up_to_date: LEAF, workflow_approver: LEAF, reporter_app_id: LEAF, mode: LEAF },
+  ci: { files: LEAF, files_except: LEAF, branch: LEAF, required_checks: LEAF, require_pull_request: LEAF, enforce_admins: LEAF, require_up_to_date: LEAF, workflow_approver: LEAF, reporter_app_id: LEAF, mode: LEAF, defer_heavy: LEAF },
   eval: { exclude: LEAF },
 });
 
