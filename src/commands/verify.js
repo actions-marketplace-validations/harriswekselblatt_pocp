@@ -11,6 +11,7 @@ import { errWrite, evidenceSummary, list, out, writeGithubSummary } from '../cli
 import { failedOutputLines } from '../output-tail.js';
 import { git, resolveRev, showFile } from '../git.js';
 import { approvalLines, approvalPlan, APPROVE_WORKFLOW_LABEL, explainWorkflow, sortLabels } from '../explain.js';
+import { gravestVerdict, HOLD_VERDICTS } from '../hold.js';
 import { withDefaults } from '../store.js';
 import { changedWorkflowFiles, FAST_PATH_LABELS, githubClient, workflowFiles } from '../status-report.js';
 import { readCiResults } from '../ci-results.js';
@@ -41,6 +42,15 @@ export function approvalFileLabels({ result, flags, secure, waitingOnly }) {
   // written it), so a wait that rests on it is never approvable.
   const ok = approvableWait({ waitingOnly, outcome: result.approval?.outcome, secure, labels: result.labels_needed, trusting: [].concat(flags['ci-results'] ?? []).length > 0 });
   return ok ? result.labels_needed : null;
+}
+
+/**
+ * The approval file's text: the labels on the first line (all an older workflow reads), then
+ * `key=value` lines the workflow's `mark` step accepts only in their exact form. `verdict`: the
+ * test guard's gravest typed verdict (hold.js HOLD_VERDICTS), for the words on the pocp status.
+ */
+export function approvalFileBody({ labels, verdict = null }) {
+  return `${labels.join(',')}\n${HOLD_VERDICTS.includes(verdict) ? `verdict=${verdict}\n` : ''}`;
 }
 
 export function approvableWait({ waitingOnly, outcome, secure, labels, trusting = false }) {
@@ -283,7 +293,7 @@ export async function run({ engine, flags, isolated, json, rest }) {
     try {
       fs.rmSync(file, { force: true });
       const labels = approvalFileLabels({ result, flags, secure: isolation.secure, waitingOnly });
-      if (labels) fs.writeFileSync(file, `${labels.join(',')}\n`, { mode: 0o600, flag: 'wx' });
+      if (labels) fs.writeFileSync(file, approvalFileBody({ labels, verdict: gravestVerdict((result.approval?.needs || []).flatMap((n) => n.verdicts || [])) }), { mode: 0o600, flag: 'wx' });
     } catch (err) {
       try { fs.rmSync(file, { force: true }); } catch { /* the mark step finds no valid file */ }
       errWrite(`pocp: couldn't write the approval file (${err.message}); an approval will re-run verify\n`);

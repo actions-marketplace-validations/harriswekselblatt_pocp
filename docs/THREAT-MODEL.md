@@ -232,7 +232,9 @@ only (plus `pocp-approve-workflow`, which the reporter checks itself). verify
 (`--approval-file`) then writes the labels to a file in the runner's temp folder, which an
 isolated check can't reach: the isolation probe fails verify if it could, and verify never
 falls back to running unisolated. A separate step (`mark`, or the action's "Approval file"
-step) reads the file and sets the `approvable` and `needs-*` steps from it. It prints nothing
+step) reads the file and sets the `approvable` and `needs-*` steps from it, and, since 1.5, one
+`verdict-*` step from a `verdict=` line holding one of four fixed words (the test guard's typed
+verdict, which only chooses the words on the status and the reporter's comment). It prints nothing
 of the pull request's, so nothing printed during verify can set its outputs. (A step's outputs
 can also be set by a line the step prints, `::set-output`, and verify prints what a pull request
 wrote, file names included, which may hold newlines. So the verify step's own outputs never
