@@ -10,6 +10,7 @@ import { isRunnable, obligationDigest } from '../obligations.js';
 import { runGuardCheck } from '../guard-check.js';
 import { randomId, sha256Hex } from '../hash.js';
 import { buildEnv } from '../runner.js';
+import { SLOT_ENV, acquireMachineSlot } from '../machine-slots.js';
 import { matchAny } from '../glob.js';
 
 const LOCKFILES = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'Cargo.lock', 'poetry.lock', 'go.sum', 'Gemfile.lock'];
@@ -180,22 +181,34 @@ export function createRun({ root, store, VERSION, config, runner }) {
     const cfg = config();
     const runId = randomId('r');
     const logFile = store.kind === 'fs' ? path.join(store.runsDir(), `${logName || runId}.log`) : null;
-    const env = buildEnv({ mode: cfg.run.env, allow: cfg.run.env_allow, extra: { POCP: '1', POCP_OBLIGATION: ob.id }, keepCiFiles });
-    const res = await runner.run(ob.run, {
-      cwd: ob.cwd ? path.join(dir, ob.cwd) : dir,
-      // The snapshot the check runs in, and the variables run.env_allow passes: the isolated
-      // runner copies the snapshot for each check and gives it only those variables.
-      root: dir,
-      envAllow: cfg.run.env_allow || [],
-      env,
-      timeoutMs: ob.timeout_ms || cfg.run.timeout_ms,
-      killGraceMs: cfg.run.kill_grace_ms,
-      logFile,
-      logCapBytes: cfg.run.log_cap_bytes,
-    });
+    // SLOT_ENV: a pocp started inside this check doesn't wait for a machine-wide slot (this
+    // process holds one for it); waiting for one would deadlock with a limit of 1.
+    const env = buildEnv({ mode: cfg.run.env, allow: cfg.run.env_allow, extra: { POCP: '1', POCP_OBLIGATION: ob.id, [SLOT_ENV]: '1' }, keepCiFiles });
+    // The machine-wide limit on pocp processes running checks at once (src/machine-slots.js).
+    // The wait comes before the runner starts its clock, so it never counts toward the
+    // check's time limit or its duration_ms.
+    const slot = await acquireMachineSlot({ label: ob.run, repo: path.basename(root) });
+    const startedAt = new Date().toISOString();
+    let res;
+    try {
+      res = await runner.run(ob.run, {
+        cwd: ob.cwd ? path.join(dir, ob.cwd) : dir,
+        // The snapshot the check runs in, and the variables run.env_allow passes: the isolated
+        // runner copies the snapshot for each check and gives it only those variables.
+        root: dir,
+        envAllow: cfg.run.env_allow || [],
+        env,
+        timeoutMs: ob.timeout_ms || cfg.run.timeout_ms,
+        killGraceMs: cfg.run.kill_grace_ms,
+        logFile,
+        logCapBytes: cfg.run.log_cap_bytes,
+      });
+    } finally {
+      slot.release();
+    }
     let passed = res.exit === 0 && !res.timed_out && !res.error;
     if (passed && ob.expect) passed = new RegExp(ob.expect, 'm').test(res.output || '');
-    return { ...res, passed, run_id: runId };
+    return { ...res, passed, run_id: runId, started_at: startedAt, queued_ms: slot.queued_ms };
   }
 
   return { guardInputs, guardCacheKey, readGuardCache, writeGuardCache, guardCheckFor, runnerIdentity, signingSetup, localSigners, flagProblem, cleanProblems, runObligation };

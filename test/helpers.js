@@ -28,6 +28,14 @@ for (const k of ['POCP_HOST', 'POCP_SIGN_KEY', 'POCP_SIGN_PRINCIPAL', 'GITHUB_AC
 const SUITE_PREFIX = 'pocp-suite-';
 export const TEST_TMP = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), SUITE_PREFIX)));
 process.env.TMPDIR = TEST_TMP;
+// The machine-wide check limit (src/machine-slots.js) is off in tests, and points into this
+// process's own folder if a test turns it on: the suite's many small pocp runs must never
+// queue behind real ones on this machine. Under pocp's own gate, the suite runs inside a check
+// (POCP_MACHINE_SLOT is set), so it is dropped here: the tests that turn the limit on must see
+// what they would under plain npm test. test/machine-slots.test.js covers the limit itself.
+delete process.env.POCP_MACHINE_SLOT;
+process.env.POCP_MACHINE_CHECKS = 'off';
+process.env.POCP_MACHINE_DIR = path.join(TEST_TMP, 'machine-slots');
 const elsewhere = new Set();
 const realMkdtempSync = fs.mkdtempSync;
 fs.mkdtempSync = function mkdtempSync(...args) {

@@ -60,7 +60,7 @@ Rules for a part:
 | `guard.js`, `guard-check.js`, `test-setup.js`, `mutants.js` | The test guard: which changes are test changes, and the mechanical check (old tests on new code, planted mutants) |
 | `records.js`, `errors.js` | Shapes of records read back; one base error and the exit-code table |
 | `git.js`, `store.js`, `workspace.js` | Git access, the `.proof/` store, snapshots and checkouts |
-| `runner.js`, `isolate.js`, `run-result.js`, `output-tail.js`, `exit.js` | Running checks, isolated runs, how a run ended, cleanup |
+| `runner.js`, `isolate.js`, `run-result.js`, `output-tail.js`, `exit.js`, `machine-slots.js` | Running checks, isolated runs, how a run ended, cleanup, the machine-wide limit on checks at once |
 | `sign.js`, `hash.js`, `trailer.js`, `glob.js` | Signatures, digests, commit trailers, globs |
 | `status-report.js`, `approvals.js`, `ci-results.js`, `ci-github.js` | The trusted CI reporter, approval labels, recorded CI results, GitHub setup |
 | `init.js`, `doctor.js`, `fix.js`, `history.js`, `metrics.js`, `host.js` | Setup, health checks, `pocp fix`, history replay, metrics, host policy modules |
