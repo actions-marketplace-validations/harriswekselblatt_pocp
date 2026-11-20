@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 (2026-11-20)
 
 Approving a pull request no longer costs a second verify run. Nothing POCP checks changed: the
 same checks run, with the same rules, and the reporter still decides the status alone.
