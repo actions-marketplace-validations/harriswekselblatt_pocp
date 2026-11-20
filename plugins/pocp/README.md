@@ -9,7 +9,7 @@ This plugin connects Claude Code to POCP.
 ## What it does
 
 - **Sets POCP up.** Run `/pocp:setup` in any git repository. Claude finds your test command, asks whether checks should run in GitHub CI or only on your machine, installs POCP, writes a first rule and runs `pocp doctor`. It asks before committing, pushing or changing GitHub settings.
-- **Keeps Claude working with POCP, not around it.** In a repository that uses POCP (one with `.proof/rules.json`), a hook refuses the commands that skip it: `git commit --no-verify` or a `core.hooksPath` change, a force-push over proven commits, and approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`). Each refusal tells Claude what to do instead.
+- **Keeps Claude working with POCP, not around it.** In a repository that uses POCP (one with `.proof/rules.json`), a hook refuses the commands that skip it: `git commit --no-verify` or a `core.hooksPath` change, a force-push over proven commits, approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`), and switching checks off on GitHub without a pull request (`pocp ci off`, `pocp init --local`, `gh workflow disable`, `--disable-billing-failed`). Each refusal tells Claude what to do instead.
 - **Teaches the workflow.** A skill shows Claude how to open a packet, prove a change with `pocp fix`, and when to hand a decision to you.
 
 In a repository without POCP, the hook does nothing. The plugin reads and sends nothing over the network. The hook is one short script, [scripts/guard.mjs](scripts/guard.mjs), that reads the command Claude is about to run and checks for `.proof/rules.json`.

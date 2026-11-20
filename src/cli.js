@@ -139,7 +139,9 @@ Checking
                                      --apply sets them as GitHub branch protection via gh,
                                      never loosening an existing protection
   ci off | ci on                     local mode and back: disable (enable) POCP's workflows on GitHub
-                                     and set (remove) ci.mode "local" in .proof/config.json
+                                     and set (remove) ci.mode "local" in .proof/config.json; ci off also
+                                     offers to disable other workflows failing for billing
+                                     (asks first; --disable-billing-failed acts without asking)
   ci-run [--results <file>] [--dir <folder>] -- <command…>
                                      CI: run a command on HEAD and record a result bound to its code;
                                      exits with the command's exit code (default file .proof/runs/ci-results.jsonl)

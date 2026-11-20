@@ -44,6 +44,15 @@ const DENIED = [
   'pocp verify main..HEAD --rerun --accept-policy-change abc123',
   'gh pr merge 12 --admin',
   'npx pocp hooks uninstall',
+  'pocp ci off',
+  'npx pocp ci off --json',
+  'node bin/pocp.js ci off --disable-billing-failed',
+  'pocp doctor --disable-billing-failed',
+  'npx pocp init --hooks --local',
+  'gh workflow disable test.yml',
+  'gh workflow disable -R o/r "CI"',
+  'gh api -X PUT repos/o/r/actions/workflows/123/disable',
+  'gh api --method PUT "repos/o/r/actions/workflows/test.yml/disable"',
 ];
 
 const ALLOWED = [
@@ -58,6 +67,14 @@ const ALLOWED = [
   'pocp fix --intent "add a note"',
   'gh pr merge 12 --merge --auto',
   'npm test',
+  'pocp ci on',
+  'pocp ci required --apply',
+  'pocp doctor',
+  'gh workflow enable test.yml',
+  'gh workflow list --all',
+  'pocp init --hooks --github',
+  'git commit -m "docs: when to run pocp ci off and gh workflow disable"',
+  'gh api repos/o/r/actions/workflows',
 ];
 
 test('in a repository that uses POCP, the guard refuses commands that go around it, and says what to do instead', () => {

@@ -21,20 +21,9 @@
         "{tests}"
       ],
       "source": "rule:test-suite"
-    },
-    {
-      "id": "o2",
-      "kind": "guard",
-      "files": [
-        "test/upgrade.test.js"
-      ],
-      "mutants": 0,
-      "seed": 1,
-      "text": "Existing tests or test setup changed (test/upgrade.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
-      "source": "guard:tests"
     }
   ],
-  "state": "open",
+  "state": "proven",
   "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
   "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
   "opened_at": "2026-11-20T11:04:35.338Z",
@@ -190,6 +179,30 @@
         },
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:05:38.751Z",
+      "duration_ms": 411892,
+      "stdout_sha256": "5c9d2c46b3cac29dab34ad0e3bb633fad2f578e937cfc2a4d0851399516f66e6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-0486e8c1",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
     }
   ],
   "attestations": [],
@@ -220,6 +233,20 @@
       "obligation": "o2",
       "by": "harriswekselblatt",
       "subject": "sha256:7aab1f826d051da66caf1019e739f74a28f231ef0af144d5ef29ba675d749a65"
+    },
+    {
+      "at": "2026-11-20T18:05:38.566Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    },
+    {
+      "at": "2026-11-20T18:12:30.746Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280"
     }
   ],
   "deferrals": [

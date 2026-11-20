@@ -50,21 +50,19 @@
     },
     {
       "id": "o4",
-      "kind": "guard",
-      "files": [
-        "test/sticky-approval-git.test.js",
-        "test/sticky-approval-verify.test.js",
-        "test/sticky-approval.test.js"
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
       ],
-      "mutants": 0,
-      "seed": 1,
-      "text": "Existing tests or test setup changed (test/sticky-approval-git.test.js, test/sticky-approval-verify.test.js, test/sticky-approval.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
-      "source": "guard:tests"
+      "source": "rule:test-suite"
     }
   ],
-  "state": "open",
-  "policy": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
-  "policy_repo": "sha256:e6581e6fa1a9c0a664064a66fbe6f4c49999652f6059b0557f6860d0f46ce2c3",
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
   "opened_at": "2026-11-20T04:41:42.808Z",
   "opened_by": "harriswekselblatt",
   "proofs": [
@@ -310,6 +308,102 @@
         },
         "checks_from": "rules"
       }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:5967a946f0ddf4c6e5ad3399fafadaae5c77757660b74776bcfe85ec167570ea",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/unit.test.js test/unit-more.test.js test/git.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:12:30.763Z",
+      "duration_ms": 2178,
+      "stdout_sha256": "451f379ac8bbd52e4ca5c46829eedb2e63cdc4c84df93c59097c0ef8a8295f34",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-5595f7ca",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:e59d33e941b1aa74e5a0136c30340922f53ef1a078123d86e9b0d6ab371792fe",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/engine.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:12:33.002Z",
+      "duration_ms": 34685,
+      "stdout_sha256": "17a8b142d9c8fce6d47e54db6cc400eadd4f30ba22f13a1a167d79bd5788e619",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-9fa72c28",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o3",
+      "obligation_digest": "sha256:833c3f8956df8546b3bad916f2ee81c237a97edf32649a3063d08a8bd748bcc5",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "npm test --silent",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:13:07.759Z",
+      "duration_ms": 377070,
+      "stdout_sha256": "018a4eb63e4b64e25f3dce2b2cee3711461cf2a3c72c91f7aa382c0a4a5f9c2f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-112dc95a",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o4",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:05:38.751Z",
+      "duration_ms": 411892,
+      "stdout_sha256": "5c9d2c46b3cac29dab34ad0e3bb633fad2f578e937cfc2a4d0851399516f66e6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-0486e8c1",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
     }
   ],
   "attestations": [],
@@ -342,6 +436,28 @@
       "obligation": "o4",
       "by": "harriswekselblatt",
       "subject": "sha256:89d6aa6331ef5cc9d65e0755378860c2e1804e0430c94e8731c83824c93c9a92"
+    },
+    {
+      "at": "2026-11-20T18:05:38.517Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o4"
+      ]
+    },
+    {
+      "at": "2026-11-20T18:05:38.517Z",
+      "event": "requirements_synced",
+      "added": [
+        "o4"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T18:19:25.114Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:332dcd58288a11c971c7f19c8218e3ed2f4d5d1dae6d756af9e516ef18c07280"
     }
   ],
   "deferrals": [
