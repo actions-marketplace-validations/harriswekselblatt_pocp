@@ -5,6 +5,7 @@ import { withFacts } from './finding.js';
 import { POLICY_FILES } from './policy.js';
 import { PocpBaseError } from './errors.js';
 import { isWaitingText, STATUS_CONTEXT, TEXT } from './status-report.js';
+import { gravestVerdict, HOLD_VERDICTS, holdExplanation, holdReason, terminalSafe } from './hold.js';
 
 // `pocp approvals`: every open pull request whose POCP verify fails only because it waits for
 // a maintainer's label, in one list, and a deliberate way for that maintainer to give each one.
@@ -156,14 +157,24 @@ export function prStatus(repo, pr) {
     if (!s.only) return { ...base, state: 'blocked', needs: [] };
     const have = new Set((pr.labels || []).map((l) => l.name));
     const files = pr.files || [];
-    const needs = s.needs.map((n) => ({
-      ...n,
-      given: have.has(n.label),
-      named: n.files,
-      // What the label approves: the PR's own changes to the files the finding named.
-      files: files.filter((f) => n.files.includes(f.path)).map((f) => ({ path: f.path, additions: f.additions, deletions: f.deletions })),
-    }));
-    return { ...base, state: needs.every((n) => n.given) ? 'approved' : 'pending', running: running.has(run.name), needs };
+    const needs = s.needs.map((n) => {
+      // The guard's typed verdict (decision.js), only one of the known four: it picks the words,
+      // never the state. An older verify sends none, and the sentence then says it isn't known.
+      const verdicts = [...new Set((Array.isArray(n.verdicts) ? n.verdicts : []).filter((v) => HOLD_VERDICTS.includes(v)))];
+      return {
+        ...n,
+        given: have.has(n.label),
+        named: n.files,
+        // What the label approves: the PR's own changes to the files the finding named.
+        files: files.filter((f) => n.files.includes(f.path)).map((f) => ({ path: f.path, additions: f.additions, deletions: f.deletions })),
+        verdicts,
+      };
+    });
+    const state = needs.every((n) => n.given) ? 'approved' : 'pending';
+    // Why, in the words the pocp status and the pull request's comment use (hold.js), for a person
+    // or an agent to relay word for word.
+    const hold = holdExplanation(needs.filter((n) => !n.given).map((n) => ({ label: n.label, verdicts: n.verdicts, files: n.files.map((f) => f.path) })), { number: pr.number, repository: repo });
+    return { ...base, state, running: running.has(run.name), needs, ...(hold ? { hold } : {}) };
   }
   // verify can pass with a label the reporter (docs/STATUS.md) won't count for this head: one
   // applied without write access, before the head's first run, or kept over a merge it can't
@@ -174,7 +185,7 @@ export function prStatus(repo, pr) {
   if (st?.state !== 'pending' || st.description !== TEXT.approvalUnverified || !again.length) return null;
   const kind = (l) => Object.keys(LABEL_FOR).find((k) => LABEL_FOR[k] === l);
   const needs = again.map((label) => ({ label, kind: kind(label), reasons: [`the "${STATUS_CONTEXT}" status: ${st.description}`], files: [], named: [], given: false, reapply: true }));
-  return { ...about(repo, pr), check: STATUS_CONTEXT, check_url: st.target_url || null, inferred: false, state: 'pending', running: false, needs };
+  return { ...about(repo, pr), check: STATUS_CONTEXT, check_url: st.target_url || null, inferred: false, state: 'pending', running: false, needs, hold: holdExplanation(needs.map((n) => n.label), { number: pr.number, repository: repo }) };
 }
 
 /** The reporter's pocp status on a commit (docs/STATUS.md), or null. */
@@ -257,12 +268,14 @@ export async function approvePr({ ref, repo, label, interactive, ask, say }) {
   // them. The answer covers exactly what was listed: each label is still recorded and checked
   // on its own, and anything verify reports later needs its own approval.
   say('');
-  say(`${r}#${number}  ${pr.title}`);
-  say(`  by ${pr.author?.login || 'unknown'} · head ${pr.headRefOid.slice(0, 12)} · ${pr.url}`);
+  say(`${r}#${number}  ${terminalSafe(pr.title)}`);
+  say(`  by ${terminalSafe(pr.author?.login || 'unknown')} · head ${pr.headRefOid.slice(0, 12)} · ${terminalSafe(pr.url)}`);
   for (const n of todo) {
     say('');
     say(`  ${n.label} approves ${n.kind === 'tests' ? 'a change to existing tests or test setup' : n.kind === 'inconclusive' ? "a test change whose check didn't finish" : 'a change to the POCP policy or CI that judges every later change'}:`);
-    for (const reason of n.reasons) say(`    ${reason}`);
+    const why = holdReason(n.label, { verdict: gravestVerdict(n.verdicts) });
+    if (why) say(`    ${why}`);
+    for (const reason of n.reasons) say(`    ${terminalSafe(reason, 600)}`);
     const d = diffFor(r, number, n.named);
     say(d.whole ? '  the whole diff (the files involved could not be told apart):' : '  the diff being approved:');
     say(d.text.split('\n').map((l) => `    ${l}`).join('\n'));
@@ -295,24 +308,28 @@ export function formatApprovals(r) {
   const approved = r.items.filter((i) => i.state === 'approved');
   const blocked = r.items.filter((i) => i.state === 'blocked');
   const lines = [`pocp approvals: ${pending.length} pull request(s) waiting for an approval in ${r.repos.length} repositor${r.repos.length === 1 ? 'y' : 'ies'}`];
+  // Titles, authors, reasons and paths come from the pull request (and the run it controls):
+  // printed through terminalSafe, so no escape sequence or line break of theirs reaches the terminal.
+  const t = terminalSafe;
   for (const i of pending) {
-    lines.push('', `  ${i.repo}#${i.number}  ${i.title}${i.draft ? '  (draft)' : ''}`);
-    lines.push(`    by ${i.author || 'unknown'} · ${i.url}`);
+    lines.push('', `  ${i.repo}#${i.number}  ${t(i.title)}${i.draft ? '  (draft)' : ''}`);
+    lines.push(`    by ${t(i.author || 'unknown')} · ${t(i.url)}`);
     for (const n of i.needs.filter((x) => !x.given)) {
-      lines.push(`    needs ${n.label}: ${n.kind === 'tests' ? 'existing tests or test setup changed' : 'POCP policy or CI changed'}`);
-      for (const reason of n.reasons) lines.push(`      ${reason}`);
-      for (const f of n.files) lines.push(`      ${f.path}  +${f.additions ?? '?'} -${f.deletions ?? '?'}`);
+      const why = i.hold?.items.find((it) => it.label === n.label)?.reason || holdReason(n.label) || (n.kind === 'tests' ? 'existing tests or test setup changed' : 'POCP policy or CI changed');
+      lines.push(`    needs ${n.label}: ${why}`);
+      for (const reason of n.reasons) lines.push(`      ${t(reason, 600)}`);
+      for (const f of n.files) lines.push(`      ${t(f.path)}  +${f.additions ?? '?'} -${f.deletions ?? '?'}`);
     }
     if (i.inferred) lines.push('    (read from an older verify\'s messages; open the check if this looks wrong)');
-    lines.push(`    to approve: pocp approvals --approve ${i.repo}#${i.number}`);
+    lines.push(`    to approve: pocp approvals --approve ${i.repo}#${i.number}${i.hold?.command ? ` (or: ${i.hold.command})` : ''}`);
   }
   if (approved.length) {
     lines.push('', '  approved, waiting for verify to run again:');
-    for (const i of approved) lines.push(`    ${i.repo}#${i.number}  ${i.title}${i.running ? '  (running)' : ''}`);
+    for (const i of approved) lines.push(`    ${i.repo}#${i.number}  ${t(i.title)}${i.running ? '  (running)' : ''}`);
   }
   if (blocked.length) {
     lines.push('', '  failing for more than an approval (a label will not fix these):');
-    for (const i of blocked) lines.push(`    ${i.repo}#${i.number}  ${i.title}  ${i.check_url || i.url}`);
+    for (const i of blocked) lines.push(`    ${i.repo}#${i.number}  ${t(i.title)}  ${t(i.check_url || i.url)}`);
   }
   if (pending.length) lines.push('', 'Each approval is yours to give: --approve shows the change and asks you to confirm. An agent must not run it.');
   return lines.join('\n');

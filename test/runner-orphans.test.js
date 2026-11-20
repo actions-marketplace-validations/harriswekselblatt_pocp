@@ -1,5 +1,6 @@
 // A check must never outlive the pocp process that started it, however pocp goes away,
 // and the runner must never hand back a result while part of the check's group still runs.
+import './temp.js'; // this process's temporary folders: one root, removed on exit or interrupt
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';

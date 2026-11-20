@@ -3,6 +3,7 @@
 // no remedy or detail text can change the outcome.
 import { factsOf } from './finding.js';
 import { explainFinding } from './explain.js';
+import { HOLD_VERDICTS } from './hold.js';
 import { APPROVE_INCONCLUSIVE_LABEL, APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL } from './remedies.js';
 
 /** The label a maintainer adds for each kind of approval. */
@@ -35,8 +36,9 @@ export function resolutionOf(finding) {
 
 /**
  * Summarize blocking findings and re-run failures.
- * Returns { only, needs: [{ label, kind, reasons, files, plain }], outcome, unfinished_reruns }.
+ * Returns { only, needs: [{ label, kind, reasons, files, plain, verdicts? }], outcome, unfinished_reruns }.
  * `plain`: what the label approves, in words for a maintainer who doesn't read code.
+ * `verdicts`: the test guard's typed verdicts behind a test approval, when it recorded one.
  * The outcome follows one precedence: 'failed' when anything needs a fix (or nothing explains
  * the failure), else 'inconclusive' when anything didn't finish or needs an inconclusive
  * approval, else 'waiting' for the listed approvals. An approval never hides a failure, and an
@@ -63,6 +65,10 @@ export function summarizeFindings(findings = [], rerunFailures = []) {
     const plain = explainFinding(f);
     if (plain && !n.plain.includes(plain)) n.plain.push(plain);
     for (const file of r.files) if (!n.files.includes(file)) n.files.push(file);
+    // What the test guard found (guard-check.js), typed: it picks the maintainer's words
+    // (hold.js), never the decision. Only the four verdicts a person is asked about.
+    const verdict = factsOf(f).guard?.verdict;
+    if (HOLD_VERDICTS.includes(verdict) && !(n.verdicts || []).includes(verdict)) n.verdicts = [...(n.verdicts || []), verdict];
     needs.set(label, n);
   }
   const only = !needsFix && needs.size > 0 && unfinishedReruns === 0;

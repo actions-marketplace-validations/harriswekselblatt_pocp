@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { onCleanup } from './exit.js';
+import { ownedPrefix, sweepProductTemp } from './temp-sweep.js';
 import { blobBuffer, checkoutIndexTo, checkoutRevTo, indexEntries, isProofPath } from './git.js';
 
 // Where dependency folders (snapshot.link) are linked from: the repository, or, under
@@ -57,8 +58,14 @@ export function removeDir(dir) {
   live.delete(dir);
 }
 
-// Temporary folders still in use; removed on exit or interrupt if not cleaned up first.
+// Temporary folders still in use; removed on exit or interrupt if not cleaned up first. Their
+// names record this process (src/temp-sweep.js), so if it is killed with SIGKILL, a later pocp
+// run removes them.
 const live = new Map(); // dir -> unregister function
+function makeTempDir(kind) {
+  sweepProductTemp();
+  return fs.mkdtempSync(path.join(os.tmpdir(), ownedPrefix(kind)));
+}
 function track(dir, cleanup) {
   live.set(dir, onCleanup(() => {
     try {
@@ -78,7 +85,7 @@ export function liveTempDirs() {
  * Exported files are read-only (`readOnly`) and hashed so changes during a run can be detected.
  */
 export function createIndexSnapshot(root, { links = [], readOnly = true } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-snap-'));
+  const dir = makeTempDir('snap');
   const cleanup = () => removeDir(dir);
   track(dir, cleanup);
   try {
@@ -152,7 +159,7 @@ export function createTreeSnapshot(root, rev, { links = [] } = {}) {
     const snap = createIndexSnapshot(root, { links, readOnly: false });
     return { dir: snap.dir, cleanup: snap.cleanup };
   }
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-tree-'));
+  const dir = makeTempDir('tree');
   const cleanup = () => removeDir(dir);
   track(dir, cleanup);
   const indexFile = path.join(os.tmpdir(), `pocp-index-${crypto.randomBytes(6).toString('hex')}`);
@@ -170,7 +177,7 @@ export function createTreeSnapshot(root, rev, { links = [] } = {}) {
 
 /** A fresh writable copy of a folder; linked dependency folders stay links. */
 export function copySnapshot(src) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-copy-'));
+  const dir = makeTempDir('copy');
   const cleanup = () => removeDir(dir);
   track(dir, cleanup);
   try {

@@ -4,7 +4,7 @@ import * as g from '../git.js';
 import * as P from '../packets.js';
 import { POLICY_FILES, policyChange, policyLoosenings } from '../policy.js';
 import { evaluateTriggers, requirementsFor, ruleWarnings, validateRules } from '../rules.js';
-import { APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL, gateRemedies, laterApproval, pendingApprovals } from '../remedies.js';
+import { APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL, gateRemedies, laterApproval, pendingApprovals, pendingHold } from '../remedies.js';
 import { policyKeyWarnings } from '../schema.js';
 import { protectedChangeText } from './shared.js';
 import { validateConfig } from '../store.js';
@@ -149,11 +149,11 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
         // Fast mode (guard.mutants 0): no test change passes on its own, so the approval CI will
         // ask for is already certain. Said now, as when the guard runs here.
         const guardOb = e.packet.obligations.find((o) => o.kind === 'guard' && e.ev.handed_to_ci.includes(o.id));
-        if (guardOb && guardOb.mutants === 0) result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check was handed to CI; in fast mode (guard.mutants: 0) every test change goes to a person, so the commit can go ahead and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, why: 'in fast mode no test change passes on its own, and in block mode only a maintainer can accept it.', packet: e.packet.id });
+        if (guardOb && guardOb.mutants === 0) result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check was handed to CI; in fast mode (guard.mutants: 0) every test change goes to a person, so the commit can go ahead and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, packet: e.packet.id });
         result.warnings.push({ code: 'handed_to_ci', detail: `${e.packet.id}: ${what.join(', ')} handed to CI, not run on this machine (ci.defer_heavy). Not proven yet: CI's verify --rerun runs ${e.ev.handed_to_ci.length > 1 ? 'them' : 'it'} before merge, and the required pocp status blocks the merge until ${e.ev.handed_to_ci.length > 1 ? 'they pass' : 'it passes'}`, packet: e.packet.id, obligations: e.ev.handed_to_ci });
       }
       for (const a of e.ev.awaiting_approval || []) {
-        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, packet: e.packet.id });
+        result.warnings.push({ code: 'awaiting_test_approval', detail: `${e.packet.id}: the test-change check did not pass (${a.detail || a.status}); the commit can go ahead, and ${laterApproval(result, APPROVE_TESTS_LABEL)}`, packet: e.packet.id, ...(a.status ? { verdict: a.status } : {}) });
       }
     }
     const blocked = result.uncovered.length > 0 || result.problems.length > 0;
@@ -167,6 +167,10 @@ export function createGate({ root, store, hostName, nowFn, emit, config, rules, 
   function finishGate(result, source) {
     result.remedies = gateRemedies(result);
     result.pending_approvals = pendingApprovals(result);
+    // The same plain explanation the pocp status, the PR comment and pocp approvals give (hold.js),
+    // for agents (--json) to relay word for word. Only when something waits for a person.
+    const hold = pendingHold(result);
+    if (hold) result.hold = hold;
     try {
       store.appendLog?.('gate', {
         at: nowFn(),

@@ -8,6 +8,7 @@
 //   "infra"     the machine that runs verify lacks something; no code change helps
 
 import { factsOf } from './finding.js';
+import { holdExplanation, holdReason } from './hold.js';
 
 export const APPROVE_TESTS_LABEL = 'pocp-approve-tests';
 export const APPROVE_POLICY_LABEL = 'pocp-approve-policy';
@@ -170,7 +171,7 @@ export function pendingApprovals(r) {
     ? {
         code: 'test_change',
         what: w.detail,
-        why: w.why || (r.local_mode ? 'the test-change check did not pass, so a person must read and accept the change before it merges.' : 'the test-change check did not pass, and in block mode only a maintainer can accept that.'),
+        why: holdReason(APPROVE_TESTS_LABEL, { verdict: w.verdict }),
         next: approvalStep(APPROVE_TESTS_LABEL, { local: r.local_mode }),
         by: 'person',
         ...(r.local_mode ? { who: LOCAL_WHO } : {}),
@@ -178,11 +179,20 @@ export function pendingApprovals(r) {
     : {
         code: 'policy_change',
         what: w.detail,
-        why: 'a change cannot approve a loosening of the rules that judge it.',
+        why: holdReason(APPROVE_POLICY_LABEL),
         next: approvalStep(APPROVE_POLICY_LABEL, { local: r.local_mode }),
         by: 'person',
         ...(r.local_mode ? { who: LOCAL_WHO } : {}),
       }));
+}
+
+/**
+ * The hold explanation (hold.js) for what a passing gate leaves for a person, or null: the same
+ * sentences as pendingApprovals' `why`, and the one command (none in local mode).
+ */
+export function pendingHold(r) {
+  const needs = (r.warnings || []).flatMap((w) => (w.code === 'awaiting_test_approval' ? [{ label: APPROVE_TESTS_LABEL, verdict: w.verdict }] : w.code === 'awaiting_policy_approval' ? [{ label: APPROVE_POLICY_LABEL }] : []));
+  return holdExplanation(needs, { local: Boolean(r.local_mode) });
 }
 
 /**

@@ -8,8 +8,11 @@
 // GitHub's API on each call, so the order events arrive in doesn't matter.
 
 import { ciProtects, DEFAULT_CI_FILES } from './store.js';
-import { addLabelsCommand, APPROVE_WORKFLOW_LABEL, sortLabels } from './explain.js';
+import { APPROVE_WORKFLOW_LABEL, sortLabels } from './explain.js';
 import { approvedByWriter, CARRYABLE, carriedOver, COMPARE_FILES_CAP, gatherCarry, gatherLabelEvents, labelFreshness, listAll, MARKER_PREFIX } from './label-freshness.js';
+import { HOLD_VERDICTS, holdStatus } from './hold.js';
+import { commentEnabled, holdComment, upsertHoldComment } from './hold-comment.js';
+import { gatherSticky, RECORD_PREFIXES, REVIEW_ONLY, STICKY } from './sticky-approval.js';
 
 // The label rule lives in label-freshness.js, shared with verify.
 export { CARRYABLE, carriedOver, COMPARE_FILES_CAP };
@@ -86,16 +89,25 @@ export const TEXT = Object.freeze({
 
 
 /**
- * The pending text for a pull request that waits only for labels: every label, and the one
- * command that adds them all when it fits GitHub's 140 characters, else the labels alone.
+ * The pending text for a pull request that waits only for labels: why, in a few fixed words, and
+ * the one command that adds them all, within GitHub's 140 characters (hold.js holdStatus).
  */
-export function waitingText(labels, { number, repository } = {}) {
-  if (!labels?.length) return TEXT.waiting;
-  const sorted = sortLabels(labels);
-  const run = `Waiting for approval. Run: ${addLabelsCommand(sorted, { number, repository })}`;
-  if (run.length <= 140) return run;
-  const named = `Waiting for approval: add ${sorted.join(', ')} (command in the verify run)`;
-  return named.length <= 140 ? named : `Waiting for approval: add ${sorted.join(', ')}`.slice(0, 140);
+export function waitingText(labels, { number, repository, verdict = null } = {}) {
+  return (labels?.length && holdStatus(labels, { number, repository, verdict })) || TEXT.waiting;
+}
+
+/** The verdict-* steps (pocp.yml): what the test guard found, from verify's approval file. */
+export const VERDICT_STEPS = Object.freeze(Object.fromEntries(HOLD_VERDICTS.map((v) => [`verdict-${v}`, v])));
+
+/**
+ * What the test guard found, as the run's verdict-* steps say, or null. Trusted only with the
+ * approvable step (the same file, which isolated checks can't reach) and exactly one verdict
+ * step: otherwise a check could have set it. Words only: it never changes a state.
+ */
+export function runVerdict(job) {
+  if (stepOf(job, APPROVABLE_STEP)?.conclusion !== 'success') return null;
+  const hit = Object.keys(VERDICT_STEPS).filter((step) => stepOf(job, step)?.conclusion === 'success');
+  return hit.length === 1 ? VERDICT_STEPS[hit[0]] : null;
 }
 
 /** Whether a status description is a wait for labels (either wording). */
@@ -180,7 +192,7 @@ export function runIdentity(job, number, baseSha) {
 }
 
 // Every step the trusted workflow runs to evaluate a pull request.
-const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', APPROVABLE_STEP, ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS)]);
+const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', APPROVABLE_STEP, ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS), ...HOLD_VERDICTS.map((v) => `verdict-${v}`)]);
 
 /**
  * Whether a run that waits only for approvals now has every one, so the wait is as good as a
@@ -198,6 +210,10 @@ export function approvedWait(facts, run, sha) {
   // inconclusive one is for a check that didn't finish, so both are decided by a new run.
   const other = needed.filter((l) => !FAST_PATH_LABELS.has(l));
   if (other.length) return { ok: false, why: `${other.join(', ')} is decided by a new run` };
+  // Only a review-only hold (the old tests still pass on the new code): a behaviour change, or
+  // a run that doesn't say (an older workflow), is decided by a new run with the label.
+  const verdict = runVerdict(job);
+  if (needed.includes('pocp-approve-tests') && verdict !== REVIEW_ONLY) return { ok: false, why: `the test guard found ${verdict || 'no verdict this reporter can read'}, so a new run with the label decides` };
   const labels = sortLabels([...new Set([...needed, ...readRun(job).approvals])]);
   const missing = labels.filter((l) => !facts.pr.labels.includes(l));
   if (missing.length) return { ok: false, why: `${missing.join(', ')} not given` };
@@ -205,7 +221,7 @@ export function approvedWait(facts, run, sha) {
   if (unauthorized.length) return { ok: false, why: `${unauthorized.join(', ')} last applied by someone without write access, before this head's first run, before a force-push, or not readable` };
   return { ok: true, labels };
 }
-const isPocpStep = (s) => POCP_STEPS.has(s.name) || String(s.name || '').startsWith(MARKER_PREFIX);
+const isPocpStep = (s) => POCP_STEPS.has(s.name) || [MARKER_PREFIX, ...RECORD_PREFIXES].some((p) => String(s.name || '').startsWith(p));
 
 /**
  * Whether a run was cancelled before its verify job evaluated anything: the run and its verify
@@ -327,7 +343,8 @@ export function decideStatus(facts) {
       // Every label at once: the workflow label, and whatever the newest run says verify waits
       // for (text only: this run's steps aren't trusted, and the status stays pending).
       const also = newest || unknown ? runNeeds((newest || unknown).job) : [];
-      return status('pending', waitingText([APPROVE_WORKFLOW_LABEL, ...also], { number: pr.number, repository: facts.repository }), `CI files changed (${changed.join(', ')}), so the run's results aren't trusted until ${independent ? 'a writer other than the author' : 'a writer'} adds ${APPROVE_WORKFLOW_LABEL} after this head's first run`, newest);
+      const labels = sortLabels([APPROVE_WORKFLOW_LABEL, ...also]);
+      return { ...status('pending', waitingText(labels, { number: pr.number, repository: facts.repository }), `CI files changed (${changed.join(', ')}), so the run's results aren't trusted until ${independent ? 'a writer other than the author' : 'a writer'} adds ${APPROVE_WORKFLOW_LABEL} after this head's first run`, newest), hold: { labels, workflow_files: changed } };
     }
     via = `; CI files changed (${changed.join(', ')}), workflow approved with ${APPROVE_WORKFLOW_LABEL}`;
   }
@@ -355,19 +372,27 @@ export function decideStatus(facts) {
     const unauthorized = approvals.filter((l) => !labelFreshness(facts, l, sha).ok);
     if (unauthorized.length) return status('pending', TEXT.approvalUnverified, `run ${newest.id} relied on ${unauthorized.join(', ')}, last applied by someone without write access, before this head's first run, before a force-push, or not readable${via}`, newest);
     const carried = approvals.filter((l) => labelFreshness(facts, l, sha).how === 'carried');
-    const how = carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : '';
+    const sticky = approvals.filter((l) => labelFreshness(facts, l, sha).how === 'sticky');
+    const how = `${carried.length ? `; ${carried.join(', ')} carried over from ${short(facts.carry.from_sha)} (a clean merge of the base into it)` : ''}${stickyText(facts, sticky)}`;
     return status('success', TEXT.verified, `run ${newest.id} verified${approvals.length ? ` with ${approvals.join(', ')}` : ''}${how}${via}`, newest);
   }
   if (outcome === 'failed') return status('failure', TEXT.failed, `run ${newest.id} failed (${stepSummary(newest.job)})${via}`, newest);
   // A wait for approvals only, now given: green from this run, without running verify again.
   // Only a wait (code 4); an inconclusive run is decided by a run that finishes.
   const given = outcome === 'waiting' ? approvedWait(facts, newest, sha) : { ok: false };
-  if (given.ok) return status('success', TEXT.approved, `run ${newest.id} waited only for ${given.labels.join(', ')}, now given by a writer after this head's first run${via}`, newest);
-  if (outcome === 'waiting') return status('pending', waitingText(runNeeds(newest.job), { number: pr.number, repository: facts.repository }), `run ${newest.id} is waiting${via}`, newest);
+  if (given.ok) return status('success', TEXT.approved, `run ${newest.id} waited only for ${given.labels.join(', ')}, now given by a writer after this head's first run${stickyText(facts, given.labels.filter((l) => labelFreshness(facts, l, sha).how === 'sticky'))}${via}`, newest);
+  if (outcome === 'waiting') {
+    const labels = runNeeds(newest.job);
+    // A run from an unapproved CI change returned above, so this run's own steps are the base's.
+    const verdict = runVerdict(newest.job);
+    return { ...status('pending', waitingText(labels, { number: pr.number, repository: facts.repository, verdict }), `run ${newest.id} is waiting${via}${verdict ? `; test guard: ${verdict}` : ''}`, newest), ...(labels.length ? { hold: { labels: sortLabels(labels), workflow_files: [], verdict } } : {}) };
+  }
   return status('pending', TEXT[outcome], `run ${newest.id} is ${outcome}${via}`, newest);
 }
 
 const short = (sha) => (sha ? String(sha).slice(0, 12) : '(none)');
+// For the reason: which approvals were given for an earlier head with the same own changes.
+const stickyText = (facts, labels) => labels.map((l) => `; ${l} given for ${short(facts.sticky?.[l]?.head)}, and this head is that head plus base content only`).join('');
 
 /** A minimal GitHub REST client over fetch. */
 export function githubClient({ token, api = 'https://api.github.com', fetchImpl = globalThis.fetch } = {}) {
@@ -386,6 +411,7 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
   return {
     get: async (url) => (await call('GET', url)).data,
     post: async (url, body) => (await call('POST', url, body)).data,
+    patch: async (url, body) => (await call('PATCH', url, body)).data,
     delete: async (url) => (await call('DELETE', url)).data,
     /**
      * Every page of a list endpoint (an array, or the array under `key`), and whether that is
@@ -449,7 +475,8 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
   const wf = await gh.get(`${repo}/actions/workflows/${encodeURIComponent(workflowPath.split('/').pop())}`);
   if (wf.path !== workflowPath) throw new Error(`the workflow ${workflowPath} was not found (GitHub has ${wf.path})`);
   facts.workflow = { id: wf.id, path: wf.path };
-  facts.files = need(await listAll(gh, `${repo}/pulls/${pr.number}/files?per_page=100`)).map((f) => ({ filename: f.filename, previous_filename: f.previous_filename }));
+  // status, counts and patch only say which lines the hold comment points at (hold-comment.js).
+  facts.files = need(await listAll(gh, `${repo}/pulls/${pr.number}/files?per_page=100`)).map((f) => ({ filename: f.filename, previous_filename: f.previous_filename, status: f.status, additions: f.additions, deletions: f.deletions, patch: typeof f.patch === 'string' ? f.patch : null }));
   const runs = need(await listAll(gh, `${repo}/actions/workflows/${wf.id}/runs?head_sha=${head}&per_page=100`, 'workflow_runs', 5));
   for (const r of runs) {
     // predictApproval's own run: it is underway and evaluates nothing.
@@ -470,6 +497,8 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
     Object.assign(facts, await gatherLabelEvents(gh, repo, pr.number, approvalLabels));
   }
   if (facts.pr.labels.some((l) => CARRYABLE.includes(l))) facts.carry = await gatherCarry(gh, repo, head, facts.workflow, VERIFY_JOB);
+  // The head each sticky approval was given for, and its run's records (sticky-approval.js).
+  if (facts.pr.labels.some((l) => STICKY[l])) facts.sticky = await gatherSticky(gh, repo, { number: pr.number, headRef: pr.head.ref || null, headRepo: pr.head.repo?.full_name ?? null, workflow: facts.workflow, labels: facts.pr.labels, labelEvents: facts.label_events, verifyJob: VERIFY_JOB });
   return facts;
 }
 
@@ -541,7 +570,7 @@ export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, 
     }
     throw e;
   }
-  if (!decision.write || dryRun) return { decision, written: false, removed: [] };
+  if (!decision.write || dryRun) return { decision, written: false, removed: [], ...(dryRun && decision.write && commentEnabled(baseConfig) ? { comment: { action: 'dry-run', body: holdComment(decision, facts, { baseConfig, stillWaiting: stillWaiting(decision) })?.body ?? null } } : {}) };
   // The pull request can change while this runs. A moved head: the old head's status no longer
   // matters, write nothing. Anything else this decision rested on (base, labels, another open
   // pull request on the same head): never write green, and replace whatever is there with
@@ -569,7 +598,27 @@ export async function reportStatus(gh, { repository, sha, prNumber, baseConfig, 
   await gh.post(`/repos/${repository}/statuses/${decision.sha}`, {
     state: decision.state, context: STATUS_CONTEXT, description: decision.description.slice(0, 140), ...(decision.target_url ? { target_url: decision.target_url } : {}),
   });
-  return { decision, written: true, removed: await removeStale(labelGh, repository, facts, decision) };
+  const removed = await removeStale(labelGh, repository, facts, decision);
+  return { decision, written: true, removed, comment: await reportComment(labelGh, facts, decision, baseConfig) };
+}
+
+/**
+ * Whether a status still waits for a person without naming labels: an older workflow's generic
+ * wait, an approval to apply again or given back, an inconclusive run. The comment then says it
+ * is still waiting, never "nothing waiting".
+ */
+export const stillWaiting = (decision) => decision.state === 'pending' && (isWaitingText(decision.description) || [TEXT.approvalUnverified, TEXT.approvalGone, TEXT.inconclusive].includes(decision.description));
+
+/**
+ * After the status is written: keep the one hold comment (hold-comment.js) in step with it, with
+ * github.token (labelGh, pull-requests: write, already given for stale labels). Off with
+ * `"ci": { "pr_comment": false }` in the default branch's config. Never written while the pull
+ * request changed under the decision, and a failure here never changes or fails the status.
+ */
+async function reportComment(labelGh, facts, decision, baseConfig) {
+  if (!commentEnabled(baseConfig)) return { action: 'skipped', reason: 'ci.pr_comment is false' };
+  if (!facts?.pr || decision.sha !== facts.pr.head_sha || decision.description === TEXT.stale) return { action: 'skipped', reason: 'the pull request changed while deciding' };
+  return upsertHoldComment(labelGh, { repository: facts.repository, number: facts.pr.number, comment: holdComment(decision, facts, { baseConfig, stillWaiting: stillWaiting(decision) }) });
 }
 
 /**

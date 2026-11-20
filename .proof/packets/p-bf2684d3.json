@@ -1,0 +1,578 @@
+{
+  "pocp": 1,
+  "id": "p-bf2684d3",
+  "intent": "Stop temp-folder leaks: signal handlers in the test helper, every test file on the shared temp root, owner-named temp folders and a sweep of stale ones for the suite and for pocp itself",
+  "touches": [
+    "src/temp-sweep.js",
+    "src/workspace.js",
+    "test/adopter-workflows.test.js",
+    "test/bench-tamper-deep.test.js",
+    "test/demo.test.js",
+    "test/e2e-cli.test.js",
+    "test/helpers.js",
+    "test/privacy.test.js",
+    "test/runner-git-env.test.js",
+    "test/runner-lifecycle.test.js",
+    "test/runner-orphans.test.js",
+    "test/runner-zombies.test.js",
+    "test/store-lock.test.js",
+    "test/summary-footer.test.js",
+    "test/sweep-temp.js",
+    "test/temp-cleanup.test.js",
+    "test/temp-sweep.test.js",
+    "test/temp.js",
+    "test/unit-more.test.js",
+    "test/workflow-approvals.test.js",
+    "test/workflow-status.test.js",
+    "test/workflows-hardening.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/helpers.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/helpers.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T09:09:29.182Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T10:04:04.424Z",
+      "duration_ms": 295030,
+      "stdout_sha256": "40e2f8b13e93d354d598d9f2f2d14dd09e24fa2f2ff51f19f0912a1ad47715fe",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-6a5cad04",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:f02af517ecd7f77a68c57f9d67407e21be0d87b607461a0598a0ce0fbb6514ac",
+      "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T10:08:59.637Z",
+      "duration_ms": 289086,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (test/adopter-workflows.test.js: lines were added to an existing test; test/bench-tamper-deep.test.js: lines were added to an existing test; test/demo.test.js: lines were added to an existing test; and 17 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "65e8ce997c69d05090edde5375c64f999ed6af6a",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "test/adopter-workflows.test.js",
+            "test/bench-tamper-deep.test.js",
+            "test/demo.test.js",
+            "test/e2e-cli.test.js",
+            "test/helpers.js",
+            "test/privacy.test.js",
+            "test/runner-git-env.test.js",
+            "test/runner-lifecycle.test.js",
+            "test/runner-orphans.test.js",
+            "test/runner-zombies.test.js",
+            "test/store-lock.test.js",
+            "test/summary-footer.test.js",
+            "-test/sweep-temp.js",
+            "test/temp-cleanup.test.js",
+            "-test/temp-sweep.test.js",
+            "-test/temp.js",
+            "test/unit-more.test.js",
+            "test/workflow-approvals.test.js",
+            "test/workflow-status.test.js",
+            "test/workflows-hardening.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 286648
+            }
+          ],
+          "left_out": [
+            "test/sweep-temp.js",
+            "test/temp-sweep.test.js",
+            "test/temp.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/sweep-temp.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/adopter-workflows.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/bench-tamper-deep.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/demo.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/e2e-cli.test.js",
+              "why": "existing test lines were changed or removed"
+            },
+            {
+              "file": "test/helpers.js",
+              "why": "existing test lines were changed or removed"
+            },
+            {
+              "file": "test/privacy.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/runner-git-env.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/runner-lifecycle.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/runner-orphans.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/runner-zombies.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/store-lock.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/summary-footer.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/sweep-temp.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/temp-cleanup.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/temp-sweep.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/temp.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            },
+            {
+              "file": "test/unit-more.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/workflow-approvals.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/workflow-status.test.js",
+              "why": "lines were added to an existing test"
+            },
+            {
+              "file": "test/workflows-hardening.test.js",
+              "why": "lines were added to an existing test"
+            }
+          ]
+        },
+        "duration_ms": 289086,
+        "timings": {
+          "setup_ms": 1846,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 286917,
+            "run_ms": 286648,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 1071,
+            "count": 1
+          },
+          "copy": {
+            "ms": 467,
+            "count": 2
+          },
+          "cleanup": {
+            "ms": 329,
+            "count": 3
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T18:19:27.355Z",
+      "duration_ms": 550298,
+      "stdout_sha256": "0cf56eb88691bcca070df2062178d78c3ca86c06b2dcae1ce80bd42dbd2c6737",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-47c3bc37",
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:1110a8fa4bac7bce79eb9d6c94abcc2a8755b36b6620988f8c6e8b192bb9546e",
+      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T18:38:12.430Z",
+      "duration_ms": 890269,
+      "runner": {
+        "pocp": "1.4.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; test/bench-tamper-deep.test.js; test/demo.test.js; test/privacy.test.js; test/runner-git-env.test.js; test/runner-lifecycle.test.js; test/runner-orphans.test.js; test/runner-zombies.test.js; test/store-lock.test.js; test/summary-footer.test.js: behavior changed, so a person must approve it",
+        "base": "4480ab2e93e563675d79fe150d684be866c12efd",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/helpers.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 424347,
+              "failed_tests": [
+                "test/adopter-workflows.test.js",
+                "test/bench-tamper-deep.test.js",
+                "test/demo.test.js",
+                "test/privacy.test.js",
+                "test/runner-git-env.test.js",
+                "test/runner-lifecycle.test.js",
+                "test/runner-orphans.test.js",
+                "test/runner-zombies.test.js",
+                "test/store-lock.test.js",
+                "test/summary-footer.test.js"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/hold.test.js",
+            "test/sticky-approval-git.test.js",
+            "test/sticky-approval-local.test.js",
+            "test/sticky-approval-verify.test.js",
+            "test/sticky-approval.test.js",
+            "test/sweep-temp.js",
+            "test/temp-sweep.test.js",
+            "test/temp.js",
+            "test/upgrade.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/helpers.js is named in eval/e1/test/batch.test.js, so it may be test setup"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 463327
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 890269,
+        "timings": {
+          "setup_ms": 1166,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 424659,
+            "run_ms": 424347,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 464224,
+            "run_ms": 463327,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 1398,
+            "count": 2
+          },
+          "copy": {
+            "ms": 533,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 992,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T09:09:29.182Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T09:09:29.182Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T09:16:26.965Z",
+      "event": "touches_widened",
+      "added": [
+        "test/e2e-cli.test.js"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T09:16:26.965Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    },
+    {
+      "at": "2026-11-20T09:16:26.965Z",
+      "event": "requirements_synced",
+      "added": [
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T10:13:49.014Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671"
+    },
+    {
+      "at": "2026-11-20T10:13:49.535Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671"
+    },
+    {
+      "at": "2026-11-20T18:08:39.522Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    },
+    {
+      "at": "2026-11-20T18:08:39.522Z",
+      "event": "requirements_synced",
+      "added": [
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T18:53:03.175Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
+    },
+    {
+      "at": "2026-11-20T18:53:04.031Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:f02af517ecd7f77a68c57f9d67407e21be0d87b607461a0598a0ce0fbb6514ac",
+      "subject": "sha256:a953292f471fe7bcffb95c253f3abe716eeb70f26e77ef9c9b897bc8d94cd671",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T10:13:49.535Z",
+      "to": "ci-approval",
+      "reason": "the old tests pass on the new code; a person must review the test change (test/adopter-workflows.test.js: lines were added to an existing test; test/bench-tamper-deep.test.js: lines were added to an existing test; test/demo.test.js: lines were added to an existing test; and 17 more): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:1110a8fa4bac7bce79eb9d6c94abcc2a8755b36b6620988f8c6e8b192bb9546e",
+      "subject": "sha256:e758f726ff2c5da001384f5818fc69e021591c86c054f4aaeb8c8fb112f07db0",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T18:53:04.031Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; test/bench-tamper-deep.test.js; test/demo.test.js; test/privacy.test.js; test/runner-git-env.test.js; test/runner-lifecycle.test.js; test/runner-orphans.test.js; test/runner-zombies.test.js; test/store-lock.test.js; test/summary-footer.test.js: behavior changed, so a person must approve it"
+    }
+  ]
+}

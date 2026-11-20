@@ -188,6 +188,8 @@ export async function runFix(engine, { intent, test, mode, actor } = {}) {
     needs_agent: dedupe(needsAgent),
     needs_person: dedupe(needsPerson),
     advice: needsPerson.length ? dontRewrite(needsPerson) : null,
+    // Why a person must approve, in the words the pocp status and PR comment use (hold.js).
+    ...(gate.hold ? { hold: gate.hold } : {}),
     gate,
   };
 }
@@ -243,7 +245,8 @@ function stagedPaths(root) {
 export function formatFix(r) {
   const lines = [];
   if (r.ok && r.nothing_staged) return 'pocp fix: nothing is staged; stage the change (git add) and run pocp fix again';
-  if (r.ok && r.nothing_to_prove) return 'pocp fix: ready to commit (git commit): nothing staged needs proof';
+  // Nothing to prove, but a maintainer may still have to approve it (a policy change): say so.
+  if (r.ok && r.nothing_to_prove && !r.needs_person.length) return 'pocp fix: ready to commit (git commit): nothing staged needs proof';
   const onlyTests = r.needs_person.length && r.needs_person.every((x) => x.code === 'test_change');
   // Local mode (ci.mode "local"): no CI; you approve before merging, through verify.
   const local = Boolean(r.gate?.local_mode);
@@ -301,6 +304,7 @@ export function formatFix(r) {
     if (x.why) lines.push(`    why: ${x.why}`);
     lines.push(`    the one action: ${x.next}`);
   }
+  if (r.hold?.command) lines.push(`  the maintainer approves with: ${r.hold.command}`);
   if (r.advice) lines.push(`  ${r.advice}`);
   return lines.join('\n');
 }
