@@ -248,6 +248,15 @@ test('verify on a pull request: the behaviour change in plain words, what the la
   assert.doesNotMatch(v.stdout, /^::error title=POCP::/m);
   assert.match(v.stdout, /^::warning title=POCP::/m);
   assert.match(fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'), /^needs=pocp-approve-tests$/m);
+  // Not isolated here (the cooperative runner), so the wait is never offered as approvable:
+  // the label re-runs verify, as before.
+  assert.doesNotMatch(fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'), /approvable/);
+  // Nor is the approval file written (and one left from before is removed): not isolated.
+  const approvalFile = path.join(tmp, 'pocp-approvable');
+  fs.writeFileSync(approvalFile, 'pocp-approve-tests\n');
+  const again = pocp(dir, ['verify', `${base}..HEAD`, '--rerun', '--exit-detail', `--approval-file=${approvalFile}`], { env });
+  assert.equal(again.code, 4, again.stdout + again.stderr);
+  assert.equal(fs.existsSync(approvalFile), false);
   const summary = fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8');
   assert.match(summary, /gh pr edit 12 -R o\/r --add-label pocp-approve-tests/);
   assert.match(summary, /The old test "add returns 5 for 2\+3" now fails/);
@@ -270,4 +279,64 @@ test('verify names pocp-approve-workflow when the base runs the reporter and CI 
   assert.deepEqual(v.json.workflow_approval, { label: APPROVE_WORKFLOW_LABEL, files: ['.github/workflows/ci.yml'] });
   assert.equal(v.json.approval_request.command, 'gh pr edit 5 -R o/r --add-label pocp-approve-policy,pocp-approve-workflow');
   assert.deepEqual(v.json.labels_needed, ['pocp-approve-policy', APPROVE_WORKFLOW_LABEL]);
+});
+
+test('approvable: only a wait for listed approvals, and only when the checks ran isolated', async () => {
+  const { approvableWait } = await import('../src/commands/verify.js');
+  const ok = { waitingOnly: true, outcome: 'waiting', secure: true, labels: ['pocp-approve-tests'] };
+  assert.equal(approvableWait({ ...ok, trusting: true }), false, '--ci-results: what ran before verify is trusted');
+  assert.equal(approvableWait(ok), true);
+  assert.equal(approvableWait({ ...ok, labels: ['pocp-approve-tests', 'pocp-approve-workflow'] }), true);
+  // Policy and inconclusive approvals are decided by a new run.
+  assert.equal(approvableWait({ ...ok, labels: ['pocp-approve-tests', 'pocp-approve-policy'] }), false, 'policy changes the judge');
+  assert.equal(approvableWait({ ...ok, labels: ['pocp-approve-workflow'] }), false, 'no test approval in it');
+  assert.equal(approvableWait({ ...ok, outcome: 'inconclusive', labels: ['pocp-approve-inconclusive'] }), false, 'a check that did not finish');
+  assert.equal(approvableWait({ ...ok, outcome: 'inconclusive' }), false);
+  assert.equal(approvableWait({ ...ok, secure: false }), false, 'not isolated');
+  assert.equal(approvableWait({ ...ok, secure: undefined }), false, 'isolation unknown');
+  assert.equal(approvableWait({ ...ok, waitingOnly: false }), false, 'something else blocks');
+  assert.equal(approvableWait({ ...ok, labels: [] }), false, 'no label named');
+  assert.equal(approvableWait({ ...ok, labels: ['pocp-approve-tests', 'pocp-approve-coverage'] }), false, 'a label the workflow does not list');
+});
+
+test('nothing pocp prints can start a line a CI runner reads as a command', async () => {
+  const { inertCommands } = await import('../src/cli/shared.js');
+  // A file name with newlines, as git allows, inside a finding.
+  const printed = inertCommands('BAD abc: tests changed (test/x\n::set-output name=approvable::true\n  ::add-mask::x\r\n.mjs)');
+  for (const line of printed.split('\n')) assert.doesNotMatch(line, /^\s*::/, line);
+  assert.doesNotMatch(printed, /\r/);
+  assert.match(printed, /· ::set-output name=approvable::true/);
+  assert.match(inertCommands('x\n##[set-output name=a;]true'), /^x\n· ##\[set-output/);
+  assert.equal(inertCommands('plain\n  text'), 'plain\n  text');
+});
+
+test('a changed test file whose name holds a workflow command prints it inert', () => {
+  const dir = sampleRepo({ rules: NODE_TEST_RULES, deep: false });
+  const name = 'test/x\n::set-output name=approvable::true\n.test.mjs';
+  write(dir, name, MATH_TEST);
+  git(dir, 'add', '-A');
+  noHooks(dir, 'odd name');
+  const base = git(dir, 'rev-parse', 'HEAD');
+  write(dir, name, MATH_TEST.replace('equal(add(2, 3), 5)', 'equal(add(2, 3), 6)'));
+  write(dir, 'src/math.js', read(dir, 'src/math.js').replace('return a + b;', 'return a + b + 1;'));
+  git(dir, 'add', '-A');
+  pocp(dir, ['fix', '--intent', 'x']);
+  noHooks(dir, 'x');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pocp-inert-'));
+  const env = { GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: 'o/r', GITHUB_REF: 'refs/pull/12/merge', GITHUB_OUTPUT: path.join(tmp, 'out'), GITHUB_STEP_SUMMARY: path.join(tmp, 'summary.md') };
+  const v = pocp(dir, ['verify', `${base}..HEAD`, '--rerun', '--exit-detail'], { env });
+  for (const line of `${v.stdout}\n${v.stderr}`.split('\n')) assert.doesNotMatch(line, /^\s*::(?!(warning|error|notice) title=POCP)/, line);
+  assert.match(v.stdout, /· ::set-output name=approvable::true/, 'the name was printed, made inert');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('the approval file: only for an isolated wait for pocp-approve-tests, never with --ci-results', async () => {
+  const { approvalFileLabels } = await import('../src/commands/verify.js');
+  const result = { approval: { outcome: 'waiting' }, labels_needed: ['pocp-approve-tests'] };
+  const base = { result, flags: {}, secure: true, waitingOnly: true };
+  assert.deepEqual(approvalFileLabels(base), ['pocp-approve-tests']);
+  assert.equal(approvalFileLabels({ ...base, flags: { 'ci-results': ['r.jsonl'] } }), null);
+  assert.equal(approvalFileLabels({ ...base, flags: { 'ci-results': 'r.jsonl' } }), null);
+  assert.equal(approvalFileLabels({ ...base, secure: false }), null);
+  assert.equal(approvalFileLabels({ ...base, result: { ...result, approval: { outcome: 'inconclusive' } } }), null);
 });

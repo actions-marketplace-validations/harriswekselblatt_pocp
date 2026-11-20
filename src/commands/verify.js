@@ -12,7 +12,7 @@ import { failedOutputLines } from '../output-tail.js';
 import { git, resolveRev, showFile } from '../git.js';
 import { approvalLines, approvalPlan, APPROVE_WORKFLOW_LABEL, explainWorkflow, sortLabels } from '../explain.js';
 import { withDefaults } from '../store.js';
-import { changedWorkflowFiles, githubClient, workflowFiles } from '../status-report.js';
+import { changedWorkflowFiles, FAST_PATH_LABELS, githubClient, workflowFiles } from '../status-report.js';
 import { readCiResults } from '../ci-results.js';
 import { shortDigest } from '../hash.js';
 import { UsageError } from '../cli-args.js';
@@ -25,6 +25,28 @@ const APPROVAL_LABELS = Object.freeze({
   'accept-inconclusive': 'pocp-approve-inconclusive',
   'accept-uncovered': 'pocp-approve-coverage',
 });
+// Labels a wait may need and still be `approvable`: pocp-approve-tests (status-report.js,
+// FAST_PATH_LABELS), and the workflow label the reporter checks itself. A policy or inconclusive
+// approval is decided by a new run, so a wait for one is never approvable.
+const APPROVABLE_LABELS = new Set([...FAST_PATH_LABELS, APPROVE_WORKFLOW_LABEL]);
+
+/**
+ * Whether verify may tell the workflow its wait is for approvals only (`approvable`): nothing
+ * else blocks, every label is one the workflow lists, and the checks ran isolated, so no check
+ * could have written the step's outputs.
+ */
+/** The labels verify writes to --approval-file for this result, or null for none. */
+export function approvalFileLabels({ result, flags, secure, waitingOnly }) {
+  // --ci-results trusts what ran before verify in the job (the pull request's tests could have
+  // written it), so a wait that rests on it is never approvable.
+  const ok = approvableWait({ waitingOnly, outcome: result.approval?.outcome, secure, labels: result.labels_needed, trusting: [].concat(flags['ci-results'] ?? []).length > 0 });
+  return ok ? result.labels_needed : null;
+}
+
+export function approvableWait({ waitingOnly, outcome, secure, labels, trusting = false }) {
+  return Boolean(waitingOnly) && outcome === 'waiting' && secure === true && !trusting
+    && Array.isArray(labels) && labels.some((l) => FAST_PATH_LABELS.has(l)) && labels.every((l) => APPROVABLE_LABELS.has(l));
+}
 
 /**
  * --label-freshness=github: whether each approval's label counts for this head, by the rule the
@@ -243,11 +265,29 @@ export async function run({ engine, flags, isolated, json, rest }) {
   if (block.length) human += `\n  ${result.ok ? 'the pocp status also waits for a maintainer (CI files changed):' : "waiting only for a maintainer's approval; nothing else is wrong:"}\n${block.join('\n')}`;
   const labelsNeeded = sortLabels([...(waitingOnly ? result.approval.needs.map((n) => n.label) : []), ...wfNeed.map((n) => n.label)]);
   if (labelsNeeded.length && !local) result.labels_needed = labelsNeeded;
-  // For the trusted reporter's pending text (needs-* steps in pocp.yml); never its result.
+  // For the pending text (needs-* steps in pocp.yml): the labels verify waits for. Text only: a
+  // step's outputs can also be set by a line printed during the step.
   if (process.env.GITHUB_OUTPUT && result.labels_needed) {
     try {
       fs.appendFileSync(process.env.GITHUB_OUTPUT, `needs=${result.labels_needed.join(',')}\n`);
     } catch { /* the pending text falls back to the generic wait */ }
+  }
+  // --approval-file: when the wait is for these approvals only, the list is complete and the
+  // checks ran isolated, write the labels to this file (the workflow's private temp folder, which
+  // isolated checks can't reach). A later step that prints nothing of the pull request's reads
+  // it, so the labels that turn the wait green come from verify alone (status-report.js,
+  // APPROVABLE_STEP). Otherwise the file is removed.
+  // Any error here leaves no file: the wait is then judged as before, never failed for it.
+  if (flags['approval-file']) {
+    const file = flags['approval-file'];
+    try {
+      fs.rmSync(file, { force: true });
+      const labels = approvalFileLabels({ result, flags, secure: isolation.secure, waitingOnly });
+      if (labels) fs.writeFileSync(file, `${labels.join(',')}\n`, { mode: 0o600, flag: 'wx' });
+    } catch (err) {
+      try { fs.rmSync(file, { force: true }); } catch { /* the mark step finds no valid file */ }
+      errWrite(`pocp: couldn't write the approval file (${err.message}); an approval will re-run verify\n`);
+    }
   }
   if (steps.length) result.next_steps = steps;
   writeGithubSummary(result, rows, commitProblems, Date.now() - started, { annotations: !json, approvalPlan: plan });

@@ -53,7 +53,7 @@ export const COMMANDS = {
   version: { summary: 'print the version', usage: ['version'], flags: {} },
   init: {
     summary: 'create .proof/, and optionally the git hooks and GitHub workflows',
-    usage: ['init [--hooks] [--github | --local] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>]'],
+    usage: ['init [--hooks] [--github | --local] [--no-live] [--force] [--deep] [--pocp-ref <tag|sha>] [--badge]'],
     flags: {
       hooks: bool('install the git hooks'),
       local: bool('local mode: the git hooks are the gate and no CI is expected (ci.mode "local"); implies --hooks'),
@@ -62,6 +62,7 @@ export const COMMANDS = {
       force: bool('replace existing hooks and workflow files'),
       deep: bool('test guard plants 10 bugs per test edit (guard.mutants 10); slower'),
       'pocp-ref': str('tag|sha', 'pin the workflows to this POCP release instead of this one'),
+      badge: bool('print a README badge to paste (at a terminal, a first init asks instead, default no)'),
     },
   },
   doctor: {
@@ -93,13 +94,14 @@ export const COMMANDS = {
   },
   'status-report': {
     summary: 'the trusted reporter: set the "pocp" commit status on a pull request\'s head',
-    usage: ['status-report --repo <owner/name> (--sha <head> | --pr <n>) [--workflow <path>] [--dry-run]'],
+    usage: ['status-report --repo <owner/name> (--sha <head> | --pr <n>) [--workflow <path>] [--dry-run | --predict-approval]'],
     flags: {
       repo: str('owner/name', 'repository (default GITHUB_REPOSITORY)'),
       sha: str('head', 'head commit (default HEAD_SHA)'),
       pr: num('n', 'pull request number (default PR_NUMBER)'),
       workflow: str('path', 'the workflow whose runs decide the status'),
       'dry-run': bool('say what would be set; write nothing'),
+      'predict-approval': bool("in pocp.yml on an approval label: would the status turn green from a run that already waits only for approvals now given, leaving out this run (GITHUB_RUN_ID)? or has the pull request moved past this head? Writes skip=true|false to GITHUB_OUTPUT; writes no status"),
     },
   },
   hooks: {
@@ -184,6 +186,7 @@ export const COMMANDS = {
       'accept-uncovered': approval('commits .proof/exceptions.json lists may lack a packet; =<sha>: only for that head'),
       'accept-inconclusive': approval("a test change whose check didn't finish; =<sha>: only for that head"),
       'exit-detail': bool("exit 4 when only an approval is missing, 5 when something didn't finish"),
+      'approval-file': str('path', "with --isolate: when only approvals are missing, write the labels to this file (for pocp.yml's approvable step); otherwise remove it"),
       jobs: num('n', 'checks run at once (default: CPU cores - 1, at most 4)'),
       isolate: bool('run each check as a fresh unprivileged user (Linux, passwordless sudo); fail if that is not possible'),
       install: str('cmd', 'with --isolate: install dependencies at the head, isolated, before the checks'),

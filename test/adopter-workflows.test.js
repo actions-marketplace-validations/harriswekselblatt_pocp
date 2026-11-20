@@ -71,9 +71,13 @@ test('the example reporter never checks out or runs pull request code', () => {
   assert.doesNotMatch(wf, /contents: write|issues: write/);
   // The reporter action passes event data only through env.
   const action = read('status/action.yml');
-  const run = action.split('\n').find((l) => l.trim().startsWith('run:'));
+  const after = action.slice(action.indexOf('      run: |')).split('\n').slice(1);
+  const run = after.slice(0, after.findIndex((l) => !/^ {8}/.test(l))).join('\n');
+  assert.ok(run, 'the reporter action runs a script');
   assert.doesNotMatch(run, /\$\{\{/);
-  assert.match(run, /status-report --workflow "\$WORKFLOW"/);
+  assert.match(run, /status-report --workflow "\$WORKFLOW"\n/);
+  // The prediction (pocp.yml's approval job) writes no status: the reporter alone does.
+  assert.match(run, /status-report --workflow "\$WORKFLOW" --predict-approval/);
 });
 
 test('the reporter posts as its own app, with the key only in the default-branch environment', () => {

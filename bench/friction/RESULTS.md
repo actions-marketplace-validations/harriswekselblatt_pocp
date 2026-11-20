@@ -4,7 +4,7 @@ What POCP costs honest work, before and after the friction fixes. Each row repla
 last 16 real, non-merge commits through POCP with the test guard on (`guard.tests: block`), as
 an honest agent would make them: commit through the hooks, and if they block, follow the
 documented flow (before: `open` / `prove` / `attest`; after: `pocp fix`), then CI (`ci-run` and
-`verify --rerun-unsigned --require-coverage`, the Action's default). See [README.md](README.md)
+`verify --rerun-unsigned --require-coverage`; the Action's default is `rerun: all`, which re-runs every check). See [README.md](README.md)
 for the method.
 
 - **main**: POCP at main `d6efd6a`, the version adopted on both repositories (flow: `open` / `prove` / `attest`).
