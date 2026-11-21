@@ -26,8 +26,11 @@ const verifySteps = ({ pr = 7, base = BASE, failed = false, marker = true } = {}
   { name: 'failed', conclusion: failed ? 'failure' : 'skipped' },
 ];
 const verifyJob = (opts = {}) => ({ name: 'verify', status: 'completed', conclusion: opts.failed ? 'failure' : 'success', steps: verifySteps(opts) });
+// As GitHub returns a same-repository pull_request run: its branch, and the open pull requests
+// that match it (pull_requests).
 const apiRun = (over = {}) => ({
   id: 100, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: SHA, repository: { full_name: 'o/r' },
+  head_branch: 'topic', head_repository: { full_name: 'o/r' }, pull_requests: [{ number: 7, head: { ref: 'topic', sha: SHA }, base: { ref: 'main', sha: BASE } }],
   status: 'completed', conclusion: 'success', created_at: '2026-11-07T10:00:00Z', run_started_at: '2026-11-07T10:00:00Z', run_attempt: 1,
   html_url: 'https://github.com/o/r/actions/runs/100', ...over,
 });
@@ -43,7 +46,7 @@ function fakeGitHub({ fileCount = 1, files, changedFiles = 'same', pr = {}, open
   const prNow = () => {
     prReads++;
     const p = typeof pr === 'function' ? pr(prReads) : pr;
-    const out = { number: 7, state: 'open', head: { sha: SHA }, base: { sha: BASE }, labels: [], user: { login: 'author' }, changed_files: changedFiles === 'same' ? allFiles.length : changedFiles, ...p };
+    const out = { number: 7, state: 'open', labels: [], user: { login: 'author' }, changed_files: changedFiles === 'same' ? allFiles.length : changedFiles, ...p, head: { sha: SHA, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' }, ...p.head }, base: { sha: BASE, ref: 'main', ...p.base } };
     if (out.changed_files === 'omit') delete out.changed_files;
     return out;
   };
@@ -76,6 +79,14 @@ function fakeGitHub({ fileCount = 1, files, changedFiles = 'same', pr = {}, open
     if (p === '/repos/o/r/pulls' && u.searchParams.get('state') === 'open') {
       const { slice, link } = page(open, url);
       return reply(200, slice, link);
+    }
+    // Which pull requests had the head (status-report.js headPulls): the commit's open ones, and
+    // every one from the head branch. An open pull request without a label is from its own branch.
+    const cm = /^\/repos\/o\/r\/commits\/(\w+)\/pulls$/.exec(p);
+    if (cm) return reply(200, open.filter((x) => x.head?.sha === cm[1]));
+    if (p === '/repos/o/r/pulls' && u.searchParams.get('state') === 'all') {
+      const labelOf = (x) => x.head?.label ?? (x.number === 7 ? 'o:topic' : `o:branch-${x.number}`);
+      return reply(200, open.filter((x) => labelOf(x) === u.searchParams.get('head')));
     }
     if (p === '/repos/o/r/pulls/7') return reply(200, prNow());
     if (/^\/repos\/o\/r\/pulls\/\d+$/.test(p)) {
