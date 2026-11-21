@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 (2026-11-20)
+## 1.5.0 (2026-11-21)
 
 Approvals cost less and say why. The checks verify runs, and the rules it judges by, are
 unchanged; what changed is when a label counts and what it costs.
