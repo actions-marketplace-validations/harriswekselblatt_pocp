@@ -55,7 +55,8 @@ const STATUS_PHRASES = [
 ];
 
 // Words that only appear where POCP says a change waits for a person. A label name alone is not
-// a hold: `gh pr view` lists labels already added.
+// a hold: `gh pr view` lists labels already added. Nor is POCP's comment marker, which its
+// "approved, nothing waiting" comment carries too.
 const MARKERS = [
   'Waiting for approval',
   'the maintainer approves with:',
@@ -63,11 +64,11 @@ const MARKERS = [
   'needs a person:',
   'CI requires human approval',
   'needs your approval before you merge',
-  '<!-- pocp-hold -->',
   'POCP is still waiting for a maintainer',
   'Adding it means:',
-  '"hold":',
 ];
+// `--json` output: a `hold` that is an object (null when nothing waits).
+const JSON_HOLD = /"hold":\s*\{/;
 
 // Commands whose output can carry a hold: gh pr/api/run, pocp (also through npx or node), git
 // commit/push/merge (POCP's hooks print there), and reading a log a background run wrote. Not
@@ -123,7 +124,7 @@ export function explainHold(event, { inPocpRepo = null } = {}) {
   const command = String(event.tool_input?.command ?? '');
   const out = outputOf(event);
   if (!out.includes('pocp') && !out.includes('Waiting for approval')) return null;
-  if (!MARKERS.some((m) => out.includes(m)) || !COMMAND.test(command)) return null;
+  if (!(MARKERS.some((m) => out.includes(m)) || JSON_HOLD.test(out)) || !COMMAND.test(command)) return null;
   const cwd = typeof event.cwd === 'string' && event.cwd ? event.cwd : process.cwd();
   if (!(inPocpRepo ?? dirsOf(command, cwd).some(usesPocp))) return null;
 

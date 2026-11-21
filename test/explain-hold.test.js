@@ -14,6 +14,7 @@ import { HOLD_LABELS, HOLD_VERDICTS, holdExplanation, holdReason, holdStatus } f
 import { LABEL_MEANS, sortLabels } from '../src/explain.js';
 import { formatFix } from '../src/fix.js';
 import { formatGate } from '../src/cli/shared.js';
+import { holdComment } from '../src/hold-comment.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLUGIN = path.join(ROOT, 'plugins', 'pocp');
@@ -135,10 +136,22 @@ test('the hook is fast and self-contained, and hooks.json runs it after Bash cal
     assert.equal(entry.matcher, 'Bash');
     assert.match(entry.hooks[0].args[0], /^\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/explain-hold\.mjs$/);
   }
-  const status = holdStatus(['pocp-approve-tests'], { number: 5, verdict: 'baseline-red' });
-  const start = process.hrtime.bigint();
-  context(bash('gh pr checks 5', checksOutput(status), { failed: true }));
-  assert.ok(Number(process.hrtime.bigint() - start) / 1e6 < 1000, 'well under a second');
+  // Fast: no child process and no network (a loaded machine makes wall-clock limits flaky here).
+  assert.doesNotMatch(src, /node:(child_process|https?|net|dns)\b|fetch\(/);
+});
+
+test("POCP's pull request comment: a hold explains; an approved or failed one, or `\"hold\": null`, says nothing", () => {
+  const facts = { repository: 'octo/widgets', pr: { number: 12 }, files: [] };
+  const hold = holdComment({ write: true, state: 'pending', sha: 'a'.repeat(40), description: holdStatus(['pocp-approve-policy'], { number: 12, repository: 'octo/widgets' }), hold: { labels: ['pocp-approve-policy'] } }, facts);
+  assert.equal(hold.kind, 'hold');
+  assertExplains(context(bash('gh pr view 12 --comments', hold.body)), ['pocp-approve-policy'], [holdReason('pocp-approve-policy')], 'gh pr edit 12 -R octo/widgets --add-label pocp-approve-policy');
+  for (const state of ['success', 'failure']) {
+    const done = holdComment({ write: true, state, sha: 'b'.repeat(40), description: 'Verified' }, facts);
+    assert.equal(done.kind, 'status');
+    assert.equal(run(JSON.stringify(bash('gh pr view 12 --comments', `labels:\tpocp-approve-policy\n${done.body}`))), '', state);
+  }
+  const approved = JSON.stringify({ items: [{ number: 12, needs: [{ label: 'pocp-approve-tests', given: true }], hold: null }] }, null, 2);
+  assert.equal(run(JSON.stringify(bash('pocp approvals --json', approved))), '');
 });
 
 test('a forged hold comment cannot steer the command to another pull request or repository', () => {
@@ -167,9 +180,9 @@ test("no drift: the hook says hold.js's reason and explain.js's meaning for ever
         const ctx = explainHold(bash(command, output), { inPocpRepo: true });
         assert.ok(ctx, `${label}/${verdict}: ${output}`);
         assert.ok(ctx.includes(`"${LABEL_MEANS[label]}"`), `${label} meaning`);
+        if (want) assert.ok(ctx.includes(want), `${label}/${verdict} reason\n${output}\n---\n${ctx}`);
         // A status line cut short may drop the verdict's words: then the general reason, never a guess.
-        const said = want || reason;
-        assert.ok(ctx.includes(said) || (ctx.includes(holdReason(label)) && !ctx.includes(holdReason(label, { verdict: 'needs-review' }))), `${label}/${verdict} reason\n${output}\n---\n${ctx}`);
+        else assert.ok(ctx.includes(reason) || (ctx.includes(holdReason(label)) && (!verdict || verdict === 'needs-review' || !ctx.includes(holdReason(label, { verdict: 'needs-review' })))), `${label}/${verdict} reason\n${output}\n---\n${ctx}`);
       }
     }
   }
