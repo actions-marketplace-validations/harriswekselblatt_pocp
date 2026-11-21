@@ -39,6 +39,8 @@ Give the user these two options, one line each, and let them choose:
   `npx pocp …`. Anything else: ask before running `npm install -g proof-of-change`, then use `pocp …`.
 - With GitHub CI, first make a branch: `git checkout -b adopt-pocp`.
 - Run the `init` command the user chose. It creates `.proof/` and prints the test layout it found.
+- With GitHub CI, fill in the toolchain and install command in `.github/workflows/pocp.yml` (the
+  lines marked ▶) from what the project uses: CI runs every check on a fresh machine.
 
 **5. Write the first rule**
 

@@ -171,7 +171,7 @@ export function pendingApprovals(r) {
     ? {
         code: 'test_change',
         what: w.detail,
-        why: holdReason(APPROVE_TESTS_LABEL, { verdict: w.verdict }),
+        why: w.why || holdReason(APPROVE_TESTS_LABEL, { verdict: w.verdict }),
         next: approvalStep(APPROVE_TESTS_LABEL, { local: r.local_mode }),
         by: 'person',
         ...(r.local_mode ? { who: LOCAL_WHO } : {}),

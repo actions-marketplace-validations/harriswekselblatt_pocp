@@ -15,6 +15,8 @@ npm install --save-dev proof-of-change
 npx pocp init --hooks --github
 ```
 
+`--github` needs a GitHub `origin` and `gh` logged in with the `workflow` scope (`gh auth refresh -s workflow`). Before you push, set your toolchain and install command in `.github/workflows/pocp.yml` (the lines marked ▶): CI runs every check on a fresh machine. No CI? Use `npx pocp init --local` (below).
+
 `init` creates `.proof/` and installs git hooks (yours keep running). Then:
 
 1. **Say what must be proven.** A rule in `.proof/rules.json` maps files to a check, which is any command (`npm test`, `pytest`, `go test ./...`):
@@ -28,7 +30,7 @@ npx pocp init --hooks --github
 2. **Commit.** If the hook blocks it, run `npx pocp fix --intent "<what the change does>"` and commit again. The commit gets a `Proof-Of-Change` trailer.
 3. **Check the setup** with `npx pocp doctor`, which prints the commands for anything missing.
 
-**Upgrading.** `npx pocp upgrade --dry-run` shows what a newer release would change; `npx pocp upgrade` bumps the dependency (or the global install), re-pins the GitHub workflows to the new release and says which approvals the pull request needs. POCP never checks for updates in the background: `pocp doctor` notes, from local files, when the hooks and CI run different releases, and only `pocp upgrade` asks the npm registry ([docs/REFERENCE.md](docs/REFERENCE.md#upgrading)).
+**Upgrading.** `npx pocp upgrade --dry-run` shows what a newer release would change; `npx pocp upgrade` bumps the dependency (or the global install), re-pins the GitHub workflows to the new release and says which approvals the pull request needs. POCP never checks for updates in the background: `pocp doctor` notes, from local files, when the hooks and CI run different releases, and only `pocp upgrade` asks the npm registry ([docs/REFERENCE.md](docs/REFERENCE.md#upgrading)). From 1.4, which has no `upgrade`, see that section first.
 
 ## Where the checks run
 
@@ -58,7 +60,7 @@ Install the verifier outside the checkout and run it with `node`, as the GitHub 
 /plugin install pocp@pocp
 ```
 
-Run `/pocp:setup` in a repository that doesn't use POCP yet: Claude finds your test command, asks where the checks should run, installs POCP and writes a first rule, asking before it commits or pushes. In a repository that uses POCP, the plugin stops Claude from going around it: no `git commit --no-verify` or `core.hooksPath` change to skip the gate, no force-push over proven commits, no approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`), and no switching checks off on GitHub without a pull request (`pocp ci off`, `pocp init --local`, `gh workflow disable`, `--disable-billing-failed`). Each refusal tells Claude what to do instead. It also teaches Claude the POCP workflow. It guards against an agent cutting corners, not one set on hiding what it does; CI is still the check.
+Run `/pocp:setup` in a repository that doesn't use POCP yet: Claude finds your test command, asks where the checks should run, installs POCP and writes a first rule, asking before it commits or pushes. In a repository that uses POCP, the plugin stops Claude from going around it: no `git commit --no-verify` or `core.hooksPath` change to skip the gate, no force-push over proven commits, no approving its own test or policy change (adding a `pocp-approve-*` label, `pocp approve`, `--accept-*`), and no switching checks off on GitHub without a pull request (`pocp ci off`, `pocp init --local`, `gh workflow disable`, `--disable-billing-failed`). Each refusal tells Claude what to do instead. When a command's output shows POCP holding a change for you, the plugin gives Claude POCP's full plain-English reason, so Claude tells you the exact command, what the label means and why this change needs it, never just the 140-character status line. It also teaches Claude the POCP workflow. It guards against an agent cutting corners, not one set on hiding what it does; CI is still the check.
 
 **Codex, Cursor and other agents.** Paste [examples/agent-instructions.md](examples/agent-instructions.md) into the agent's instructions: `AGENTS.md` for Codex, a file in `.cursor/rules/` for Cursor. Instructions guide the agent; the git hooks and CI enforce.
 

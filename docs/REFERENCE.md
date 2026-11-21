@@ -110,7 +110,7 @@ pocp verify origin/main..HEAD --require-coverage --rerun     # re-runs every req
 - **Fast when nothing needs running:** digest, coverage, policy and signature checks are git reads, typically well under a second per commit. The commit hooks cache each old tree's subject hash locally, so they stay fast as history grows (see [`bench/friction/`](../bench/friction/)).
 - **Merges:** during a merge the gate judges only files that differ from both sides (conflict resolutions); files taken unchanged from the merged branch carry that branch's proofs. Verify doesn't check merge commits one by one (they carry no trailers), but what a merge adds is part of the pull request's net change: the test guard and `--require-coverage` judge it, and the head re-run runs on the head itself, merge or not. Merging main into a branch doesn't make main's changes the branch's: the net change starts at the merge base.
 - **Fails closed:** a `rules.json` or `config.json` that doesn't parse or validate, in the commit or its base, fails verification.
-- **Says what each check rests on:** every check is labelled `rerun`, `ci-result`, `signed:<who>`, `local`, `handed-to-ci` (not run at commit, and not yet re-run; see `ci.defer_heavy` above), or `attested:<who>` (see [the threat model](THREAT-MODEL.md)).
+- **Says what each check rests on:** every check is labelled `rerun`, `ci-result`, `signed:<who>`, `local`, `handed-to-ci` (not run at commit, and not yet re-run; see `ci.defer_heavy` below), or `attested:<who>` (see [the threat model](THREAT-MODEL.md)).
 - **Readable:** on GitHub Actions it writes a results table to the job summary and error annotations on failing commits. The summary ends with one line, `Checked by POCP · how this works`, linking to [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 
 ### Hand heavy checks to CI (`ci.defer_heavy`)
@@ -196,13 +196,13 @@ pocp upgrade --to 1.5.0    # a release you choose (no registry lookup)
 
 It installs first, so a failed install (offline, say) leaves everything else as it was, and it pins the version it actually installed. It refuses when tracked files other than the ones it writes have uncommitted changes, so the upgrade is a change of its own; an interrupted upgrade can be run again, and a run with nothing to do changes nothing. It only moves forward: an older `--to` is refused.
 
-**The pull request needs approvals.** Re-pinned workflows are a CI change, so the pull request needs `pocp-approve-workflow` (from a maintainer who isn't its author, by default) and `pocp-approve-policy`. That is intended: an upgrade changes what judges your code. In local mode there are usually no workflows to re-pin, and nothing to approve.
+**The pull request needs approvals.** Re-pinned workflows are a CI change, so the pull request needs `pocp-approve-workflow` (from a maintainer who isn't its author, by default) and `pocp-approve-policy`. That is intended: an upgrade changes what judges your code. In local mode nothing in CI approves it: workflow files left on disk by `pocp ci off` are re-pinned too, so they stay current if you turn CI back on, but they don't run.
 
-**From 1.4.0 or older**, which have no `upgrade`: install the new release yourself (`npm install --save-dev proof-of-change@latest`), then run `npx pocp upgrade` to re-pin the workflows.
+**From 1.4.0 or older**, which have no `upgrade`: install the new release yourself (`npm install --save-dev proof-of-change@1.5.0`, or `npm install -g proof-of-change@1.5.0`), then, on GitHub, `npx pocp init --github --force` to bring in this release's new workflow steps (the verdict, approval-record and prediction steps) and re-pin them. `--force` rewrites `pocp.yml`: put back your ▶ toolchain and `install:` lines, and add `--no-live` if you keep the `pocp` status off. The pull request needs `pocp-approve-policy` and `pocp-approve-workflow`. In local mode, installing is all. Later upgrades are `npx pocp upgrade`.
 
 ### Knowing a release is out
 
-POCP doesn't check for updates in the background. The git hooks, the gate and the Claude Code plugin's guard make no network calls. Instead:
+POCP doesn't check for updates in the background. The git hooks, the gate and the Claude Code plugin's hooks make no network calls. Instead:
 
 - **`pocp doctor` compares the copies of POCP the repository uses**, from local files only: the local pocp (`node_modules`, else `pocp` on `PATH`, else the copy the hooks recorded), the lockfile, the release tag the workflows pin (not in local mode), the pre-commit `rev` and other CI files' pins. When they differ (after a teammate's upgrade, or when Dependabot bumped the workflows but not `package.json`), the hooks and CI can judge a commit differently, so it says so, with `pocp upgrade` as the fix (`npm install` when only `node_modules` is behind the lockfile). It can't tell that every copy is old.
 - **`pocp upgrade --dry-run`** answers that: it asks the npm registry (`npm view proof-of-change version`). This, and the install itself, are the only times POCP contacts the registry, and only when you run the command; `--to <version>` skips the lookup. (`doctor` and `init --github` also call GitHub through `gh`; `doctor --offline` doesn't.)
@@ -220,7 +220,7 @@ Anything that can run a command can use POCP. Two useful places:
 - **Adopting:** `pocp doctor` checks hooks, policy, the CI workflow and its approval labels, Actions access to a private POCP action, branch protection against `ci.required_checks`, and that the first adoption PR carries only `.proof/` and CI files. Its checks only read; the one thing it can change, after asking, is below.
 - **Workflows failing for billing (local mode):** when Actions can't run for billing (no minutes left on a private repository, a spending limit reached, a failed payment), GitHub fails each job without starting it. `pocp ci off` and `pocp doctor` (in local mode) find the repository's other workflows in that state. A workflow counts only when its latest finished run on the default branch (of this repository, not for a pull request, since a pull request or a fork's branch can push a run built to fail) failed, a failed job in it ran no steps, and that job carries GitHub's billing annotation ("The job was not started because recent account payments have failed or your spending limit needs to be increased"). A job that ran and failed for any other reason is never offered, whatever it printed. Each workflow is listed with its file, that run, its conclusion and GitHub's message, and one question asks before any change. A yes disables them through GitHub's "disable workflow" call: the workflow files are never edited or deleted, and `gh workflow enable <file>` turns each back on. POCP's own workflows aren't offered, since `ci off` already switches them. Without a terminal (or in CI, or with `--json`) nothing is asked and nothing changes; the workflows are reported (in `--json`: `billing_failed` from `ci off`, the `actions-billing` check's `offer` from `doctor`), and `--disable-billing-failed` disables them without asking. Outside local mode, doctor reports the same evidence as a problem and suggests local mode; that report, which disables nothing, takes a run on any branch, since POCP's own workflow runs only on pull requests. It needs `gh`, logged in. When `gh` is missing, not logged in, or rate-limited, or GitHub's answers can't be read, POCP says so and offers nothing. A workflow that runs only on pull requests has no default-branch run, so it is never offered. A newer run on any branch whose jobs started shows billing works again, and the old blocked run stops counting. Since a disabled workflow stays off after billing is fixed, `pocp doctor` (the `workflows-disabled` warning) and `pocp ci on` list every workflow that isn't POCP's and is disabled on GitHub, whoever disabled it, each with `gh workflow enable <file>`. In a repository that uses POCP, the Claude Code plugin refuses `pocp ci off`, `pocp init --local`, `gh workflow disable` and `--disable-billing-failed` from Claude: each switches checks off on GitHub at once, with no pull request, so Claude asks you to run it.
 
-The Claude Code plugin ([`plugins/pocp/`](../plugins/pocp/), README "With Claude Code, Codex, Cursor and pre-commit") refuses the commands that go around POCP and teaches the workflow; `pocp check-edit` and `pocp gate --json` work from any harness. [`examples/agent-instructions.md`](../examples/agent-instructions.md) is a block to paste into your agent's instructions file so it works with POCP instead of around it.
+The Claude Code plugin ([`plugins/pocp/`](../plugins/pocp/), README "With Claude Code, Codex, Cursor and pre-commit") refuses the commands that go around POCP and teaches the workflow. After a Bash command whose output shows an approval hold (the `pocp` status "Waiting for approval", POCP's hold comment, `pocp fix`, `pocp gate`, `pocp approvals`), its `PostToolUse`/`PostToolUseFailure` hook (`scripts/explain-hold.mjs`) adds POCP's full reason to Claude's context: for each label, what adding it means and why it holds (the `src/hold.js` sentences, verdict-specific only when the output names the verdict), and the order to give the user the command, then the meaning, then the reason, never the label itself; `pocp check-edit` and `pocp gate --json` work from any harness. [`examples/agent-instructions.md`](../examples/agent-instructions.md) is a block to paste into your agent's instructions file so it works with POCP instead of around it.
 
 ## Several checkouts on one machine
 
@@ -228,7 +228,7 @@ Each repository has its own lock, but checks from different repositories, worktr
 
 ```
 pocp: waiting for 1 other POCP check on this machine (limit 1; POCP_MACHINE_CHECKS or ~/Library/Caches/pocp/check-slots/limit changes it). Waiting doesn't count toward the check's time limit.
-  running: "npm test --silent" in pocp-plugin-dir (pid 41233, running 3m 12s)
+  running: "npm test --silent" in my-app (pid 41233, running 3m 12s)
   1 other pocp waiting ahead of this one
 ```
 
@@ -295,7 +295,7 @@ Set `POCP_HOST=./my-host.mjs` to add rules from your own tooling and receive eve
 ## Library
 
 ```js
-import { createPocp } from 'pocp';
+import { createPocp } from 'proof-of-change';
 const pocp = createPocp({ cwd, policy, events, store, runner });
 await pocp.gate();
 ```

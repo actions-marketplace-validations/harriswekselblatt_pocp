@@ -1,20 +1,31 @@
 # Changelog
 
-## 1.5.0 (2026-11-20)
+## 1.5.0 (2026-11-21)
 
-Approving a pull request no longer costs a second verify run. Nothing POCP checks changed: the
-same checks run, with the same rules, and the reporter still decides the status alone.
+Approvals cost less and say why. The checks verify runs, and the rules it judges by, are
+unchanged; what changed is when a label counts and what it costs.
 
-Upgrading: run `pocp init --github --force` and commit `.github/workflows` (the prediction
-steps, `mark` and the `approvable` step), with the action and the status action at the same
-release. Checked on this repository's own pull requests: a review-only approval turned the
-`pocp` status green and merged in under a minute, without a second verify run.
+- A `pocp-approve-tests` label on a review-only hold (the old tests still pass on the new code)
+  turns `pocp` green without a second verify run. Policy, workflow and inconclusive approvals,
+  and test approvals for a behaviour change, still re-run verify.
+- Approvals survive "Update branch" (for test edits, only review-only holds).
+- Every hold gives one plain reason: in `pocp fix`, the hook, the status and one pull request
+  comment.
+- `pocp upgrade` handles later upgrades. Heavy checks can be handed to CI (opt-in).
+
+**Upgrading from 1.4.** Install 1.5.0 (`npm install --save-dev proof-of-change@1.5.0`). On
+GitHub, then run `npx pocp init --github --force` for the new workflow steps (the
+`predict`, `approvable`, `verdict-*` and record steps in `pocp.yml`), with the action and the
+status action at the same release. `--force` rewrites `pocp.yml`: put back your ▶ toolchain and
+`install:` lines, and add `--no-live` if you keep the status off. The pull request needs
+`pocp-approve-policy` and `pocp-approve-workflow` (from a writer other than its author, unless
+`ci.workflow_approver` is `any-writer`). Pull requests approved before the upgrade need one more
+re-label. An older `pocp.yml` keeps working; its status and comment say the verdict isn't known.
+In local mode, installing is all. Checked on this repository's own pull requests: review-only
+approvals merged in under a minute without a second verify run, and the verify job's records
+came back from GitHub's jobs API with their values filled in.
 
 ### Added
-
-Upgrading for the verdict on GitHub: `pocp init --github --force` (the `mark` step and the
-`verdict-*` steps in `pocp.yml`), with the action and the status action at the same release.
-An older `pocp.yml` keeps working; its status and comment say the verdict isn't known.
 
 - **Why a person must approve, wherever you work.** Every approval hold now has one plain
   reason, built in one place (`src/hold.js`) and shown in `pocp fix`, `pocp gate`, the
@@ -38,6 +49,19 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   `"ci": { "pr_comment": false }`. `pocp gate --json`, `pocp fix --json` and
   `pocp approvals --json` carry it as `hold`, and the agent instructions ask agents to relay it
   word for word.
+- **The Claude Code plugin explains every approval hold in the agent's session.** A new
+  `PostToolUse`/`PostToolUseFailure` hook (`plugins/pocp/scripts/explain-hold.mjs`) fires when a
+  Bash command's output shows POCP holding a change for a person: the `pocp` status "Waiting for
+  approval" in `gh pr checks` (which exits 8 while a check is pending), POCP's hold comment,
+  `pocp fix`, `pocp gate`, the pre-commit hook or `pocp approvals`. It adds, for each held label,
+  POCP's full reason and what adding it means, points to `pocp approvals` and the hold comment
+  for the pull request's details, and tells the agent to give the user the exact command, then
+  what the label means, then why, before anything of its own, and never to add the label itself.
+  It needs no skill to load, repeats no text from the output (a pull request comment can imitate
+  POCP), makes no network call, and does nothing outside a POCP repository or on any error. Its
+  sentences are copies of `src/hold.js`; a test fails if they drift. The relay rule in the skill,
+  `examples/agent-instructions.md` and this repository's `AGENTS.md` now says the 140-character
+  status line alone is never enough.
 - **Approvals stick to what was approved.** With "require branches to be up to date", every merge
   to the base made the other open pull requests update, and each update voided their approvals.
   `pocp-approve-tests` and `pocp-approve-policy` are now bound to the pull request's own changes
@@ -47,15 +71,13 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   hand-resolved conflict, a base policy change, an approved head that changed CI files, and, for
   tests, a base update that changes which files count as test changes. Only a review-only hold
   (the test guard's typed verdict: the old tests still pass on the new code) carries over, and only
-  it turns green without a new run (#98's fast path); a behaviour change is approved, with a run,
+  it turns green without a new run (see Changed); a behaviour change is approved, with a run,
   on the head that shows it. Local approvals (`--accept-test-change=<sha>`) follow the same rule,
   so an approval given on a branch survives its merge into main. The verify job records what
   it found as `pocp-held` and `pocp-approval` steps (verify `--record-file`, from isolated checks
-  only), and the reporter checks them. Upgrading: `pocp init --github --force`; pull requests
-  approved before the upgrade need one more re-label. docs/STATUS.md has the rule, and
-  docs/THREAT-MODEL.md the attacks it was tested against. Not yet run on GitHub: whether the
-  jobs API returns a record step's name with its `steps.*` value filled in. If it doesn't, no
-  record reads, and labels are judged as before.
+  only), and the reporter checks them. Upgrading: see above; pull requests approved before the
+  upgrade need one more re-label. docs/STATUS.md has the rule, and
+  docs/THREAT-MODEL.md the attacks it was tested against.
 - **Heavy checks can be handed to CI at commit (`ci.defer_heavy`, opt-in, GitHub CI mode only).**
   In a repository where CI's `verify --rerun` re-runs every check behind a required status,
   `pocp fix` no longer has to run the full suite on the developer's machine first. Mark a rule
@@ -106,7 +128,7 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   nothing; `--to <version>` skips the registry lookup; it refuses when other files have
   uncommitted changes, and a second run changes nothing. Commit pins, branch pins, git
   dependencies and other CI systems' pins are reported, not edited. Works in local mode. From
-  1.4.0 or older: install the new release yourself, then `pocp upgrade` re-pins the workflows.
+  1.4.0 or older: see Upgrading above.
 - **`pocp doctor` compares the copies of POCP a repository uses**: the local pocp (node_modules,
   PATH, or the hooks' recorded copy), the lockfile, the release the workflows pin and the
   pre-commit rev, from local files only. When they differ it says so, with `pocp upgrade` (or
@@ -135,6 +157,29 @@ An older `pocp.yml` keeps working; its status and comment say the verdict isn't 
   `--disable-billing-failed`. Claude is told to ask you to run them.
 
 ### Changed
+
+- **A test approval no longer carries over through a merge of the base on its own.** Before,
+  "Update branch" kept `pocp-approve-tests` whenever the merge touched none of the pull
+  request's files, whatever the test guard had found. A test approval may accept a behaviour
+  change (the old tests failed on the new code), which a person decides on the run that showed
+  it, so it now reaches a new head only as a review-only hold, through sticky approvals.
+  `pocp-approve-policy` and `pocp-approve-coverage` carry over as before.
+- **The Claude Code plugin's guard reads commands word by word.** It now also refuses
+  `npx proof-of-change ci off` and other forms that name the package instead of `pocp`,
+  `gh workflow -R o/r disable`, `gh pr create --label pocp-approve-*`, a `--no-verify` between
+  two quoted messages, and `cd <repo> && …` or `git -C <repo> …` aimed at a POCP repository from
+  outside it. It no longer refuses reads and searches: `git config --get core.hooksPath`,
+  `rg core.hooksPath`, `git log -n 5`, a `gh api` GET of a pull request's labels. A command too
+  deeply nested to read is refused in a POCP repository.
+- **The billing check takes any workflow's started run as proof that billing works** (POCP's
+  own, once `ci off` disabled them, included), and a blocked run more than 30 days old is no
+  evidence.
+- **Waiting for the machine-wide check slot no longer uses up the repository lock's time.** A
+  second pocp in the same repository waits as long as the lock's holder is itself in that queue.
+- **`--accept-test-change <sha>`, with a space, is refused.** It read as a bare
+  `--accept-test-change` (any head) followed by a stray argument that verify ignored, so an
+  approval meant for one head covered every head. Write `--accept-test-change=<sha>`. The same
+  holds for every `--accept-*` flag. QUICKSTART showed the space form; it now shows `=`.
 
 - **A test approval turns the status green without running verify again.** Adding
   `pocp-approve-tests` used to re-run the whole verify job (every check, and the test guard)

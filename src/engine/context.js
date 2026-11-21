@@ -14,6 +14,7 @@ import { PocpError } from './shared.js';
 import { digestMatches } from '../hash.js';
 import { parseTrailers } from '../trailer.js';
 import { requirementCommands } from '../test-setup.js';
+import { isQueued } from '../machine-slots.js';
 
 const noopEvents = { emit() {} };
 
@@ -37,7 +38,9 @@ export function createContext(opts) {
   };
 
   const mutex = (fn) => (store.lock ? store.lock('pocp', fn) : fn());
-  const mutexAsync = (fn) => (store.lockAsync ? store.lockAsync('pocp', fn) : fn());
+  // A holder waiting in the machine-wide queue isn't working on this repository: waiting for it
+  // doesn't use up the lock's time limit.
+  const mutexAsync = (fn) => (store.lockAsync ? store.lockAsync('pocp', fn, { stillWaiting: (pid) => isQueued(pid) }) : fn());
 
   /**
    * During a merge, a staged file that matches a commit being merged in came from that

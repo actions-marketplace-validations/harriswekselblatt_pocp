@@ -219,8 +219,10 @@ test('doctor recognises Actions jobs that never start for billing, and suggests 
   const table = {
     ...WORKFLOWS({ 'pocp.yml': 'active', 'pocp-status.yml': 'active', 'tests.yml': 'active', 'old.yml': 'disabled_manually' }),
     'repos/me/site/actions/runs?per_page=20&status=completed': { body: { workflow_runs: [
-      { id: 90, path: '.github/workflows/old.yml', conclusion: 'success' },
-      { id: 91, path: '.github/workflows/tests.yml', conclusion: 'failure' },
+      // Newest first. The blocked run is recent (older ones are no evidence); old.yml's success
+      // came before it, so it doesn't show that billing works again.
+      { id: 91, path: '.github/workflows/tests.yml', conclusion: 'failure', created_at: new Date(Date.now() - 3600e3).toISOString() },
+      { id: 90, path: '.github/workflows/old.yml', conclusion: 'success', created_at: new Date(Date.now() - 7200e3).toISOString() },
     ] } },
     'repos/me/site/actions/runs/91/jobs': { body: { jobs: [{ id: 7, conclusion: 'failure', steps: [] }] } },
     'repos/me/site/check-runs/7/annotations': { body: [{ annotation_level: 'failure', message: billing }] },
@@ -289,14 +291,14 @@ test('local mode end to end: a test edit commits without CI, you approve it in v
   assert.match(waiting.stdout, /\[you, before merging \(local mode\)\] test_change: .*--accept-test-change <head sha>/);
   assert.doesNotMatch(waiting.stdout, /label|pocp approve|push the commit/);
   assert.match(waiting.stdout, /keep the commit as it is and approve it before merging/);
-  const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
+  const approved = pocp(dir, ['verify', '--require-coverage', '--rerun', range, `--accept-test-change=${git(dir, 'rev-parse', 'HEAD')}`]);
   assert.equal(approved.code, 0, approved.stdout + approved.stderr);
 
   // Skipping the gate: the recipe's --require-coverage catches the commit made without proof.
   write(dir, 'src/math.js', `${read(dir, 'src/math.js')}export const zero = 0;\n`);
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '--no-verify', '-m', 'skipped the gate');
-  const caught = pocp(dir, ['verify', '--require-coverage', '--rerun', range, '--accept-test-change', git(dir, 'rev-parse', 'HEAD')]);
+  const caught = pocp(dir, ['verify', '--require-coverage', '--rerun', range, `--accept-test-change=${git(dir, 'rev-parse', 'HEAD')}`]);
   assert.equal(caught.code, 1, caught.stdout);
   assert.match(caught.stdout, /not covered: src\/math\.js/);
 });

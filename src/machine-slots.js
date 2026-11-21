@@ -201,6 +201,13 @@ function liveTickets(queueDir) {
   return out;
 }
 
+/** Whether process `pid` is waiting in the machine-wide queue for a check slot. */
+export function isQueued(pid, env = process.env) {
+  const s = machineSettings(env);
+  if (!s.dir || !s.limit) return false;
+  return liveTickets(path.join(s.dir, 'queue')).some((t) => Number(t.pid) === Number(pid));
+}
+
 /** The slots' holders: [{ i, file, text, info }] for slots that are taken. */
 function holders(dir, n) {
   const out = [];

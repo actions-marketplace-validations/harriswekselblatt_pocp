@@ -66,6 +66,10 @@ export function carriedOver(facts, label) {
   const c = facts.carry;
   const no = (why) => ({ ok: false, why });
   if (!CARRYABLE.includes(label)) return no(`${label} never carries over`);
+  // A test approval may be for a behaviour change (the old tests failed on the new code), which a
+  // person accepts for the run that showed it. It moves to a new head only as a review-only hold,
+  // through that head's own records (stickyVerdict), never through this path.
+  if (label === 'pocp-approve-tests') return no('a test approval carries to a new head only when the hold is review-only (sticky approvals)');
   if (!c) return no('the head is not a merge of the base into an approved head');
   if (!c.complete) return no(`GitHub's data for the merge was incomplete${c.reason ? ` (${c.reason})` : ''}`);
   if (!c.from_sha || !c.merged_sha || c.merged_sha !== facts.base_sha) return no('the head is not a merge of the current base into the previous head');
