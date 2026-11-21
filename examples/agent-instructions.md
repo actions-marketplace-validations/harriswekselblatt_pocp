@@ -43,13 +43,16 @@ history or commit with `--no-verify` to get past it: none of these clears an app
 rewriting proven commits invalidates their proofs. To bring in the base branch, merge it
 rather than rebasing: during a merge only the conflict resolutions need proof.
 
-When POCP says a person must approve, relay POCP's reason and command to the user word for
-word, before anything of your own: the `why:` line and the approve command that `pocp fix`
-and `pocp gate` print, or `hold.line` and `hold.command` from `pocp gate --json`,
-`pocp fix --json` or `pocp approvals --json`. Don't shorten, soften or reword it, and don't
-hand over a bare label command without its reason: the person adding the label needs to know
-what they are accepting. The same reason is on the pull request's `pocp` status and in POCP's
-comment on it.
+When POCP says a person must approve, tell the user three things, in this order, before
+anything of your own: (1) the exact command to run, (2) what the label means ("Adding it
+means: …"), (3) why this change needs it, in POCP's words. Take them from POCP's full
+reason, not the pull request's `pocp` status: that line is cut to 140 characters, so on its
+own it is never enough. The full reason is the `why:` lines and the approve command that
+`pocp fix` and `pocp gate` print, `hold.command` and `hold.items[]` (`reason`, `means`) from
+`pocp gate --json`, `pocp fix --json` or `pocp approvals --json`, `pocp approvals`, or POCP's
+hold comment on the pull request (it also names the files and test lines to look at). Don't
+shorten, soften or reword it, and never hand over a bare label command or the status line
+alone: the person adding the label needs to know what they are accepting.
 
 **Never**
 

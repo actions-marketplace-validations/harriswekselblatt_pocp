@@ -1,0 +1,250 @@
+{
+  "pocp": 1,
+  "id": "p-92ce3ca8",
+  "intent": "explain-hold hook: ignore POCP's approved/failed status comments and a null --json hold; stricter drift test",
+  "touches": [
+    "test/explain-hold.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/explain-hold.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/explain-hold.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-21T08:01:25.205Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:9212804e465a3c55272cdcdcd893415341ad55dccda070a0366ab196f2e7ab77",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-21T08:01:25.567Z",
+      "duration_ms": 307761,
+      "stdout_sha256": "dc50077b5ea4a8e27be6bfd982791e7f4f696edfa8e0ff2db8dcd76961cb7d7f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-166c3680",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:7f10b39feb213b2e1a71994663532106869aec7c37993110e67bb1116fea3bdc",
+      "subject": "sha256:9212804e465a3c55272cdcdcd893415341ad55dccda070a0366ab196f2e7ab77",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-21T08:06:33.481Z",
+      "duration_ms": 3040,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old versions of the edited tests (test/explain-hold.test.js) pass on the new code; a person must review the test change (test/explain-hold.test.js: existing test lines were changed or removed): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "e7deb16156a2c9f95d2f22fdc3033d193dda997e",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "test/explain-hold.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "scope": "changed-tests",
+              "duration_ms": 1367
+            }
+          ],
+          "changed_tests": {
+            "result": "pass",
+            "files": [
+              "test/explain-hold.test.js"
+            ],
+            "runs": [
+              {
+                "side": "new-code",
+                "check": "test-suite",
+                "args": [
+                  "node",
+                  "--test",
+                  "test/explain-hold.test.js"
+                ],
+                "outcome": "pass",
+                "exit": 0,
+                "duration_ms": 1367,
+                "tests": {
+                  "passed": 10,
+                  "failed": 0,
+                  "skipped": 0
+                }
+              }
+            ]
+          },
+          "scope": "changed-tests"
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/explain-hold.test.js",
+              "why": "existing test lines were changed or removed"
+            }
+          ]
+        },
+        "duration_ms": 3040,
+        "timings": {
+          "setup_ms": 1320,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 1692,
+            "run_ms": 1367,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 750,
+            "count": 1
+          },
+          "copy": {
+            "ms": 717,
+            "count": 2
+          },
+          "cleanup": {
+            "ms": 541,
+            "count": 3
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-21T08:01:25.205Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-21T08:01:25.205Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-21T08:06:37.000Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:9212804e465a3c55272cdcdcd893415341ad55dccda070a0366ab196f2e7ab77"
+    },
+    {
+      "at": "2026-11-21T08:06:37.380Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:9212804e465a3c55272cdcdcd893415341ad55dccda070a0366ab196f2e7ab77"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:7f10b39feb213b2e1a71994663532106869aec7c37993110e67bb1116fea3bdc",
+      "subject": "sha256:9212804e465a3c55272cdcdcd893415341ad55dccda070a0366ab196f2e7ab77",
+      "by": "harriswekselblatt",
+      "at": "2026-11-21T08:06:37.380Z",
+      "to": "ci-approval",
+      "reason": "the old versions of the edited tests (test/explain-hold.test.js) pass on the new code; a person must review the test change (test/explain-hold.test.js: existing test lines were changed or removed): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
+    }
+  ]
+}
