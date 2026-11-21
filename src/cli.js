@@ -92,13 +92,15 @@ Setup
   init [--hooks] [--github] [--force] create .proof/; --hooks installs git hooks; --github writes the
                                      GitHub workflows (verify, the pocp status, approval labels),
                                      pinned to this release (--pocp-ref <tag|sha> to pin another);
-                                     --local: no CI, the hooks are the gate (implies --hooks)
+                                     --local: no CI, the hooks are the gate (implies --hooks);
+                                     --badge prints the "uses POCP" README badge
   upgrade [--dry-run] [--to <version>] [--pocp-ref <tag|sha>]
                                      move to a newer release: bump the proof-of-change dependency (or the
                                      global install), re-pin the workflows, refresh the hooks; asks
                                      npm for the latest version unless --to
   doctor [--base <rev>] [--offline]  check an adoption: hooks, policy, Action access, labels,
-                                     branch protection, and what the adoption PR carries
+                                     branch protection, and what the adoption PR carries;
+                                     --disable-billing-failed (local mode) disables workflows failing for billing
   approve [<owner/repo#n>] [--repo <owner/repo>]... [--owner <login>]...  (also: approvals)
                                      no PR: open PRs, across your repositories, waiting only for a
                                      maintainer's label, with what each label approves; with a PR,
@@ -115,7 +117,7 @@ Packets
   widen <packet> --touch <path>...   cover more files (re-applies required checks)
   ready <packet>                     move a draft packet to open
   sync [<packet>...]                 add checks the current rules require
-  prove [<packet>...] [--mode clean|snapshot] [--force] [--only <obl>]... [--no-stage]
+  prove [<packet>...] [--mode clean|snapshot] [--force] [--only <obl>]... [--no-stage] [--no-defer]
   attest <packet> <obligation> --by <who> [--note <text>]
   abandon <packet> --reason <text>
   show <packet>                      full packet
@@ -123,7 +125,8 @@ Packets
   status                             subject, staged files, packet progress
   fix [--intent <text>] [--test <cmd>] [--mode clean|snapshot]
                                      do what a blocked commit needs (open or widen a packet, add
-                                     required checks, prove, stage); says what is left and who does it
+                                     required checks, prove, stage); says what is left and who does it;
+                                     --no-defer runs checks here that ci.defer_heavy would hand to CI
 
   obligations:  --test <cmd>  --command <cmd> [--expect <regex>]  --probe <cmd> [--target <url>]
                 --manual <text>   modifiers after each: --timeout <ms>  --input <glob>  --cwd <folder>

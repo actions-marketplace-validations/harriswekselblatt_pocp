@@ -267,7 +267,9 @@ test('verify refuses a label given before a force-push (forced back to a head th
   }
 });
 
-test('"Update branch" keeps its approvals: a clean merge of the base carries the label over', async () => {
+// A test approval can accept a behaviour change, decided for the run that showed it: a clean
+// merge of the base doesn't carry it (sticky approvals carry review-only holds, from records).
+test('"Update branch" does not carry a test approval through the merge path', async () => {
   const r = testChangeRange();
   const prFiles = [{ filename: 'test/math.check.mjs' }];
   const files = (list) => ({ files: list });
@@ -282,8 +284,8 @@ test('"Update branch" keeps its approvals: a clean merge of the base carries the
   } }));
   try {
     const v = await verifyAsync(r.dir, [...freshnessArgs(r), `--accept-test-change=${r.head}`], freshnessEnv(api));
-    assert.equal(v.code, 0, v.stdout + v.stderr);
-    assert.deepEqual(v.json.label_freshness['pocp-approve-tests'], { ok: true, how: 'carried' });
+    assert.notEqual(v.code, 0, v.stdout + v.stderr);
+    assert.equal(v.json.label_freshness['pocp-approve-tests'].ok, false);
   } finally {
     await api.close();
   }

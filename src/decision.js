@@ -3,7 +3,7 @@
 // no remedy or detail text can change the outcome.
 import { factsOf } from './finding.js';
 import { explainFinding } from './explain.js';
-import { HOLD_VERDICTS } from './hold.js';
+import { HOLD_VERDICTS, UNKNOWN_VERDICT } from './hold.js';
 import { APPROVE_INCONCLUSIVE_LABEL, APPROVE_POLICY_LABEL, APPROVE_TESTS_LABEL } from './remedies.js';
 
 /** The label a maintainer adds for each kind of approval. */
@@ -67,8 +67,11 @@ export function summarizeFindings(findings = [], rerunFailures = []) {
     for (const file of r.files) if (!n.files.includes(file)) n.files.push(file);
     // What the test guard found (guard-check.js), typed: it picks the maintainer's words
     // (hold.js), never the decision. Only the four verdicts a person is asked about.
-    const verdict = factsOf(f).guard?.verdict;
-    if (HOLD_VERDICTS.includes(verdict) && !(n.verdicts || []).includes(verdict)) n.verdicts = [...(n.verdicts || []), verdict];
+    // A test hold without a typed verdict makes the label's verdict unknown, so another file's
+    // review-only verdict never speaks for it (hold.js gravestVerdict).
+    const raw = factsOf(f).guard?.verdict;
+    const verdict = HOLD_VERDICTS.includes(raw) ? raw : label === APPROVE_TESTS_LABEL ? UNKNOWN_VERDICT : null;
+    if (verdict && !(n.verdicts || []).includes(verdict)) n.verdicts = [...(n.verdicts || []), verdict];
     needs.set(label, n);
   }
   const only = !needsFix && needs.size > 0 && unfinishedReruns === 0;

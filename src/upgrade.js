@@ -158,7 +158,7 @@ function latestVersion(cwd) {
 
 // A step that uses the POCP action or its status reporter, pinned to a ref. An optional
 // "# v1.2.3" comment after a commit pin (Dependabot's convention) names its release.
-const USES = new RegExp(`^(\\s*-?\\s*uses:\\s*['"]?)(${ACTION_REPO.replace('/', '\\/')}(?:\\/status)?)@([^\\s'"#]+)(['"]?)([ \\t]*#[ \\t]*v?\\d+\\.\\d+\\.\\d+[^\\s]*)?`, 'gim');
+const USES = new RegExp(`^(\\s*-?\\s*uses:\\s*['"]?)(${ACTION_REPO.replace('/', '\\/')}(?:\\/status)?)@([^\\s'"#]+)(['"]?)([ \\t]*#[ \\t]*v?\\d+\\.\\d+\\.\\d+[^\\s]*)?([^\\n]*)`, 'gim');
 const isSha = (ref) => /^[0-9a-f]{40}$/i.test(ref);
 
 /**
@@ -169,7 +169,7 @@ const isSha = (ref) => /^[0-9a-f]{40}$/i.test(ref);
 export function repinText(text, ref, { explicit = false, version = null } = {}) {
   const changed = [];
   const left = [];
-  const out = String(text).replace(USES, (whole, pre, repo, from, quote, comment) => {
+  const out = String(text).replace(USES, (whole, pre, repo, from, quote, comment, rest) => {
     if (from === ref) return whole;
     if (!explicit) {
       if (isSha(from)) { left.push({ from: `${repo}@${from}`, reason: 'commit' }); return whole; }
@@ -178,8 +178,10 @@ export function repinText(text, ref, { explicit = false, version = null } = {}) 
     }
     changed.push({ from: `${repo}@${from}`, to: `${repo}@${ref}` });
     // A "# v1.2.3" comment names the release a commit pin is: keep it true, or drop it for a tag.
-    const tail = comment && isSha(ref) && version ? ` # v${bare(version)}` : '';
-    return `${pre}${repo}@${ref}${quote}${tail}`;
+    // Whatever followed the version in that comment stays a comment, so the line stays valid YAML.
+    if (!comment) return `${pre}${repo}@${ref}${quote}${rest}`;
+    if (isSha(ref) && version) return `${pre}${repo}@${ref}${quote} # v${bare(version)}${rest}`;
+    return `${pre}${repo}@${ref}${quote}${rest.trim() ? ` #${rest}` : ''}`;
   });
   return { text: out, changed, left };
 }

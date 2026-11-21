@@ -140,6 +140,15 @@ test('approvals: bare, =true, =false or a sha; anything else, or two different v
   assert.throws(() => v('--accept-something=abc'), /unknown approval --accept-something: this pocp supports --accept-test-change, --accept-policy-change, --accept-uncovered, --accept-inconclusive/);
 });
 
+test('an approval followed by a separate commit is refused: it would have approved every head', () => {
+  // QUICKSTART once wrote "--accept-test-change $(git rev-parse HEAD)": a bare approval (any head)
+  // plus a stray argument that verify ignored.
+  const sha = 'abc1234def5678abc1234def5678abc1234def56';
+  assert.throws(() => parseArgs(['verify', '--rerun', 'main..HEAD', '--accept-test-change', sha]), /write --accept-test-change=abc1234/);
+  assert.throws(() => parseArgs(['verify', 'b..h', '--accept-policy-change', 'abc1234']), /a bare --accept-policy-change approves any head/);
+  assert.equal(parseArgs(['verify', 'b..h', `--accept-test-change=${sha}`]).flags['accept-test-change'], sha);
+});
+
 test('values: missing, starting with "--", ill-typed numbers, repeated single values', () => {
   assert.throws(() => parseArgs(['open', '--intent']), /--intent needs a value$/);
   assert.throws(() => parseArgs(['open', '--intent', '--json']), /--intent needs a value \(to give one that starts with "-", write --intent=<value>\)/);

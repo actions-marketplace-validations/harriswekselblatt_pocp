@@ -56,8 +56,11 @@ const TESTS_TINY = Object.freeze({
   'baseline-red': 'tests already failing',
   'needs-review': 'tests edited',
 });
-/** The gravest of several guard verdicts, or null. */
-export const gravestVerdict = (verdicts = []) => VERDICT_ORDER.find((v) => verdicts.includes(v)) || null;
+/** Stands for a test hold whose guard verdict wasn't typed: with any other, the verdict isn't
+ *  known, so the hold is never read as review-only. */
+export const UNKNOWN_VERDICT = 'unknown';
+/** The gravest of several guard verdicts, or null (none, or one of them unknown). */
+export const gravestVerdict = (verdicts = []) => (verdicts.includes(UNKNOWN_VERDICT) ? null : VERDICT_ORDER.find((v) => verdicts.includes(v)) || null);
 
 const REASON = Object.freeze({
   'pocp-approve-tests': "Existing tests or test setup were edited, and POCP's mechanical check couldn't clear the edit on its own. Whether the old tests still pass on the new code isn't known here: read the verify run before approving.",
@@ -91,7 +94,7 @@ export function holdExplanation(needs = [], { number = null, repository = null, 
     const label = typeof n === 'string' ? n : n?.label;
     if (!KNOWN.has(label)) continue;
     const it = byLabel.get(label) || { verdicts: [], files: [] };
-    for (const v of [].concat(n?.verdicts || [], n?.verdict || [])) if (VERDICT_ORDER.includes(v) && !it.verdicts.includes(v)) it.verdicts.push(v);
+    for (const v of [].concat(n?.verdicts || [], n?.verdict || [])) if ((VERDICT_ORDER.includes(v) || v === UNKNOWN_VERDICT) && !it.verdicts.includes(v)) it.verdicts.push(v);
     for (const f of n?.files || []) if (typeof f === 'string' && !it.files.includes(f)) it.files.push(f);
     byLabel.set(label, it);
   }

@@ -379,9 +379,11 @@ test/sticky-approval.test.js):
 - a base update that changes which files count as held (a new glob, an import, a newer verifier):
   the held sets recorded by the two runs differ, voided; a base policy change voids it outright;
 - a forged record: records are step names from the base's workflow, read from a file isolated
-  checks can't reach and checked against fixed patterns; a head that changes a CI file (or an
-  approved head that did) has its records ignored, and a record naming another approved head than
-  the one GitHub's data gives doesn't count;
+  checks can't reach and checked against fixed patterns; a head that changes a CI file can't use
+  them, because its unapproved CI change keeps the status pending and an approved one already runs
+  a workflow a maintainer accepted; an approved head that changed a CI file voids the approval
+  (verify's `ci` reason); and a record naming another approved head than the one GitHub's data
+  gives doesn't count;
 - a behaviour-changed hold, on the approved head or the new one: never carries (above); the
   label is removed and a fresh one re-runs verify;
 - local approvals (`--accept-test-change=<sha>`): the same merge rule, then, after the new head's

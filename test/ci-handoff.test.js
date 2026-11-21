@@ -234,6 +234,10 @@ test('block mode hands the test guard to CI too, and CI still judges the test ch
   assert.equal(prove.handed_to_ci.length, 2);
   // Fast mode: the approval CI will ask for is certain, so fix says so now.
   assert.ok(f.json.needs_person.some((x) => x.code === 'test_change' && /pocp-approve-tests/.test(x.next)));
+  // Its reason says nothing has run the check yet, never that a check ran and couldn't clear it.
+  const why = f.json.needs_person.find((x) => x.code === 'test_change').why;
+  assert.match(why, /handed to CI, so nothing has run it yet/);
+  assert.doesNotMatch(why, /couldn't clear/);
   assert.equal(commit(dir, 'note').status, 0);
   const v = pocp(dir, ['verify', `${start}..HEAD`, '--rerun', '--require-coverage', '--json']);
   assert.equal(v.code, 1);

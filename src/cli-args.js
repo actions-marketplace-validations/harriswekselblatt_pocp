@@ -392,6 +392,13 @@ export function parseArgs(argv) {
       continue;
     }
     if (spec.type === 'approval') {
+      // "--accept-test-change <sha>" reads as a bare flag (approve any head) plus a stray
+      // argument: refuse it, so an approval meant for one head never widens to every head.
+      if (val === undefined && APPROVAL_SHA.test(argv[i + 1] || '')) {
+        errors.push(`--${key} takes its commit with "=": write --${key}=${argv[i + 1]} (a bare --${key} approves any head)`);
+        i++;
+        continue;
+      }
       let v;
       if (val === undefined || val === 'true') v = true;
       else if (val === 'false') v = false;
