@@ -1,0 +1,435 @@
+{
+  "pocp": 1,
+  "id": "p-63850c07",
+  "intent": "Claude Code plugin: explain every POCP approval hold in plain English in the agent's session (new PostToolUse hook), and make the relay rule say the status line alone is never enough",
+  "touches": [
+    "test/explain-hold.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/explain-hold.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/explain-hold.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-21T06:02:12.277Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-21T06:02:12.709Z",
+      "duration_ms": 1205106,
+      "stdout_sha256": "ee3aa257803ace49cfa1e1aa2a72bf6b7cf6ee5b6f2c239d0732dbdbd13c4a51",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-86a7cd44",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:7f10b39feb213b2e1a71994663532106869aec7c37993110e67bb1116fea3bdc",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-21T06:22:19.094Z",
+      "duration_ms": 2428920,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1, timed out), so there is nothing to compare",
+        "base": "4ca6adcee4b77f3bf93851e8cb8633190366ca6a",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/explain-hold.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "timed_out": true,
+              "duration_ms": 1205223
+            }
+          ],
+          "left_out": [
+            "test/explain-hold.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/explain-hold.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "timed_out": true,
+              "duration_ms": 1205191,
+              "failed_tests": [
+                "a check that timed out runs again on the next pocp fix"
+              ]
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "unfinished": true,
+        "duration_ms": 2428920,
+        "timings": {
+          "setup_ms": 10287,
+          "new_baseline": {
+            "wall_ms": 1209897,
+            "run_ms": 1205191,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 1208704,
+            "run_ms": 1205223,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 7607,
+            "count": 1
+          },
+          "copy": {
+            "ms": 6894,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 5464,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": true,
+      "passed": false,
+      "started_at": "2026-11-21T07:03:33.530Z",
+      "duration_ms": 1205128,
+      "stdout_sha256": "e60f84af087fa68616d85a1e9dde3cb4054f0995b46195706e4df0b62c8fef20",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-b25253ef",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:7f10b39feb213b2e1a71994663532106869aec7c37993110e67bb1116fea3bdc",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-21T07:23:39.783Z",
+      "duration_ms": 1416360,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (test/explain-hold.test.js: a test file was added (it runs with the others and can change their outcome)): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "4ca6adcee4b77f3bf93851e8cb8633190366ca6a",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "-test/explain-hold.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 521080
+            }
+          ],
+          "left_out": [
+            "test/explain-hold.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/explain-hold.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 888017
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "test/explain-hold.test.js",
+              "why": "a test file was added (it runs with the others and can change their outcome)"
+            }
+          ]
+        },
+        "duration_ms": 1416360,
+        "timings": {
+          "setup_ms": 5245,
+          "new_baseline": {
+            "wall_ms": 889191,
+            "run_ms": 888017,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 521919,
+            "run_ms": 521080,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 3742,
+            "count": 1
+          },
+          "copy": {
+            "ms": 2744,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 1129,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-21T07:47:50.532Z",
+      "duration_ms": 635011,
+      "stdout_sha256": "9bd87122bb99e09ec3c98d9bef269ba5ed26e9d15d66e15e6a05f5b6db66d197",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-2ef4e482",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-21T06:02:12.277Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-21T06:02:12.277Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-21T06:22:18.504Z",
+      "event": "proof_failed",
+      "obligation": "o1",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:02:50.183Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:02:50.374Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:02:53.630Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:23:39.165Z",
+      "event": "proof_failed",
+      "obligation": "o1",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:47:16.849Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    },
+    {
+      "at": "2026-11-21T07:58:25.660Z",
+      "event": "state",
+      "from": "failed",
+      "to": "proven",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:7f10b39feb213b2e1a71994663532106869aec7c37993110e67bb1116fea3bdc",
+      "subject": "sha256:32a72de3cd2728ef70671e7db0a1146c25cd1e1fc05f65e855dc7c418481999b",
+      "by": "harriswekselblatt",
+      "at": "2026-11-21T07:02:53.630Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1, timed out), so there is nothing to compare"
+    }
+  ]
+}

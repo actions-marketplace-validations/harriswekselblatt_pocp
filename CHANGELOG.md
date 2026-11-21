@@ -49,6 +49,19 @@ came back from GitHub's jobs API with their values filled in.
   `"ci": { "pr_comment": false }`. `pocp gate --json`, `pocp fix --json` and
   `pocp approvals --json` carry it as `hold`, and the agent instructions ask agents to relay it
   word for word.
+- **The Claude Code plugin explains every approval hold in the agent's session.** A new
+  `PostToolUse`/`PostToolUseFailure` hook (`plugins/pocp/scripts/explain-hold.mjs`) fires when a
+  Bash command's output shows POCP holding a change for a person: the `pocp` status "Waiting for
+  approval" in `gh pr checks` (which exits 8 while a check is pending), POCP's hold comment,
+  `pocp fix`, `pocp gate`, the pre-commit hook or `pocp approvals`. It adds, for each held label,
+  POCP's full reason and what adding it means, points to `pocp approvals` and the hold comment
+  for the pull request's details, and tells the agent to give the user the exact command, then
+  what the label means, then why, before anything of its own, and never to add the label itself.
+  It needs no skill to load, repeats no text from the output (a pull request comment can imitate
+  POCP), makes no network call, and does nothing outside a POCP repository or on any error. Its
+  sentences are copies of `src/hold.js`; a test fails if they drift. The relay rule in the skill,
+  `examples/agent-instructions.md` and this repository's `AGENTS.md` now says the 140-character
+  status line alone is never enough.
 - **Approvals stick to what was approved.** With "require branches to be up to date", every merge
   to the base made the other open pull requests update, and each update voided their approvals.
   `pocp-approve-tests` and `pocp-approve-policy` are now bound to the pull request's own changes
