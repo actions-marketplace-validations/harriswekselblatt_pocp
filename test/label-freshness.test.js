@@ -348,7 +348,7 @@ const verifyJob = (approvals) => ({ name: 'verify', status: 'completed', conclus
 /** A fake API client for the reporter, logging writes in order. */
 function reporterGh({ labels, events, permission = 'admin', approvals = ['approval-tests'] }) {
   const log = [];
-  const pr = { number: 7, state: 'open', head: { sha: H }, base: { sha: BASE }, changed_files: 1, labels: labels.map((name) => ({ name })), user: { login: 'bot' } };
+  const pr = { number: 7, state: 'open', head: { sha: H, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' } }, base: { sha: BASE, ref: 'main' }, changed_files: 1, labels: labels.map((name) => ({ name })), user: { login: 'bot' } };
   const gh = {
     get: async (url) => {
       if (url.includes('/actions/workflows/pocp.yml')) return WF;
@@ -363,7 +363,9 @@ function reporterGh({ labels, events, permission = 'admin', approvals = ['approv
     all: async (url) => {
       if (url.includes('/pulls?state=open')) return [{ number: 7, state: 'open', head: { sha: H } }];
       if (url.includes('/pulls/7/files')) return [{ filename: 'src/a.js' }];
-      if (url.includes('/runs?')) return [{ id: 1, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: H, repository: { full_name: 'o/r' }, status: 'completed', conclusion: 'success', created_at: at('10:00'), run_attempt: 1, html_url: 'https://github.com/o/r/actions/runs/1' }];
+      // Which pull requests had the head (status-report.js headPulls): this one only.
+      if (url.includes(`/commits/${H}/pulls`) || url.includes('/pulls?state=all&head=o%3Atopic')) return [{ number: 7, state: 'open', head: { sha: H } }];
+      if (url.includes('/runs?')) return [{ id: 1, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: H, repository: { full_name: 'o/r' }, head_branch: 'topic', head_repository: { full_name: 'o/r' }, pull_requests: [{ number: 7, head: { ref: 'topic', sha: H }, base: { ref: 'main', sha: BASE } }], status: 'completed', conclusion: 'success', created_at: at('10:00'), run_attempt: 1, html_url: 'https://github.com/o/r/actions/runs/1' }];
       if (url.includes('/jobs')) return [verifyJob(approvals)];
       if (url.includes('/issues/7/events')) return events;
       return [];
