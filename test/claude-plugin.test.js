@@ -53,6 +53,41 @@ const DENIED = [
   'gh workflow disable -R o/r "CI"',
   'gh api -X PUT repos/o/r/actions/workflows/123/disable',
   'gh api --method PUT "repos/o/r/actions/workflows/test.yml/disable"',
+  // 1. the package name, with any runner
+  'npx proof-of-change ci off',
+  'npx proof-of-change@1.5.0 init --local',
+  'pnpm dlx proof-of-change approve o/r#12',
+  'yarn dlx proof-of-change hooks uninstall',
+  'bunx proof-of-change@1.5.0 ci off',
+  'pocp --json ci off',
+  'npx -p proof-of-change pocp ci off',
+  'node node_modules/proof-of-change/bin/pocp.js init --local',
+  // 2. flags between gh's command words
+  'gh workflow -R o/r disable ci.yml',
+  'gh pr -R o/r merge 12 --admin',
+  // 3. a label added when a pull request is created, or through gh issue / gh api
+  'gh pr create --label pocp-approve-policy --title x',
+  'gh pr create -l pocp-approve-tests',
+  'gh pr new -l pocp-approve-tests',
+  'gh api -X PATCH repos/o/r/issues/12 -f "labels[]=pocp-approve-tests"',
+  'gh pr create --label=docs,pocp-approve-tests',
+  'gh issue edit 12 --add-label pocp-approve-tests',
+  'gh api -X POST repos/o/r/issues/12/labels -f labels[]=pocp-approve-tests',
+  'echo \'{"labels":["pocp-approve-tests"]}\' | gh api repos/o/r/issues/12/labels --input -',
+  // 4. apostrophes inside double quotes don't hide a flag between them
+  'git commit -m "don\'t stop" --no-verify -m "it\'s fine"',
+  'git commit -m "$(cat <<\'EOF\'\nfix: don\'t "drop" -n\nEOF\n)" --no-verify',
+  // 6. writes to core.hooksPath, in every form
+  'git config --local core.hooksPath .x',
+  'git config --global core.hooksPath .x',
+  'git config --unset core.hooksPath',
+  'git config set core.HooksPath .x',
+  'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git commit -m x',
+  // other ways in: subshells, prefixes, command substitution
+  '(git commit -n)',
+  'sudo git push -f',
+  'echo "$(pocp ci off)"',
+  'npm run verify -- --accept-uncovered',
 ];
 
 const ALLOWED = [
@@ -75,6 +110,26 @@ const ALLOWED = [
   'pocp init --hooks --github',
   'git commit -m "docs: when to run pocp ci off and gh workflow disable"',
   'gh api repos/o/r/actions/workflows',
+  // 4. a commit message in a heredoc, with quotes and flags in its text
+  'git commit -m "$(cat <<\'EOF\'\nfix: don\'t "drop" -n or --no-verify\nEOF\n)"',
+  'git commit -m x # --no-verify',
+  'git commit -m x 2>&1 | tail -3',
+  // 6. reading or searching for core.hooksPath
+  'git config --get core.hooksPath',
+  'git config core.hooksPath',
+  'rg core.hooksPath src',
+  'grep -r core.hooksPath .',
+  // 7. reading labels, and naming the label for the user
+  'gh api repos/o/r/issues/3/labels | jq \'.[] | select(.name | startswith("pocp-approve-"))\'',
+  'gh api repos/o/r/issues/3/labels --jq \'.[].name | select(startswith("pocp-approve-"))\'',
+  'gh pr comment 12 --body "needs pocp-approve-tests"',
+  'gh pr create --title x --body "-l pocp-approve-tests is for the user to add"',
+  'gh api -X DELETE repos/o/r/issues/3/labels/pocp-approve-tests',
+  'gh api repos/o/r/issues/12/comments -f body="needs pocp-approve-tests"',
+  // 8. -n belongs to git commit only
+  'git log --grep=commit -n 5',
+  'git commit -m"note" -a',
+  'pocp fix --intent "pocp ci off docs"',
 ];
 
 test('in a repository that uses POCP, the guard refuses commands that go around it, and says what to do instead', () => {
@@ -91,10 +146,32 @@ test('in a repository that uses POCP, ordinary commands pass', () => {
   for (const command of ALLOWED) assert.equal(decide(dir, command).decision, 'allow', command);
 });
 
+test('a command too deeply nested to read is refused in a POCP repository, never let through by a crash', () => {
+  const deep = `echo ${'$( '.repeat(20000)}`;
+  const d = decide(sampleRepo({ deep: false }), deep);
+  assert.equal(d.decision, 'deny');
+  assert.match(d.reason, /nested too deeply/);
+  assert.equal(decide(tmpRepo(), deep).decision, 'allow', 'outside a POCP repository the guard does nothing');
+});
+
 test('outside a POCP repository, and for tools other than Bash, the guard does nothing', () => {
   const plain = tmpRepo();
   for (const command of DENIED) assert.equal(decide(plain, command).decision, 'allow', command);
   assert.equal(decide(sampleRepo({ deep: false }), 'git commit --no-verify', 'Edit').decision, 'allow');
+});
+
+test('a command aimed at a POCP repository from outside it is refused; one aimed elsewhere passes', () => {
+  const repo = sampleRepo({ deep: false });
+  const plain = tmpRepo();
+  for (const command of [
+    `cd ${repo} && pocp ci off`,
+    `cd "${repo}"; git push -f`,
+    `git -C ${repo} commit --no-verify`,
+    `cd ${path.dirname(repo)} && git -C ${path.basename(repo)} commit -n`,
+  ]) assert.equal(decide(plain, command).decision, 'deny', command);
+  assert.equal(decide(path.dirname(repo), `cd ${path.basename(repo)} && npx proof-of-change ci off`).decision, 'deny');
+  assert.equal(decide(plain, `cd ${plain} && git commit --no-verify`).decision, 'allow');
+  assert.equal(decide(plain, 'git -C ../elsewhere commit --no-verify').decision, 'allow');
 });
 
 test('the marketplace lists the plugin; names and the version stay in step with the package', () => {

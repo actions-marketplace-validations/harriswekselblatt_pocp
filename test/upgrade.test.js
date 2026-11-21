@@ -133,6 +133,18 @@ test('re-pinning moves release tags forward, and leaves commits, branches and ne
   assert.equal(e.text, `      - uses: harriswekselblatt/pocp@${sha2} # v1.5.0`);
 });
 
+test('re-pinning keeps the rest of a release comment as a comment, so the line stays valid', () => {
+  const r = repinText('      - uses: harriswekselblatt/pocp@v1.4.0 # v1.4.0 pinned until X', 'v1.5.0', { version: '1.5.0' });
+  assert.equal(r.text, '      - uses: harriswekselblatt/pocp@v1.5.0 # pinned until X');
+  const bare = repinText('      - uses: harriswekselblatt/pocp@v1.4.0 # v1.4.0', 'v1.5.0', { version: '1.5.0' });
+  assert.equal(bare.text, '      - uses: harriswekselblatt/pocp@v1.5.0');
+  const quoted = repinText('      - uses: "harriswekselblatt/pocp@v1.4.0"  # v1.4.0 note', 'v1.5.0', { version: '1.5.0' });
+  assert.equal(quoted.text, '      - uses: "harriswekselblatt/pocp@v1.5.0" # note');
+  const sha = 'f'.repeat(40);
+  const e = repinText('      - uses: harriswekselblatt/pocp@v1.4.0 # v1.4.0 (sec)', sha, { explicit: true, version: '1.5.0' });
+  assert.equal(e.text, `      - uses: harriswekselblatt/pocp@${sha} # v1.5.0 (sec)`);
+});
+
 test('the lockfile version is read from npm, pnpm and yarn lockfiles', () => {
   const dir = tmpRepo();
   write(dir, 'pnpm-lock.yaml', "lockfileVersion: '9.0'\npackages:\n  proof-of-change@1.4.0:\n    resolution: {integrity: sha512-x}\n");

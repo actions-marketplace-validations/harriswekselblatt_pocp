@@ -279,13 +279,28 @@ export function withLock(lockFile, fn, { waitMs = 10_000, unknownOwnerStaleMs } 
   }
 }
 
-/** Async version for long operations such as proving. */
-export async function withLockAsync(lockFile, fn, { waitMs = 15 * 60_000, unknownOwnerStaleMs } = {}) {
+/**
+ * Async version for long operations such as proving. `stillWaiting(pid)`, when given, says the
+ * lock's holder is itself waiting in line (for the machine-wide check slot): that time isn't
+ * this repository's work, so it doesn't count toward `waitMs`.
+ */
+export async function withLockAsync(lockFile, fn, { waitMs = 15 * 60_000, unknownOwnerStaleMs, stillWaiting = null } = {}) {
   fs.mkdirSync(path.dirname(lockFile), { recursive: true });
-  const deadline = Date.now() + waitMs;
+  let deadline = Date.now() + waitMs;
   let mine;
   while (!(mine = tryAcquire(lockFile, { unknownOwnerStaleMs }))) {
-    if (Date.now() > deadline) throw heldError(lockFile);
+    if (Date.now() > deadline) {
+      let holder = null;
+      try {
+        holder = Number(fs.readFileSync(lockFile, 'utf8').split(' ')[0]);
+      } catch { /* gone: try again */ }
+      let queued = false;
+      try {
+        queued = Boolean(holder && stillWaiting?.(holder));
+      } catch { /* can't tell: the deadline stands */ }
+      if (!queued) throw heldError(lockFile);
+      deadline = Date.now() + 30_000;
+    }
     await new Promise((r) => setTimeout(r, 100));
   }
   try {
@@ -364,7 +379,7 @@ export function createFsStore(root) {
         });
     },
     lock: (name, fn) => withLock(p('runs', `${name}.lock`), fn),
-    lockAsync: (name, fn) => withLockAsync(p('runs', `${name}.lock`), fn),
+    lockAsync: (name, fn, opts) => withLockAsync(p('runs', `${name}.lock`), fn, opts),
   };
 }
 

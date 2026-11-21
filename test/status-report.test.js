@@ -38,7 +38,10 @@ const facts = (over = {}) => {
   return { base_sha: BASE, changed_files: f.files.length, head_prs: [7], incomplete: [], label_events_complete: true, ...f };
 };
 // What the API returns for the pull request and the open pull requests list.
-const apiPr = (sha = SHA) => ({ number: 7, state: 'open', head: { sha }, base: { sha: BASE }, changed_files: 1, labels: [] });
+const apiPr = (sha = SHA) => ({ number: 7, state: 'open', head: { sha, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' } }, base: { sha: BASE, ref: 'main' }, changed_files: 1, labels: [] });
+// A run as GitHub returns a same-repository pull_request run: its branch, and the open pull
+// requests that match it.
+const asGitHub = (r, sha = SHA) => ({ ...r, repository: { full_name: 'o/r' }, head_branch: 'topic', head_repository: { full_name: 'o/r' }, pull_requests: [{ number: 7, head: { ref: 'topic', sha }, base: { ref: 'main', sha: BASE } }] });
 const openPrs = [{ number: 7, state: 'open', head: { sha: SHA } }];
 
 test('a verified run on an unchanged workflow is green', () => {
@@ -291,7 +294,7 @@ test('reportStatus re-checks the head right before writing', async () => {
       }
       throw new Error(`unexpected GET ${url}`);
     },
-    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [{ ...run(), repository: { full_name: 'o/r' } }] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
+    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [asGitHub(run())] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
     post: async (url, body) => posted.push({ url, body }),
   };
   const r = await reportStatus(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null });
@@ -304,7 +307,7 @@ test('reportStatus writes one pocp status on the head', async () => {
   const posted = [];
   const gh = {
     get: async (url) => (url.includes('/actions/workflows/') ? WF : apiPr()),
-    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [{ ...run(), repository: { full_name: 'o/r' } }] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
+    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [asGitHub(run())] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
     post: async (url, body) => posted.push({ url, body }),
   };
   const r = await reportStatus(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null });
@@ -342,7 +345,7 @@ test('reportStatus fetches again while the steps are unreadable, then writes the
     all: async (url) => {
       if (url.includes('/pulls?state=open')) return openPrs;
       if (url.includes('/files')) return [{ filename: 'src/a.js' }];
-      if (url.includes('/runs?')) return [{ ...run(), repository: { full_name: 'o/r' } }];
+      if (url.includes('/runs?')) return [asGitHub(run())];
       if (url.includes('/jobs')) return [{ name: 'verify', ...(++jobFetches < 3 ? { conclusion: 'success', steps: [] } : job()) }];
       return [];
     },
@@ -359,7 +362,7 @@ test('reportStatus settles on pending when the steps stay unreadable', async () 
   const posted = [];
   const gh = {
     get: async (url) => (url.includes('/actions/workflows/') ? WF : apiPr()),
-    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [{ ...run(), repository: { full_name: 'o/r' } }] : url.includes('/jobs') ? [{ name: 'verify', conclusion: 'success', steps: [] }] : []),
+    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [asGitHub(run())] : url.includes('/jobs') ? [{ name: 'verify', conclusion: 'success', steps: [] }] : []),
     post: async (url, body) => posted.push({ url, body }),
   };
   await reportStatus(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null, sleep: async () => {}, waitMs: 1 });
@@ -370,7 +373,7 @@ test('reportStatus settles on pending when the steps stay unreadable', async () 
 // Approval carry-over: a merge of the current base into the approved head keeps the content
 // approvals, only while the merge changed nothing the pull request changes and no policy file.
 const OLD = 'b'.repeat(40);
-const carryFacts = ({ label = 'pocp-approve-tests', carry = {}, events, newRun } = {}) => facts({
+const carryFacts = ({ label = 'pocp-approve-policy', carry = {}, events, newRun } = {}) => facts({
   pr: { number: 7, state: 'open', head_sha: SHA, labels: [label], author: 'author' },
   runs: [newRun || run({ approvals: ['approval-tests', 'approval-policy', 'approval-coverage'].filter((s) => label.endsWith(s.slice(9))) }, { created_at: '2026-11-05T10:00:00Z' })],
   label_events: events || [{ label, actor: 'maintainer', permission: 'write', created_at: '2026-11-04T11:00:00Z' }],
@@ -382,11 +385,19 @@ const carryFacts = ({ label = 'pocp-approve-tests', carry = {}, events, newRun }
 });
 
 test('carry-over: a clean merge of the base into the approved head stays green without a new label', () => {
-  for (const label of ['pocp-approve-tests', 'pocp-approve-policy', 'pocp-approve-coverage']) {
+  for (const label of ['pocp-approve-policy', 'pocp-approve-coverage']) {
     const d = decideStatus(carryFacts({ label }));
     assert.equal(d.state, 'success', `${label}: ${d.reason}`);
     assert.match(d.reason, /carried over/);
   }
+});
+
+// A test approval may accept a behaviour change (old tests failing on the new code), decided for
+// the run that showed it. It reaches a new head only through sticky approvals, which require a
+// review-only verdict on both heads, never through this path.
+test('carry-over: a test approval never carries this way, whatever the merge', () => {
+  const d = decideStatus(carryFacts({ label: 'pocp-approve-tests' }));
+  assert.equal(d.state, 'pending', d.reason);
 });
 
 test('carry-over: the merge touching a pull request file, a policy file, or the wrong base voids it', () => {
@@ -434,9 +445,9 @@ test('carry-over: a proof record another pull request added to the base keeps th
 test('carry-over: never for inconclusive or workflow approvals, a non-writer, or a label older than the old head', () => {
   const inconclusive = carryFacts({ label: 'pocp-approve-inconclusive', newRun: run({ approvals: ['approval-inconclusive'] }, { created_at: '2026-11-05T10:00:00Z' }) });
   assert.equal(decideStatus(inconclusive).state, 'pending');
-  const triage = carryFacts({ events: [{ label: 'pocp-approve-tests', actor: 't', permission: 'triage', created_at: '2026-11-04T11:00:00Z' }] });
+  const triage = carryFacts({ events: [{ label: 'pocp-approve-policy', actor: 't', permission: 'triage', created_at: '2026-11-04T11:00:00Z' }] });
   assert.equal(decideStatus(triage).state, 'pending');
-  const early = carryFacts({ events: [{ label: 'pocp-approve-tests', actor: 'm', permission: 'write', created_at: '2026-11-04T09:00:00Z' }] });
+  const early = carryFacts({ events: [{ label: 'pocp-approve-policy', actor: 'm', permission: 'write', created_at: '2026-11-04T09:00:00Z' }] });
   assert.equal(decideStatus(early).state, 'pending');
   const workflow = facts({ ...carryFacts({ label: 'pocp-approve-workflow' }), files: [{ filename: '.github/workflows/pocp.yml' }] });
   assert.equal(decideStatus(workflow).description, WORKFLOW_WAIT);
@@ -449,7 +460,7 @@ test('carry-over: a force-push after the label voids it (the label was for anoth
 });
 
 test('carry-over keeps the approval, never a result: a failing run on the merged head is red', () => {
-  const d = decideStatus(carryFacts({ newRun: run({ failed: 'failure', approvals: ['approval-tests'] }, { created_at: '2026-11-05T10:00:00Z' }) }));
+  const d = decideStatus(carryFacts({ newRun: run({ failed: 'failure', approvals: ['approval-policy'] }, { created_at: '2026-11-05T10:00:00Z' }) }));
   assert.equal(d.state, 'failure');
   const none = decideStatus(facts({ ...carryFacts(), runs: [] }));
   assert.equal(none.state, 'pending');
@@ -457,9 +468,9 @@ test('carry-over keeps the approval, never a result: a failing run on the merged
 
 test('carry-over facts come from GitHub: the merge parents, both file lists and the old head\'s runs', async () => {
   const router = (compareFiles) => {
-    const runsFor = (h) => [{ id: h === SHA ? 1 : 2, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: h, status: 'completed', conclusion: 'success', created_at: h === SHA ? '2026-11-05T10:00:00Z' : '2026-11-04T10:00:00Z', repository: { full_name: 'o/r' } }];
+    const runsFor = (h) => [asGitHub({ id: h === SHA ? 1 : 2, workflow_id: WF.id, path: WF.path, event: 'pull_request', head_sha: h, status: 'completed', conclusion: 'success', created_at: h === SHA ? '2026-11-05T10:00:00Z' : '2026-11-04T10:00:00Z' }, h)];
     const get = async (url) => {
-      if (url.endsWith('/pulls/7')) return { number: 7, state: 'open', head: { sha: SHA }, base: { sha: BASE }, labels: [{ name: 'pocp-approve-tests' }], user: { login: 'author' }, changed_files: 2 };
+      if (url.endsWith('/pulls/7')) return { ...apiPr(), labels: [{ name: 'pocp-approve-policy' }], user: { login: 'author' }, changed_files: 2 };
       if (url.includes('/actions/workflows/')) return { id: WF.id, path: WF.path };
       if (url.endsWith(`/commits/${SHA}`)) return { parents: [{ sha: OLD }, { sha: BASE }] };
       if (url.includes(`/compare/${OLD}...${SHA}`)) return { files: compareFiles.merge };
@@ -472,9 +483,11 @@ test('carry-over facts come from GitHub: the merge parents, both file lists and 
     const all = async (url) => {
       if (url.includes('/pulls?state=open')) return [{ number: 7, state: 'open', head: { sha: SHA } }];
       if (url.includes('/pulls/7/files')) return [{ filename: 'src/a.js' }, { filename: 'test/a.test.js' }];
+      // No other pull request has had this head (runAttribution).
+      if (url.includes(`/commits/${SHA}/pulls`) || url.includes('/pulls?state=all')) return [];
       if (url.includes('/runs?head_sha=')) return runsFor(url.match(/head_sha=(\w+)/)[1]);
-      if (url.includes('/jobs')) return [{ name: 'verify', status: 'completed', conclusion: 'success', steps: steps({ approvals: ['approval-tests'] }).map((st) => (st.name.startsWith('pocp-run') ? { ...st, name: runMarker(7, BASE) } : st)) }];
-      if (url.includes('/events')) return [{ event: 'labeled', label: { name: 'pocp-approve-tests' }, actor: { login: 'm' }, created_at: '2026-11-04T11:00:00Z' }, ...(compareFiles.forced ? [{ event: 'head_ref_force_pushed', actor: { login: 'author' }, created_at: compareFiles.forced }] : [])];
+      if (url.includes('/jobs')) return [{ name: 'verify', status: 'completed', conclusion: 'success', steps: steps({ approvals: ['approval-policy'] }).map((st) => (st.name.startsWith('pocp-run') ? { ...st, name: runMarker(7, BASE) } : st)) }];
+      if (url.includes('/events')) return [{ event: 'labeled', label: { name: 'pocp-approve-policy' }, actor: { login: 'm' }, created_at: '2026-11-04T11:00:00Z' }, ...(compareFiles.forced ? [{ event: 'head_ref_force_pushed', actor: { login: 'author' }, created_at: compareFiles.forced }] : [])];
       throw new Error(`unexpected ${url}`);
     };
     return { get, all };
@@ -499,9 +512,107 @@ test('a label other than an approval, added while deciding, does not hold the st
   const gh = {
     // The second read of the pull request (right before writing) shows a new "bug" label.
     get: async (url) => (url.includes('/actions/workflows/') ? WF : (prReads++ ? { ...apiPr(), labels: [{ name: 'bug' }] } : apiPr())),
-    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [{ ...run(), repository: { full_name: 'o/r' } }] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
+    all: async (url) => (url.includes('/pulls?state=open') ? openPrs : url.includes('/files') ? [{ filename: 'src/a.js' }] : url.includes('/runs?') ? [asGitHub(run())] : url.includes('/jobs') ? [{ name: 'verify', ...job() }] : []),
     post: async (url, body) => posted.push({ url, body }),
   };
   await reportStatus(gh, { repository: 'o/r', sha: SHA, prNumber: 7, baseConfig: null });
   assert.equal(posted[0].body.state, 'success');
+});
+
+// Run attribution: a run's steps (its pocp-run marker included) come from the workflow file of
+// its pull request's merge with its base. Another pull request with this head commit, against a
+// branch whose pocp.yml someone with write access edited, gets a run of the same workflow id,
+// path and head that names this pull request. A run counts only when GitHub ties it to this one.
+const tiedGh = ({ runs: raw, runPrs = [{ number: 7, base: { ref: 'main' } }], branch = 'topic', commitPulls = [], branchPulls = [], fail = null } = {}) => {
+  const pr = { number: 7, state: 'open', head: { sha: SHA, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' } }, base: { sha: BASE, ref: 'main' }, changed_files: 1, labels: [], user: { login: 'author' } };
+  const ghRun = (over = {}) => ({ ...run(), repository: { full_name: 'o/r' }, head_branch: branch, head_repository: { full_name: 'o/r' }, pull_requests: runPrs, ...over });
+  const seen = [];
+  const gh = {
+    get: async (url) => (url.includes('/actions/workflows/') ? WF : pr),
+    all: async (url) => {
+      seen.push(url);
+      if (fail && url.includes(fail)) throw new Error('GitHub API 502: Server Error');
+      if (url.includes('/pulls?state=open')) return openPrs;
+      if (url.includes('/files')) return [{ filename: 'src/a.js' }];
+      if (url.includes(`/commits/${SHA}/pulls`)) return commitPulls;
+      if (url.includes('/pulls?state=all')) return branchPulls;
+      if (url.includes('/runs?')) return raw ? raw(ghRun) : [ghRun()];
+      if (url.includes('/jobs')) return [{ name: 'verify', ...(url.includes('/runs/666/') ? job({ failed: 'failure' }) : job()) }];
+      return [];
+    },
+  };
+  return { gh, seen };
+};
+const decideTied = async (over) => decideStatus(await gather(tiedGh(over).gh, { repository: 'o/r', sha: SHA, prNumber: 7 }));
+const closedPr = (number, over = {}) => ({ number, state: 'closed', merged_at: null, head: { sha: SHA }, ...over });
+
+test('attribution: a run tied to this pull request alone decides as before, and both lists are read', async () => {
+  const { gh, seen } = tiedGh({ commitPulls: [{ number: 7, state: 'open', head: { sha: SHA } }], branchPulls: [{ number: 7, state: 'open', head: { sha: SHA } }] });
+  const d = decideStatus(await gather(gh, { repository: 'o/r', sha: SHA, prNumber: 7 }));
+  assert.equal(d.state, 'success', d.reason);
+  assert.ok(seen.some((u) => u.includes(`/commits/${SHA}/pulls`)), 'the commit\'s pull requests');
+  assert.ok(seen.some((u) => u.includes('/pulls?state=all&head=o%3Atopic')), 'every pull request from the head branch, closed ones included');
+  // Empty pull_requests (a fork's run) with only this pull request on the head: decided as before.
+  assert.equal((await decideTied({ runPrs: [] })).state, 'success');
+  // A pull request that only contains the commit (stacked on it) has another head: not a rival.
+  assert.equal((await decideTied({ runPrs: [], commitPulls: [{ number: 9, state: 'open', head: { sha: 'f'.repeat(40) } }] })).state, 'success');
+});
+
+test('attribution: a run whose pull_requests names another pull request, or of another branch, is ignored', async () => {
+  // The forged run is newest and green; this pull request's own older run failed and decides.
+  const runs = (over) => (ghRun) => [ghRun({ id: 666, created_at: '2026-11-04T09:00:00Z' }), ghRun({ id: 777, created_at: '2026-11-04T11:00:00Z', ...over })];
+  const named = await decideTied({ runs: runs({ pull_requests: [{ number: 8, base: { ref: 'evil' } }] }) });
+  assert.equal(named.state, 'failure', named.reason);
+  assert.match(named.reason, /run 666 failed/);
+  const branch = await decideTied({ runs: runs({ head_branch: 'copy-of-topic' }) });
+  assert.equal(branch.state, 'failure', branch.reason);
+  // Alone, it leaves nothing to decide: pending, never its green.
+  const alone = await decideTied({ runPrs: [{ number: 8, base: { ref: 'evil' } }] });
+  assert.equal(alone.state, 'pending');
+  assert.match(alone.reason, /no completed run/);
+});
+
+test('attribution: another pull request, closed or merged, that had this head holds the status at pending, named', async () => {
+  // The forged run's pull_requests is empty, or lists this pull request (GitHub lists the open
+  // pull requests matching the run now, not the one that started it): either way, pending.
+  for (const runPrs of [[], [{ number: 7, base: { ref: 'main' } }]]) {
+    const d = await decideTied({ runPrs, branchPulls: [{ number: 7, state: 'open', head: { sha: SHA } }, closedPr(8)] });
+    assert.equal(d.state, 'pending', d.reason);
+    assert.equal(d.description, TEXT.foreignHead);
+    assert.match(d.reason, /#8 \(closed\) also had head/);
+    assert.ok(d.description.length <= 140);
+  }
+  // Its branch force-pushed away and back after it closed: its recorded head is no longer this
+  // one, but it was open from the same branch when the run was created (a re-run keeps that time).
+  const moved = closedPr(8, { head: { sha: 'd'.repeat(40) }, created_at: '2026-11-04T09:00:00Z', closed_at: '2026-11-04T10:30:00Z' });
+  const away = await decideTied({ branchPulls: [moved] });
+  assert.equal(away.state, 'pending', away.reason);
+  assert.match(away.reason, /#8 \(closed\) was open from the same branch when run \d+ was created/);
+  // Closed before the run was created, with another head: not its run.
+  assert.equal((await decideTied({ branchPulls: [{ ...moved, closed_at: '2026-11-04T09:30:00Z' }] })).state, 'success');
+  const merged = await decideTied({ runPrs: [], commitPulls: [closedPr(9, { merged_at: '2026-11-04T12:00:00Z' })] });
+  assert.equal(merged.state, 'pending');
+  assert.match(merged.reason, /#9 \(merged\)/);
+  // A run that names this pull request and another, or this one against another base: pending.
+  assert.match((await decideTied({ runPrs: [{ number: 7, base: { ref: 'main' } }, { number: 8, base: { ref: 'evil' } }] })).reason, /also tied to #8/);
+  assert.match((await decideTied({ runPrs: [{ number: 7, base: { ref: 'evil' } }] })).reason, /against evil, not main/);
+  // A run that doesn't say its branch.
+  assert.equal((await decideTied({ branch: null })).state, 'pending');
+});
+
+test('attribution: a lookup that fails or is cut short is pending, never a decision', async () => {
+  for (const fail of [`/commits/${SHA}/pulls`, '/pulls?state=all']) {
+    const f = await gather(tiedGh({ runPrs: [], fail }).gh, { repository: 'o/r', sha: SHA, prNumber: 7 });
+    assert.deepEqual(f.runs, [], 'no run is tied');
+    const d = decideStatus(f);
+    assert.equal(d.state, 'pending', fail);
+    assert.equal(d.description, TEXT.incomplete);
+    assert.match(d.reason, /couldn't list every pull request with head .*502/);
+  }
+  // A list cut short (githubClient.list says so) too.
+  const { gh } = tiedGh();
+  const cut = { ...gh, list: async (url) => ({ items: await gh.all(url), complete: !url.includes('state=all'), reason: url.includes('state=all') ? 'more than 10 pages' : null }) };
+  const d = decideStatus(await gather(cut, { repository: 'o/r', sha: SHA, prNumber: 7 }));
+  assert.equal(d.state, 'pending');
+  assert.match(d.reason, /more than 10 pages/);
 });

@@ -172,7 +172,9 @@ export function sweepStale(base, { kinds = [], legacyKinds = [], legacyAgeMs = L
     const starts = processStarts([...new Set(running.map((f) => f.pid))]);
     for (const f of running) {
       const actual = starts?.get(f.pid);
-      if (actual !== undefined && Math.abs(actual - f.start) > START_SLACK_S) stale.push(f.name);
+      // A process that reuses the ID starts later than the owner did. One that ps says started
+      // earlier is the owner itself, started through exec: ps reports the exec'ing shell's start.
+      if (actual !== undefined && actual - f.start > START_SLACK_S) stale.push(f.name);
       else res.live++; // same process, or ps couldn't say: keep
     }
   }

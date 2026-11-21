@@ -295,9 +295,9 @@ test('the approved head is the head of the newest run before the label, on this 
 });
 
 test('predictApproval sees the same facts: an approval that sticks skips the re-run', async () => {
-  const pr = { number: 7, state: 'open', head: { sha: H, ref: 'topic', repo: { full_name: 'o/r' } }, base: { sha: BASE }, labels: [{ name: LABEL }], user: { login: 'author' }, changed_files: 1 };
+  const pr = { number: 7, state: 'open', head: { sha: H, ref: 'topic', label: 'o:topic', repo: { full_name: 'o/r' } }, base: { sha: BASE, ref: 'main' }, labels: [{ name: LABEL }], user: { login: 'author' }, changed_files: 1 };
   const runA = ghRun(2, A, '2026-11-07T10:00:00Z');
-  const runH = { ...ghRun(5, H, '2026-11-07T12:00:00Z'), workflow_id: WF.id, repository: { full_name: 'o/r' }, conclusion: 'success', run_started_at: '2026-11-07T12:00:00Z', run_attempt: 1 };
+  const runH = { ...ghRun(5, H, '2026-11-07T12:00:00Z'), workflow_id: WF.id, repository: { full_name: 'o/r' }, conclusion: 'success', run_started_at: '2026-11-07T12:00:00Z', run_attempt: 1, pull_requests: [{ number: 7, head: { ref: 'topic', sha: H }, base: { ref: 'main', sha: BASE } }] };
   const jobs = {
     2: [ran(runMarker(7, BASE)), { name: 'verify', conclusion: 'failure' }, ran('approvable'), ran('verdict-needs-review'), ran(held())],
     5: waitingJob(['needs-tests', 'approvable', 'verdict-needs-review', held(), approval()]).steps,
@@ -311,6 +311,8 @@ test('predictApproval sees the same facts: an approval that sticks skips the re-
     },
     async list(url) {
       if (url.includes('/pulls?state=open')) return { items: [pr], complete: true };
+      // Every pull request from the head branch (status-report.js headPulls): this one only.
+      if (url.includes('/pulls?state=all&head=o%3Atopic')) return { items: [pr], complete: true };
       if (url.includes('/pulls/7/files')) return { items: [{ filename: 'test/a.test.js' }], complete: true };
       if (url.includes('runs?head_sha=')) return { items: [runH], complete: true };
       if (url.includes('runs?event=pull_request&branch=topic')) return { items: [runA, ghRun(3, A, '2026-11-07T10:30:04Z'), runH], complete: true };

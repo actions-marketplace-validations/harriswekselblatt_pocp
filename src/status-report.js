@@ -85,6 +85,7 @@ export const TEXT = Object.freeze({
   outdated: 'pocp.yml is older than this reporter: update it (pocp init --github --force) and re-run.',
   stale: 'The pull request changed while its status was decided: deciding again.',
   approvalUnverified: 'An approval label was added before this commit, or by someone without write access: re-apply it after reviewing the new commits.',
+  foreignHead: "Another pull request, open or closed, had this head commit, so its runs can't be told from this one's: push a new commit.",
 });
 
 
@@ -191,6 +192,50 @@ export function runIdentity(job, number, baseSha) {
   return markers[0].conclusion === 'success' ? 'match' : 'unknown';
 }
 
+/**
+ * Whether a run of the trusted workflow on this head can be this pull request's own run, from
+ * GitHub's records rather than its steps. The marker is a step name, and a pull_request run
+ * executes the workflow file of its merge with the base: another pull request with the same head
+ * commit, against a branch whose pocp.yml someone with write access edited, gets a run with the
+ * same workflow id, path and head that names this pull request in its steps. So:
+ * - "other": the run is for another branch or repository (another pull request opened from its
+ *   own branch at this commit), or its pull_requests list names other pull requests and not this
+ *   one. Set aside, like a marker naming another pull request.
+ * - "unattributed" (with why): it can't be told apart. Its pull_requests list names this pull
+ *   request against another base, or other pull requests too; it doesn't say its branch;
+ *   another pull request, open, closed or merged, has this head commit, or was open from the same
+ *   branch when the run was created (`link.others`, from headPulls); or those lists couldn't be
+ *   read whole (`link.complete`). GitHub's pull_requests lists the open pull
+ *   requests that match the run now, not the one that started it (a closed pull request's runs
+ *   list none), so it never vouches on its own: the head's own list of pull requests is needed
+ *   for every run.
+ * - "this": none of the above.
+ */
+export function runAttribution(run, { number, baseRef = null, headRef = null, headRepo = null, link = null }) {
+  const no = (why, foreign = false) => ({ kind: 'unattributed', why, foreign });
+  if (headRef) {
+    if (!headRepo) return no("GitHub didn't say the pull request's head repository");
+    if (!run.head_branch || !run.head_repository) return no(`run ${run.id} doesn't say which branch it ran for`);
+    if (run.head_branch !== headRef || run.head_repository !== headRepo) return { kind: 'other' };
+  }
+  const listed = run.pull_requests || [];
+  if (listed.length) {
+    const mine = listed.filter((p) => p.number === number);
+    if (!mine.length) return { kind: 'other' };
+    const others = listed.filter((p) => p.number !== number).map((p) => `#${p.number}`);
+    if (others.length) return no(`run ${run.id} is also tied to ${others.join(', ')}`);
+    if (baseRef && mine.some((p) => p.base_ref !== baseRef)) return no(`run ${run.id} names #${number} against ${mine.map((p) => p.base_ref || '(no base)').join(', ')}, not ${baseRef}`);
+  }
+  if (!link || !link.complete) return no(`couldn't list every pull request with head ${short(run.head_sha)}${link?.reason ? ` (${link.reason})` : ''}`);
+  // A rival: another pull request with this head, or one from the same branch that was open when
+  // the run was created (a re-run keeps its run's creation time). A missing time is a rival.
+  const at = String(run.created_at || '');
+  const openAt = (p) => !at || !p.created_at || (String(p.created_at) <= at && (p.state === 'open' || !p.closed_at || String(p.closed_at) >= at));
+  const rivals = (link.others || []).filter((p) => p.head_sha === run.head_sha || (p.same_branch && openAt(p)));
+  if (rivals.length) return no(`${rivals.map((p) => `#${p.number} (${p.state}) ${p.head_sha === run.head_sha ? `also had head ${short(run.head_sha)}` : `was open from the same branch when run ${run.id} was created`}`).join('; ')}, so the run may be ${rivals.length > 1 ? 'theirs' : 'that pull request\'s'}`, true);
+  return { kind: 'this' };
+}
+
 // Every step the trusted workflow runs to evaluate a pull request.
 const POCP_STEPS = new Set(['verify', 'verified', 'waiting', 'inconclusive', 'failed', APPROVABLE_STEP, ...Object.keys(APPROVAL_MARKERS), ...Object.keys(NEEDS_MARKERS), ...HOLD_VERDICTS.map((v) => `verdict-${v}`)]);
 
@@ -268,6 +313,8 @@ export function filesIncomplete(files, changedFiles) {
  *   ci_globs,                      workflowFiles(base config)
  *   ci_except,                     the base's ci.files_except (never exempts a CI definition)
  *   runs: [{ id, workflow_id, path, event, head_sha, repository, status, conclusion, created_at, run_started_at, run_attempt, html_url, job }],
+ *                                  only runs gather() tied to this pull request (runAttribution)
+ *   unattributed: [{ id, why, foreign }],  runs on this head it couldn't tie to it: pending
  *   label_events: [{ label, actor, permission, created_at }],  "labeled" events of approval labels
  *   label_events_complete,         whether every event was read (approvals need it)
  * }
@@ -349,6 +396,13 @@ export function decideStatus(facts) {
     via = `; CI files changed (${changed.join(', ')}), workflow approved with ${APPROVE_WORKFLOW_LABEL}`;
   }
 
+  // A run gather() couldn't tie to this pull request (runAttribution) may be another's, made to
+  // name this one: never evidence, and never set aside for an older run either.
+  const unattributed = facts.unattributed || [];
+  if (unattributed.length) {
+    const why = [...new Set(unattributed.map((u) => u.why))].join('; ');
+    return status('pending', unattributed.some((u) => u.foreign) ? TEXT.foreignHead : TEXT.incomplete, `run ${unattributed.map((u) => u.id).join(', ')} can't be tied to #${pr.number}: ${why}${via}`, null);
+  }
   if (underway.length) return status('pending', TEXT.pending, `run ${underway.map((r) => r.id).join(', ')} of ${facts.workflow.path} for ${short(sha)} is still ${underway[0].status || 'running'}${via}`, underway[0]);
   if (unknown) {
     // Steps not returned yet may still come: fetch again. Complete steps without a usable marker
@@ -452,6 +506,40 @@ export function githubClient({ token, api = 'https://api.github.com', fetchImpl 
   };
 }
 
+/**
+ * Every other pull request, open, closed or merged, whose head is `head`: { complete, reason,
+ * others: [{ number, state }] }. Two lists, since neither has them all: the commit's pull
+ * requests (open and merged ones only) and every pull request from the head's branch, closed
+ * ones included (by `label`, "owner:branch"; every pull request when GitHub didn't say it).
+ * Never throws: an error or a list cut short is incomplete, so no run is tied.
+ */
+export async function headPulls(gh, repo, { number, head, label }) {
+  const out = { complete: true, reason: null, others: [] };
+  const read = async (url) => {
+    try {
+      const r = await listAll(gh, url, undefined, 10);
+      if (!r.complete) { out.complete = false; out.reason = r.reason || 'a list was cut short'; }
+      return Array.isArray(r.items) ? r.items : [];
+    } catch (e) {
+      out.complete = false;
+      out.reason = e.message;
+      return [];
+    }
+  };
+  const ofCommit = await read(`${repo}/commits/${head}/pulls?per_page=100`);
+  const ofBranch = await read(`${repo}/pulls?state=all${label ? `&head=${encodeURIComponent(label)}` : ''}&per_page=100`);
+  const seen = new Set([number]);
+  // Every pull request from the head branch (a closed one's head may since have moved: a branch
+  // force-pushed away and back), and any other with this head. Without the branch, only the head.
+  for (const [p, sameBranch] of [...ofBranch.map((p) => [p, Boolean(label)]), ...ofCommit.map((p) => [p, false])]) {
+    if (!p || seen.has(p.number) || (!sameBranch && p.head?.sha !== head)) continue;
+    seen.add(p.number);
+    out.others.push({ number: p.number, state: p.merged_at ? 'merged' : p.state || 'unknown', head_sha: p.head?.sha ?? null, created_at: p.created_at ?? null, closed_at: p.closed_at ?? null, same_branch: sameBranch });
+  }
+  out.others.sort((a, b) => a.number - b.number);
+  return out;
+}
+
 /** Fetch every fact decideStatus needs, fresh. */
 export async function gather(gh, { repository, sha, prNumber, baseConfig, workflowPath = WORKFLOW_PATH, excludeRunId = null }) {
   const repo = `/repos/${repository}`;
@@ -478,10 +566,27 @@ export async function gather(gh, { repository, sha, prNumber, baseConfig, workfl
   // status, counts and patch only say which lines the hold comment points at (hold-comment.js).
   facts.files = need(await listAll(gh, `${repo}/pulls/${pr.number}/files?per_page=100`)).map((f) => ({ filename: f.filename, previous_filename: f.previous_filename, status: f.status, additions: f.additions, deletions: f.deletions, patch: typeof f.patch === 'string' ? f.patch : null }));
   const runs = need(await listAll(gh, `${repo}/actions/workflows/${wf.id}/runs?head_sha=${head}&per_page=100`, 'workflow_runs', 5));
+  // Which pull requests had this head, to tie each run to this one (runAttribution).
+  const link = runs.length ? await headPulls(gh, repo, { number: pr.number, head, label: pr.head.label || null }) : null;
+  const tie = { number: pr.number, baseRef: pr.base?.ref ?? null, headRef: pr.head.ref ?? null, headRepo: pr.head.repo?.full_name ?? null, link };
+  facts.unattributed = [];
   for (const r of runs) {
     // predictApproval's own run: it is underway and evaluates nothing.
     if (excludeRunId && String(r.id) === String(excludeRunId)) continue;
     const run = { id: r.id, workflow_id: r.workflow_id, path: r.path, event: r.event, head_sha: r.head_sha, repository: r.repository?.full_name, status: r.status, conclusion: r.conclusion, created_at: r.created_at, run_started_at: r.run_started_at, run_attempt: r.run_attempt, html_url: r.html_url, job: null };
+    // Only the trusted workflow's pull_request runs on this head are candidates (decideStatus);
+    // other runs are left as they were, since nothing reads them as this pull request's.
+    if (r.workflow_id === wf.id && r.path === wf.path && r.event === 'pull_request' && r.head_sha === head) {
+      run.head_branch = r.head_branch ?? null;
+      run.head_repository = r.head_repository?.full_name ?? null;
+      run.pull_requests = (Array.isArray(r.pull_requests) ? r.pull_requests : []).map((p) => ({ number: p?.number, base_ref: p?.base?.ref ?? null }));
+      const tied = runAttribution(run, tie);
+      if (tied.kind === 'other') continue;
+      if (tied.kind === 'unattributed') {
+        facts.unattributed.push({ id: run.id, why: tied.why, foreign: tied.foreign });
+        continue;
+      }
+    }
     // Jobs of runs still underway too: a verify job already skipped (an ignored label event)
     // shows the run says nothing. A job list cut short leaves the job unknown, never guessed.
     const jobs = await listAll(gh, `${repo}/actions/runs/${r.id}/jobs?per_page=100`, 'jobs', 3);

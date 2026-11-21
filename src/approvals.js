@@ -5,7 +5,7 @@ import { withFacts } from './finding.js';
 import { POLICY_FILES } from './policy.js';
 import { PocpBaseError } from './errors.js';
 import { isWaitingText, STATUS_CONTEXT, TEXT } from './status-report.js';
-import { gravestVerdict, HOLD_VERDICTS, holdExplanation, holdReason, terminalSafe } from './hold.js';
+import { gravestVerdict, HOLD_VERDICTS, holdExplanation, holdReason, terminalSafe, UNKNOWN_VERDICT } from './hold.js';
 
 // `pocp approvals`: every open pull request whose POCP verify fails only because it waits for
 // a maintainer's label, in one list, and a deliberate way for that maintainer to give each one.
@@ -160,7 +160,7 @@ export function prStatus(repo, pr) {
     const needs = s.needs.map((n) => {
       // The guard's typed verdict (decision.js), only one of the known four: it picks the words,
       // never the state. An older verify sends none, and the sentence then says it isn't known.
-      const verdicts = [...new Set((Array.isArray(n.verdicts) ? n.verdicts : []).filter((v) => HOLD_VERDICTS.includes(v)))];
+      const verdicts = [...new Set((Array.isArray(n.verdicts) ? n.verdicts : []).filter((v) => HOLD_VERDICTS.includes(v) || v === UNKNOWN_VERDICT))];
       return {
         ...n,
         given: have.has(n.label),

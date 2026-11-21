@@ -1,0 +1,517 @@
+{
+  "pocp": 1,
+  "id": "p-1c7467be",
+  "intent": "1.5.0 pre-release fixes from the review: approvals carry only as review-only, unknown verdicts never read as review-only, approval flags need =, upgrade keeps workflow lines valid, temp sweep keeps exec'd runs, guard reads commands word by word, billing evidence, lock wait, docs",
+  "touches": [
+    "plugins/pocp/scripts/guard.mjs",
+    "src/approvals.js",
+    "src/billing-workflows.js",
+    "src/cli-args.js",
+    "src/cli.js",
+    "src/decision.js",
+    "src/engine/context.js",
+    "src/engine/gate.js",
+    "src/engine/verify.js",
+    "src/hold.js",
+    "src/label-freshness.js",
+    "src/machine-slots.js",
+    "src/remedies.js",
+    "src/store.js",
+    "src/temp-sweep.js",
+    "src/upgrade.js",
+    "test/billing-workflows.test.js",
+    "test/ci-handoff.test.js",
+    "test/claude-plugin.test.js",
+    "test/cli-args.test.js",
+    "test/e2e-local-mode.test.js",
+    "test/hold.test.js",
+    "test/label-freshness.test.js",
+    "test/lock-queue-wait.test.js",
+    "test/status-report.test.js",
+    "test/temp-sweep.test.js",
+    "test/upgrade.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/billing-workflows.test.js",
+        "test/ci-handoff.test.js",
+        "test/claude-plugin.test.js",
+        "test/cli-args.test.js",
+        "test/e2e-local-mode.test.js",
+        "test/hold.test.js",
+        "test/label-freshness.test.js",
+        "test/lock-queue-wait.test.js",
+        "test/status-report.test.js",
+        "test/temp-sweep.test.js",
+        "test/upgrade.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/billing-workflows.test.js, test/ci-handoff.test.js, test/claude-plugin.test.js, test/cli-args.test.js, test/e2e-local-mode.test.js, test/hold.test.js, test/label-freshness.test.js, test/lock-queue-wait.test.js and 3 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-20T21:31:17.233Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 1,
+      "signal": null,
+      "timed_out": false,
+      "passed": false,
+      "started_at": "2026-11-20T21:31:17.585Z",
+      "duration_ms": 436353,
+      "stdout_sha256": "072ed7fea0034f0ad39031499f47607c996ad5e0d387fac3fcd0739783f72fd5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-01a30697",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:c335f0595209e9343d59489a5f5464b31a134fca0bae6be335e70292b78565a5",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T21:38:34.090Z",
+      "duration_ms": 1305461,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "inconclusive",
+        "passed": false,
+        "summary": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1), so there is nothing to compare",
+        "base": "3789f1581f071e8f14c04d6c2d03d3ee56860c5f",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/billing-workflows.test.js",
+            "test/ci-handoff.test.js",
+            "test/claude-plugin.test.js",
+            "test/cli-args.test.js",
+            "test/hold.test.js",
+            "test/label-freshness.test.js",
+            "-test/lock-queue-wait.test.js",
+            "test/status-report.test.js",
+            "test/temp-sweep.test.js",
+            "test/upgrade.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 687499,
+              "failed_tests": [
+                "billing fixed since: a newer run that started makes an old blocked run no evidence",
+                "doctor recognises Actions jobs that never start for billing, and suggests local mode",
+                "local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught",
+                "the verdict is typed end to end: verify's needs, the approval file, never text",
+                "\"Update branch\" keeps its approvals: a clean merge of the base carries the label over",
+                "carry-over: a clean merge of the base into the approved head stays green without a new label",
+                "carry-over: a proof record another pull request added to the base keeps the approval",
+                "carry-over: a force-push after the label voids it (the label was for another head)",
+                "carry-over facts come from GitHub: the merge parents, both file lists and the old head's runs"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/lock-queue-wait.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/lock-queue-wait.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "fail",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 616237,
+              "failed_tests": [
+                "doctor recognises Actions jobs that never start for billing, and suggests local mode",
+                "local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught"
+              ]
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 1305461,
+        "timings": {
+          "setup_ms": 904,
+          "new_baseline": {
+            "wall_ms": 616542,
+            "run_ms": 616237,
+            "runs": 1
+          },
+          "old_baseline": {
+            "wall_ms": 688014,
+            "run_ms": 687499,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 531,
+            "count": 1
+          },
+          "copy": {
+            "ms": 644,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 801,
+            "count": 4
+          }
+        },
+        "checks_from": "rules"
+      }
+    },
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-20T22:03:11.450Z",
+      "duration_ms": 429336,
+      "stdout_sha256": "4e19b1159bc27f57ebb67ba0243f301f5cad4179b6fd5016beb3b9d65252487c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-ad48f41c",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:4d1c5934e051723aa0edfb47a5b5a4856674e5a3533f2dc45881003403fe1dc3",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-20T22:10:20.922Z",
+      "duration_ms": 712612,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: billing fixed since: a newer run that started makes an old blocked run no evidence; doctor recognises Actions jobs that never start for billing, and suggests local mode; local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught; the verdict is typed end to end: verify's needs, the approval file, never text; \"Update branch\" keeps its approvals: a clean merge of the base carries the label over; carry-over: a clean merge of the base into the approved head stays green without a new label; carry-over: a proof record another pull request added to the base keeps the approval; carry-over: a force-push after the label voids it (the label was for another head); carry-over facts come from GitHub: the merge parents, both file lists and the old head's runs: behavior changed, so a person must approve it",
+        "base": "3789f1581f071e8f14c04d6c2d03d3ee56860c5f",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "test/billing-workflows.test.js",
+            "test/ci-handoff.test.js",
+            "test/claude-plugin.test.js",
+            "test/cli-args.test.js",
+            "test/e2e-local-mode.test.js",
+            "test/hold.test.js",
+            "test/label-freshness.test.js",
+            "-test/lock-queue-wait.test.js",
+            "test/status-report.test.js",
+            "test/temp-sweep.test.js",
+            "test/upgrade.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 326980,
+              "failed_tests": [
+                "billing fixed since: a newer run that started makes an old blocked run no evidence",
+                "doctor recognises Actions jobs that never start for billing, and suggests local mode",
+                "local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught",
+                "the verdict is typed end to end: verify's needs, the approval file, never text",
+                "\"Update branch\" keeps its approvals: a clean merge of the base carries the label over",
+                "carry-over: a clean merge of the base into the approved head stays green without a new label",
+                "carry-over: a proof record another pull request added to the base keeps the approval",
+                "carry-over: a force-push after the label voids it (the label was for another head)",
+                "carry-over facts come from GitHub: the merge parents, both file lists and the old head's runs"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/lock-queue-wait.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/lock-queue-wait.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 383682
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 712612,
+        "timings": {
+          "setup_ms": 864,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 327269,
+            "run_ms": 326980,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 384367,
+            "run_ms": 383682,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 945,
+            "count": 2
+          },
+          "copy": {
+            "ms": 463,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 578,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-20T21:31:17.233Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T21:31:17.233Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T21:38:34.020Z",
+      "event": "proof_failed",
+      "obligation": "o1",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797"
+    },
+    {
+      "at": "2026-11-20T22:00:20.097Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797"
+    },
+    {
+      "at": "2026-11-20T22:00:20.202Z",
+      "event": "state",
+      "from": "open",
+      "to": "failed",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797"
+    },
+    {
+      "at": "2026-11-20T22:00:20.845Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797"
+    },
+    {
+      "at": "2026-11-20T22:03:11.088Z",
+      "event": "touches_widened",
+      "added": [
+        "test/e2e-local-mode.test.js"
+      ],
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-20T22:03:11.088Z",
+      "event": "guard_replaced",
+      "removed": [
+        "o2"
+      ]
+    },
+    {
+      "at": "2026-11-20T22:03:11.088Z",
+      "event": "requirements_synced",
+      "added": [
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-20T22:22:13.825Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce"
+    },
+    {
+      "at": "2026-11-20T22:22:13.977Z",
+      "event": "state",
+      "from": "failed",
+      "to": "open",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce"
+    },
+    {
+      "at": "2026-11-20T22:22:14.549Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:c335f0595209e9343d59489a5f5464b31a134fca0bae6be335e70292b78565a5",
+      "subject": "sha256:54a5a6297273ec2feb1d10a12690e9ac4b0e1827f285b3172b1ed46eda908797",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T22:00:20.845Z",
+      "to": "ci-approval",
+      "reason": "the checks fail on the new code (\"node --test test/*.test.js\" exit 1), so there is nothing to compare"
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:4d1c5934e051723aa0edfb47a5b5a4856674e5a3533f2dc45881003403fe1dc3",
+      "subject": "sha256:d3109d1cc325431a3e1fc2a5fd2b0db9a36037415897b500b67192c6906affce",
+      "by": "harriswekselblatt",
+      "at": "2026-11-20T22:22:14.549Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: billing fixed since: a newer run that started makes an old blocked run no evidence; doctor recognises Actions jobs that never start for billing, and suggests local mode; local mode end to end: a test edit commits without CI, you approve it in verify, and --no-verify is caught; the verdict is typed end to end: verify's needs, the approval file, never text; \"Update branch\" keeps its approvals: a clean merge of the base carries the label over; carry-over: a clean merge of the base into the approved head stays green without a new label; carry-over: a proof record another pull request added to the base keeps the approval; carry-over: a force-push after the label voids it (the label was for another head); carry-over facts come from GitHub: the merge parents, both file lists and the old head's runs: behavior changed, so a person must approve it"
+    }
+  ]
+}
