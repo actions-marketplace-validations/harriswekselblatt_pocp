@@ -142,6 +142,7 @@ const TEST_NAME = /(^|[._-])(tests?|specs?)([._-][^/]*)?\.\w+$|^(tests?|specs?)[
 
 const SOURCE_DIRS = /^(src|lib|app|apps|source|sources|pkg|packages|internal|cmd|main)$/;
 const DOC_DIRS = /^(docs?|documentation)$/;
+const TEST_DIR_SETUP = /^(__init__\.py|conftest\.py)$/;
 
 /** Folders a runner config declares as where its tests live (pytest testpaths, jest roots, ...). */
 function declaredTestDirs(root, files) {
@@ -217,7 +218,9 @@ export function detectTestLayout(cwd) {
     // already find the tests inside it, so leave it to them.
     const code = inside.filter(isCode);
     const found = code.find((f) => covered(f, DEFAULT_EVAL_EXCLUDE));
-    const source = code.find((f) => !covered(f, DEFAULT_EVAL_EXCLUDE) && !TEST_NAME.test(path.posix.basename(f)));
+    // Package markers and pytest setup sit in test folders too (xarray: properties/ holds
+    // __init__.py, conftest.py and test_*.py), so they are no sign of source code.
+    const source = code.find((f) => !covered(f, DEFAULT_EVAL_EXCLUDE) && !TEST_NAME.test(path.posix.basename(f)) && !TEST_DIR_SETUP.test(path.posix.basename(f)));
     if (found && source) {
       skipped[d] = `holds source code (${source}) as well as tests the default patterns already find (${found})`;
       continue;
@@ -253,7 +256,7 @@ export function formatLayout(layout, { written = false } = {}) {
   }
   const skipped = Object.entries(layout.skipped || {});
   if (skipped.length) {
-    lines.push(`not counted as test folders: ${skipped.map(([d, why]) => `${d}/ (${layout.declared[d]}) ${why}`).join('; ')}; only the test files inside them count as tests`);
+    lines.push(`not counted as test folders: ${skipped.map(([d, why]) => `${d}/ (${layout.declared[d]}) ${why}`).join('; ')}; only the test files inside them count as tests (add a folder to guard.extra_test_globs to count all of it)`);
   }
   if (layout.uncovered.length) {
     lines.push(`named like tests but not covered by any test pattern (add them to guard.extra_test_globs if they are tests): ${layout.uncovered.slice(0, 6).join(', ')}${layout.uncovered.length > 6 ? ' …' : ''}`);

@@ -69,6 +69,19 @@ test('testpaths in pyproject (quoted list): a source package and a docs folder a
   assert.equal(isTest(cfg, 'mypkg/tests/test_x.py'), true);
 });
 
+test('a test folder with __init__.py and conftest.py next to its tests is still added (xarray: testpaths properties)', () => {
+  const dir = tmpRepo();
+  write(dir, 'pyproject.toml', '[tool.pytest.ini_options]\ntestpaths = ["mypkg/tests", "properties"]\n');
+  sourcePackage(dir);
+  write(dir, 'properties/__init__.py', '');
+  write(dir, 'properties/conftest.py', 'import pytest\n');
+  write(dir, 'properties/test_roundtrip.py', 'def test_roundtrip():\n    assert True\n');
+  write(dir, 'properties/README.md', 'Property-based tests.\n');
+  const layout = detectTestLayout(dir);
+  assert.deepEqual(layout.extra, ['properties/**']);
+  assert.deepEqual(layout.skipped, {});
+});
+
 test('a declared folder mixing default-named tests with other code is left to the defaults', () => {
   // The safer side of the trade-off: a helper next to test_a.py is gated as source rather
   // than restored and skipped as a test.
