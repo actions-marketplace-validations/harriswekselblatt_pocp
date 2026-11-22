@@ -1,0 +1,266 @@
+{
+  "pocp": 1,
+  "id": "p-73bb3a6d",
+  "intent": "Change to src/commands/init.js, src/init.js, test/init-testpaths-source.test.js",
+  "touches": [
+    "src/commands/init.js",
+    "src/init.js",
+    "test/init-testpaths-source.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/init-testpaths-source.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/init-testpaths-source.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-22T20:59:12.634Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-22T20:59:39.537Z",
+      "duration_ms": 681159,
+      "stdout_sha256": "8f322614ddcc42c34ada2d18abd3a74aa784fe032f687a51f5b75671446a10ef",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-167323af",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:dfb7d759268644d03e9e334b70203cd86c25f36c07562e5abcbfb7aa700da381",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-22T21:11:01.121Z",
+      "duration_ms": 1706321,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: a command that exits before the limit is not timed out even when cleanup runs past the limit: behavior changed, so a person must approve it",
+        "base": "db481cdd59479894bc2008c56a7af5a40cd3cefc",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "-test/init-testpaths-source.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 846879,
+              "failed_tests": [
+                "a command that exits before the limit is not timed out even when cleanup runs past the limit"
+              ]
+            }
+          ],
+          "left_out": [
+            "test/init-testpaths-source.test.js"
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "test/init-testpaths-source.test.js is a test file that was added"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 850869
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 1706321,
+        "timings": {
+          "setup_ms": 1410,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 847903,
+            "run_ms": 846879,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 856835,
+            "run_ms": 850869,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 5986,
+            "count": 2
+          },
+          "copy": {
+            "ms": 1424,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 1599,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-22T20:59:12.634Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-22T20:59:12.634Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-22T20:59:14.496Z",
+      "event": "handed_to_ci",
+      "obligation": "o1",
+      "by": "harriswekselblatt",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d"
+    },
+    {
+      "at": "2026-11-22T20:59:14.557Z",
+      "event": "handed_to_ci",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d"
+    },
+    {
+      "at": "2026-11-22T21:39:28.140Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d"
+    },
+    {
+      "at": "2026-11-22T21:39:29.502Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d",
+      "by": "harriswekselblatt",
+      "at": "2026-11-22T20:59:14.496Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the rule marks this check \"defer\": \"ci\""
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:dfb7d759268644d03e9e334b70203cd86c25f36c07562e5abcbfb7aa700da381",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d",
+      "by": "harriswekselblatt",
+      "at": "2026-11-22T20:59:14.557Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the test guard (block mode) runs in CI"
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:dfb7d759268644d03e9e334b70203cd86c25f36c07562e5abcbfb7aa700da381",
+      "subject": "sha256:07e5d2a4c39808448cb269c01a05e9b39eb39304eb7e63fcd8ddbf979281c84d",
+      "by": "harriswekselblatt",
+      "at": "2026-11-22T21:39:29.502Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: a command that exits before the limit is not timed out even when cleanup runs past the limit: behavior changed, so a person must approve it"
+    }
+  ]
+}
