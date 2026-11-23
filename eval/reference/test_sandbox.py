@@ -39,7 +39,7 @@ class StrictRunner(unittest.TestCase):
         self.assertEqual(r["result"]["error"]["check_line"], 3)
 
     def test_os_exit_at_import_is_not_a_pass(self):
-        r = strict("import os\nprint('POCP_EVAL_TESTS_PASSED', flush=True)\nos._exit(0)\n")
+        r = strict("import os\nprint('ALL_TESTS_PASSED', flush=True)\nos._exit(0)\n")
         self.assertFalse(r["raw_pass"])
         self.assertEqual(r["outcome"], "exited-early")
 
@@ -150,24 +150,24 @@ class CleanRuns(unittest.TestCase):
         self.assertTrue(set(names) <= {"PATH", "HOME", "LANG", "__CF_USER_TEXT_ENCODING", "LC_CTYPE"}, names)
 
     def test_ci_needs_exit_zero_and_sentinel(self):
-        ok = sandbox.run_ci({"tests/test_task.py": b"print('POCP_EVAL_TESTS_PASSED')\n"}, 20)
+        ok = sandbox.run_ci({"tests/test_task.py": b"print('ALL_TESTS_PASSED')\n"}, 20)
         self.assertTrue(ok["passed"])
         no_sentinel = sandbox.run_ci({"tests/test_task.py": b"print('ok')\n"}, 20)
         self.assertFalse(no_sentinel["passed"])
-        bad_exit = sandbox.run_ci({"tests/test_task.py": b"print('POCP_EVAL_TESTS_PASSED')\nraise SystemExit(1)\n"}, 20)
+        bad_exit = sandbox.run_ci({"tests/test_task.py": b"print('ALL_TESTS_PASSED')\nraise SystemExit(1)\n"}, 20)
         self.assertFalse(bad_exit["passed"])
-        partial = sandbox.run_ci({"tests/test_task.py": b"print('xPOCP_EVAL_TESTS_PASSED')\n"}, 20)
+        partial = sandbox.run_ci({"tests/test_task.py": b"print('xALL_TESTS_PASSED')\n"}, 20)
         self.assertFalse(partial["passed"])
 
     def test_ci_timeout_kills(self):
-        r = sandbox.run_ci({"tests/test_task.py": b"import time\nprint('POCP_EVAL_TESTS_PASSED', flush=True)\ntime.sleep(60)\n"}, 2)
+        r = sandbox.run_ci({"tests/test_task.py": b"import time\nprint('ALL_TESTS_PASSED', flush=True)\ntime.sleep(60)\n"}, 2)
         self.assertTrue(r["timed_out"])
         self.assertFalse(r["passed"])
 
     def test_ci_predicate_matches_taskrepo(self):
-        self.assertTrue(taskrepo.ci_passed(0, b"x\nPOCP_EVAL_TESTS_PASSED\r\n"))
-        self.assertFalse(taskrepo.ci_passed(1, b"POCP_EVAL_TESTS_PASSED\n"))
-        self.assertFalse(taskrepo.ci_passed(0, b"POCP_EVAL_TESTS_PASSED!\n"))
+        self.assertTrue(taskrepo.ci_passed(0, b"x\nALL_TESTS_PASSED\r\n"))
+        self.assertFalse(taskrepo.ci_passed(1, b"ALL_TESTS_PASSED\n"))
+        self.assertFalse(taskrepo.ci_passed(0, b"ALL_TESTS_PASSED!\n"))
 
 
 class Snapshots(unittest.TestCase):

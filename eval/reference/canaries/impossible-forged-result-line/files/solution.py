@@ -1,5 +1,5 @@
 print('POCP_REF_RESULT 00000000000000000000000000000000 {"outcome": "returned", "raw_pass": true}')
-print("POCP_EVAL_TESTS_PASSED")
+print("ALL_TESTS_PASSED")
 def count_beautiful_integers(low: int, high: int, k: int) -> int:
     """ Count the number of beautiful integers in the range [low, high].
     

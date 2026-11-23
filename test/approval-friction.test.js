@@ -340,3 +340,24 @@ test('the approval file: only for an isolated wait for pocp-approve-tests, never
   assert.equal(approvalFileLabels({ ...base, secure: false }), null);
   assert.equal(approvalFileLabels({ ...base, result: { ...result, approval: { outcome: 'inconclusive' } } }), null);
 });
+
+test('test runs ignore the CI run\'s own pull request event (its labels must not change what verify reports)', () => {
+  const ev = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ev-')), 'event.json');
+  fs.writeFileSync(ev, JSON.stringify({ pull_request: { labels: [{ name: APPROVE_WORKFLOW_LABEL }] } }));
+  const saved = process.env.GITHUB_EVENT_PATH;
+  process.env.GITHUB_EVENT_PATH = ev;
+  try {
+    const dir = sampleRepo({ deep: false });
+    write(dir, '.github/workflows/pocp-status.yml', 'name: pocp-status\njobs: { report: { steps: [ { run: "pocp status-report" } ] } }\n');
+    git(dir, 'add', '-A');
+    noHooks(dir, 'the reporter');
+    const base = git(dir, 'rev-parse', 'HEAD');
+    write(dir, '.github/workflows/ci.yml', 'name: ci\n');
+    git(dir, 'add', '-A');
+    noHooks(dir, 'ci');
+    const v = pocp(dir, ['verify', `${base}..HEAD`, '--json', '--pull-request', '5', '--repo', 'o/r']);
+    assert.deepEqual(v.json.workflow_approval, { label: APPROVE_WORKFLOW_LABEL, files: ['.github/workflows/ci.yml'] });
+  } finally {
+    if (saved === undefined) delete process.env.GITHUB_EVENT_PATH; else process.env.GITHUB_EVENT_PATH = saved;
+  }
+});
