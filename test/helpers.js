@@ -111,7 +111,11 @@ export function git(cwd, ...args) {
 
 /** Run the CLI. Returns { code, stdout, stderr, json }. */
 export function pocp(cwd, args, { env = {} } = {}) {
-  const r = spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
+  // Not the CI run's own pull request: verify reads its labels from GITHUB_EVENT_PATH, so a
+  // label on the PR under test (e.g. pocp-approve-workflow) would change what these tests see.
+  // A test that wants an event passes GITHUB_EVENT_PATH in env.
+  const { GITHUB_EVENT_PATH: _ignored, ...base } = process.env;
+  const r = spawnSync(process.execPath, [BIN, ...args], { cwd, encoding: 'utf8', env: { ...base, ...env } });
   let json = null;
   if (args.includes('--json')) {
     try {

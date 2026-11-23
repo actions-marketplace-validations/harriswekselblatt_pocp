@@ -1,0 +1,91 @@
+{
+  "pocp": 1,
+  "id": "p-208df5fb",
+  "intent": "Tests: ignore the CI run's own pull-request event in the pocp test helper",
+  "touches": [
+    "test/approval-friction.test.js",
+    "test/helpers.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/approval-friction.test.js",
+        "test/helpers.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/approval-friction.test.js, test/helpers.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-23T16:19:23.762Z",
+  "opened_by": "Harris Wekselblatt",
+  "proofs": [],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-23T16:19:23.762Z",
+      "event": "opened",
+      "by": "Harris Wekselblatt"
+    },
+    {
+      "at": "2026-11-23T16:19:23.762Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-23T16:19:24.190Z",
+      "event": "handed_to_ci",
+      "obligation": "o1",
+      "by": "Harris Wekselblatt",
+      "subject": "sha256:4ac9b7fcbb931150a74321347dece2fcd4a02e8b28bb578a9876d7c5800d0921"
+    },
+    {
+      "at": "2026-11-23T16:19:24.205Z",
+      "event": "handed_to_ci",
+      "obligation": "o2",
+      "by": "Harris Wekselblatt",
+      "subject": "sha256:4ac9b7fcbb931150a74321347dece2fcd4a02e8b28bb578a9876d7c5800d0921"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:4ac9b7fcbb931150a74321347dece2fcd4a02e8b28bb578a9876d7c5800d0921",
+      "by": "Harris Wekselblatt",
+      "at": "2026-11-23T16:19:24.190Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the rule marks this check \"defer\": \"ci\""
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:5ca36a74e312ac75b33ab7602fbc2b08951c5becb03c24c8c3e24cfa966cea13",
+      "subject": "sha256:4ac9b7fcbb931150a74321347dece2fcd4a02e8b28bb578a9876d7c5800d0921",
+      "by": "Harris Wekselblatt",
+      "at": "2026-11-23T16:19:24.205Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the test guard (block mode) runs in CI"
+    }
+  ]
+}
