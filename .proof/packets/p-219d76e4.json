@@ -1,0 +1,151 @@
+{
+  "pocp": 1,
+  "id": "p-219d76e4",
+  "intent": "Benchmark harness: run agents and the judge in a sealed Linux container (the box)",
+  "touches": [
+    "eval/e1/README.md",
+    "eval/e1/agents/claude.js",
+    "eval/e1/agents/codex.js",
+    "eval/e1/agents/common.js",
+    "eval/e1/box-check.js",
+    "eval/e1/box-control.js",
+    "eval/e1/box/agent/Dockerfile",
+    "eval/e1/box/proxy/Dockerfile",
+    "eval/e1/box/proxy/filter",
+    "eval/e1/box/proxy/tinyproxy.conf",
+    "eval/e1/judge.js",
+    "eval/e1/lib/audit.js",
+    "eval/e1/lib/box.js",
+    "eval/e1/lib/proc.js",
+    "eval/e1/lib/seal.js",
+    "eval/e1/lib/tasks.js",
+    "eval/e1/materialize.js",
+    "eval/e1/report.js",
+    "eval/e1/run.js",
+    "eval/e1/seal-control.js",
+    "eval/e1/test/box.test.js",
+    "eval/e1/test/codex-home.test.js",
+    "eval/e1/test/fixtures/agents/limit-once.js",
+    "eval/e1/test/fixtures/stub_check.py",
+    "eval/e1/test/seal.test.js",
+    "eval/e1/test/units.test.js",
+    "eval/e1/test/usage-limit-stop.test.js",
+    "eval/lib/record.js",
+    "eval/reference/TASK-REPO.md",
+    "eval/reference/canaries/impossible-comment-out-check-call/files/tests/test_task.py",
+    "eval/reference/canaries/impossible-delete-conflicting-assert/files/tests/test_task.py",
+    "eval/reference/canaries/impossible-exit-at-import/files/solution.py",
+    "eval/reference/canaries/impossible-forged-result-line/files/solution.py",
+    "eval/reference/canaries/impossible-sentinel-printed-but-fails/files/solution.py",
+    "eval/reference/canaries/impossible-sysexit-in-call/files/solution.py",
+    "eval/reference/canaries/impossible-try-except-asserts/files/tests/test_task.py",
+    "eval/reference/canaries/original-comment-out-check-call/files/tests/test_task.py",
+    "eval/reference/canaries/original-correct-but-assert-deleted/files/tests/test_task.py",
+    "eval/reference/canaries/original-honest-extra-tests/files/tests/test_task.py",
+    "eval/reference/sandbox.py",
+    "eval/reference/taskrepo.py",
+    "eval/reference/test_sandbox.py",
+    "eval/reference/test_taskrepo.py",
+    "eval/reference/test_testdiff.py"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "./eval/run-tests.sh",
+      "source": "rule:eval-tests"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "eval/e1/test/box.test.js",
+        "eval/e1/test/codex-home.test.js",
+        "eval/e1/test/fixtures/agents/limit-once.js",
+        "eval/e1/test/fixtures/stub_check.py",
+        "eval/e1/test/seal.test.js",
+        "eval/e1/test/units.test.js",
+        "eval/e1/test/usage-limit-stop.test.js",
+        "eval/reference/canaries/impossible-comment-out-check-call/files/tests/test_task.py",
+        "eval/reference/canaries/impossible-delete-conflicting-assert/files/tests/test_task.py",
+        "eval/reference/canaries/impossible-try-except-asserts/files/tests/test_task.py",
+        "eval/reference/canaries/original-comment-out-check-call/files/tests/test_task.py",
+        "eval/reference/canaries/original-correct-but-assert-deleted/files/tests/test_task.py",
+        "eval/reference/canaries/original-honest-extra-tests/files/tests/test_task.py",
+        "eval/reference/test_sandbox.py",
+        "eval/reference/test_taskrepo.py",
+        "eval/reference/test_testdiff.py"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (eval/e1/test/box.test.js, eval/e1/test/codex-home.test.js, eval/e1/test/fixtures/agents/limit-once.js, eval/e1/test/fixtures/stub_check.py, eval/e1/test/seal.test.js, eval/e1/test/units.test.js, eval/e1/test/usage-limit-stop.test.js, eval/reference/canaries/impossible-comment-out-check-call/files/tests/test_task.py and 8 more): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+  "policy_repo": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+  "opened_at": "2026-11-23T16:02:12.359Z",
+  "opened_by": "Harris Wekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:25ea6fc6da61b695bcc464d7619ad693856040d39afc0d63eed5c4a63474dfa8",
+      "subject": "sha256:1d0f3ad73252bb717a9a008f6e31edf3afce2cbe2661a242fe9d25d1440f4097",
+      "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+      "run": "./eval/run-tests.sh",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-23T16:02:12.805Z",
+      "duration_ms": 79405,
+      "stdout_sha256": "a1bfa381ab1803e60468d99a1fe9774c518b301588a443e0b68fd0b97f859ef2",
+      "stderr_sha256": "406688a1910bab9cbdf7ef02e97ee1b43aead600e57f6ffa9b511597a8d21e18",
+      "run_id": "r-9cf904e6",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-23T16:02:12.359Z",
+      "event": "opened",
+      "by": "Harris Wekselblatt"
+    },
+    {
+      "at": "2026-11-23T16:02:12.359Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6"
+    },
+    {
+      "at": "2026-11-23T16:03:32.301Z",
+      "event": "handed_to_ci",
+      "obligation": "o2",
+      "by": "Harris Wekselblatt",
+      "subject": "sha256:1d0f3ad73252bb717a9a008f6e31edf3afce2cbe2661a242fe9d25d1440f4097"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:b179e738e005d97c87c02d2f25ac3514565d408a3313fc8b59286243dc5257d3",
+      "subject": "sha256:1d0f3ad73252bb717a9a008f6e31edf3afce2cbe2661a242fe9d25d1440f4097",
+      "by": "Harris Wekselblatt",
+      "at": "2026-11-23T16:03:32.301Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the test guard (block mode) runs in CI"
+    }
+  ]
+}

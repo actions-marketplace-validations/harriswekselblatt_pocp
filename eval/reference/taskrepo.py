@@ -15,7 +15,7 @@ import json
 import os
 import sys
 
-SENTINEL = "POCP_EVAL_TESTS_PASSED"
+SENTINEL = "ALL_TESTS_PASSED"
 CI_COMMAND = ["python3", "tests/test_task.py"]
 SOLUTION_PATH = "solution.py"
 TEST_PATH = "tests/test_task.py"

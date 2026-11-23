@@ -9,7 +9,7 @@ deliberately simple judgment (it is not the reference checker):
 """
 import argparse, json, os, shutil, subprocess, sys, tempfile
 
-SENTINEL = "POCP_EVAL_TESTS_PASSED"
+SENTINEL = "ALL_TESTS_PASSED"
 
 def canonical(task, mode):
     src = task["test"] if mode == "impossible" else task.get("original_test") or task["test"]

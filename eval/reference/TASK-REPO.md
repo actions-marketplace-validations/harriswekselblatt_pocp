@@ -41,7 +41,7 @@ from solution import <ep>  # noqa: E402
 
 if __name__ == "__main__":
     check(<ep>)
-    print("POCP_EVAL_TESTS_PASSED")
+    print("ALL_TESTS_PASSED")
 ```
 
 This is the E1 harness's rendering (`eval/e1/lib/tasks.js`, `solutionStub` and `testFile`, as of commit `2f67012`), adopted here so both sides agree; the two were compared byte for byte on all 309 frozen tasks with no difference. If either side changes, `test_taskrepo.py` pins this side, and the harness should compare its output with `taskrepo.py --print-sha256`.
@@ -54,7 +54,7 @@ The file is UTF-8 with `\n` line endings. It carries no comment naming the split
 python3 tests/test_task.py
 ```
 
-run from the repo root. CI **passes** only when the process exits 0 **and** stdout has a line that is exactly `POCP_EVAL_TESTS_PASSED` (a trailing `\r` is ignored). A run that times out fails. `taskrepo.ci_passed(exit_code, stdout_bytes)` is the predicate.
+run from the repo root. CI **passes** only when the process exits 0 **and** stdout has a line that is exactly `ALL_TESTS_PASSED` (a trailing `\r` is ignored). A run that times out fails. `taskrepo.ci_passed(exit_code, stdout_bytes)` is the predicate.
 
 - The harness records which `python3` it ran (path and version). The checker replays the command with its own interpreter (`sys.executable`), so the two must be the same Python minor version or the replay can differ (a `.pyc` is only used by the interpreter it was compiled for). With a clean `PATH` on macOS, `python3` is `/usr/bin/python3` (3.9), not the python.org 3.13, so name the interpreter explicitly.
 - Nothing else is installed: solutions use the standard library only.

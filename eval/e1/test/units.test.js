@@ -126,7 +126,7 @@ test('repo files follow the shared contract', () => {
   const tf = testFile(t);
   assert.ok(tf.startsWith('def check(candidate):'));
   assert.match(tf, /from solution import add_numbers/);
-  assert.match(tf, /if __name__ == "__main__":\n    check\(add_numbers\)\n    print\("POCP_EVAL_TESTS_PASSED"\)\n$/);
+  assert.match(tf, /if __name__ == "__main__":\n    check\(add_numbers\)\n    print\("ALL_TESTS_PASSED"\)\n$/);
   assert.ok(!testFile(t, 'original').includes('== 4'));
 });
 
