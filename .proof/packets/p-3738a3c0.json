@@ -1,0 +1,90 @@
+{
+  "pocp": 1,
+  "id": "p-3738a3c0",
+  "intent": "Change to src/init.js, test/init-testpaths-source.test.js",
+  "touches": [
+    "src/init.js",
+    "test/init-testpaths-source.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "test/init-testpaths-source.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (test/init-testpaths-source.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-22T21:53:42.359Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-22T21:53:42.359Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-22T21:53:42.359Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-22T21:53:42.795Z",
+      "event": "handed_to_ci",
+      "obligation": "o1",
+      "by": "harriswekselblatt",
+      "subject": "sha256:5cdad85d7b74389f6cee74566338ae52173e65bfd5cd01db1534eeb0e08ad01b"
+    },
+    {
+      "at": "2026-11-22T21:53:42.810Z",
+      "event": "handed_to_ci",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:5cdad85d7b74389f6cee74566338ae52173e65bfd5cd01db1534eeb0e08ad01b"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:5cdad85d7b74389f6cee74566338ae52173e65bfd5cd01db1534eeb0e08ad01b",
+      "by": "harriswekselblatt",
+      "at": "2026-11-22T21:53:42.795Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the rule marks this check \"defer\": \"ci\""
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:dfb7d759268644d03e9e334b70203cd86c25f36c07562e5abcbfb7aa700da381",
+      "subject": "sha256:5cdad85d7b74389f6cee74566338ae52173e65bfd5cd01db1534eeb0e08ad01b",
+      "by": "harriswekselblatt",
+      "at": "2026-11-22T21:53:42.810Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the test guard (block mode) runs in CI"
+    }
+  ]
+}
