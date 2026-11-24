@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- The test guard now covers expected answers a test reads from a data file outside the test
+  folders. A test that did `readFileSync(new URL('../data/golden.json', import.meta.url))` was
+  only as strong as that file, and a change that broke the code and overwrote the file to match
+  came back `verified`, locally and in CI, in fast and deep mode (the same file under `test/`,
+  or loaded with `import`, was already held). A tracked file that isn't code, and that a test or
+  test helper names by path in a string (from its own folder or the repository root, whole or
+  in `path.join` pieces), now counts as test setup: changing it goes to a person in fast mode
+  and through the planted-bug check in deep mode. Markdown and other prose are left out, and so
+  are files inside the globs a required check guards. Paths built from variables, and folders
+  a test lists, are still not seen (docs/THREAT-MODEL.md).
+
 - `pocp init` no longer treats a whole source package as tests. Projects such as sympy and
   astropy list their package in pytest `testpaths` (`testpaths = sympy`), and init used to add
   `sympy/**` to `guard.extra_test_globs`, so every source file counted as a test. A declared

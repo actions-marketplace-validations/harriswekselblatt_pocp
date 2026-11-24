@@ -238,3 +238,64 @@ test('Rust: gutting an inline test module is guarded, editing the code beside it
   write(dir, 'src/checks.rs', '#[test]\nfn t() {}\n');
   assert.deepEqual(changes().kinds, ['test'], 'a #[cfg(test)] mod file is test code');
 });
+
+// A test that reads its expected answers from a data file outside the test folders, with
+// readFileSync rather than an import. The cheat breaks the code and overwrites the data file
+// to match; the test file is untouched.
+function goldenRepo({ deep }) {
+  const dir = sampleRepo({ hooks: true, deep });
+  write(dir, 'data/golden.json', '{ "add_2_3": 5 }\n');
+  write(dir, 'test/math.check.mjs', [
+    "import { readFileSync } from 'node:fs';",
+    "import { add } from '../src/math.js';",
+    "const golden = JSON.parse(readFileSync(new URL('../data/golden.json', import.meta.url)));",
+    "if (add(2, 3) !== golden.add_2_3) { console.error('add broken'); process.exit(1); }",
+    "console.log('math ok');",
+    '',
+  ].join('\n'));
+  git(dir, 'add', '-A');
+  noHooks(dir, 'golden data');
+  assert.equal(sh(dir, 'node', ['test/math.check.mjs']).status, 0);
+  return dir;
+}
+
+for (const deep of [false, true]) {
+  test(`bypass: overwriting expected answers a test reads from data/golden.json is held (${deep ? 'deep' : 'fast'} mode)`, () => {
+    const dir = goldenRepo({ deep });
+    const base = git(dir, 'rev-parse', 'HEAD');
+    write(dir, 'src/math.js', BREAK_ADD);
+    write(dir, 'data/golden.json', '{ "add_2_3": -1 }\n');
+    git(dir, 'add', '-A');
+    pocp(dir, ['fix', '--intent', 'x']);
+    git(dir, 'add', '-A');
+    assert.equal(commit(dir, 'cheat', { allowFail: true }).status, 0, 'the commit itself can go ahead: verify is what holds it');
+    const v = pocp(dir, ['verify', `${base}..HEAD`, '--require-coverage', '--rerun']);
+    assert.notEqual(v.code, 0, `verify must not pass a broken add() whose expected answer was overwritten:\n${v.stdout}`);
+    assert.match(v.stdout, /waiting for a maintainer's approval/);
+    assert.match(v.stdout, /existing tests or test setup changed \(data\/golden\.json\)/);
+    assert.match(v.stdout, /the old tests fail on the new code/, 'the old expected answers on the new code show the bug');
+  });
+}
+
+test('data files a test names by path are test setup; prose and the code under check are not', () => {
+  const dir = tmpRepo();
+  write(dir, 'test/a.test.js', [
+    "import fs from 'node:fs';",
+    "import path from 'node:path';",
+    "fs.readFileSync(new URL('../data/golden.json', import.meta.url));",
+    "fs.readFileSync(path.join(import.meta.dirname, '..', 'data', 'pieces.csv'));",
+    "fs.readFileSync('expected/out.txt');",
+    "fs.readFileSync('README.md');",
+    "fs.readFileSync('src/schema.json');",
+    "fs.readFileSync('../outside.json');",
+    "fs.readFileSync('data/missing.json');",
+    '',
+  ].join('\n'));
+  write(dir, 'tests/test_a.py', "import json\nEXPECTED = json.load(open('data/py.json'))\n");
+  for (const f of ['data/golden.json', 'data/pieces.csv', 'expected/out.txt', 'README.md', 'src/schema.json', 'data/py.json', 'data/unread.json']) write(dir, f, 'x\n');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'init');
+  const { helpers } = testHelperFiles(dir, 'HEAD', { testGlobs: DEFAULT_EVAL_EXCLUDE, isCode: (p) => p.startsWith('src/') });
+  assert.deepEqual([...helpers].sort(), ['data/golden.json', 'data/pieces.csv', 'data/py.json', 'expected/out.txt'],
+    'a path from the test\'s folder, one given in pieces, and one from the repository root count; README.md (prose), src/schema.json (code under check) and files no test names do not');
+});

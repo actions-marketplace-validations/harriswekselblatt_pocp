@@ -350,7 +350,13 @@ treats these changes as guarded:
   stays where mutants are planted, since that reading of the imports can mistake a module under
   test for one. A file the code under check imports at the base counts as code in every case.
   With no required check, only files that look like test support are helpers.
-  Not followed: build-tool aliases (tsconfig `paths`), C# namespaces, Rust `use`;
+  Data files count the same way when a test or helper names them by path in a string instead
+  of importing them (`readFileSync(new URL('../data/golden.json', import.meta.url))`,
+  `open('data/expected.csv')`): a tracked file that isn't code, named whole (from the file's
+  folder or the repository root) or in `path.join` pieces. Prose (`.md`, `.mdx`, `.rst`,
+  `.adoc`) is left out.
+  Not followed: build-tool aliases (tsconfig `paths`), C# namespaces, Rust `use`, and data
+  paths built from variables or found by listing a folder;
 - test-runner configuration (`jest.config.*`, `vitest.config.*`, `vite.config.*`, `.mocharc*`,
   `pytest.ini`, `conftest.py`, `.npmrc`, …);
 - the test settings inside files that also hold other things: the `scripts`, `jest`, `mocha`,

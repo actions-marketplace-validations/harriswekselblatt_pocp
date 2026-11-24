@@ -728,9 +728,48 @@ function makeResolver(root, files) {
   };
 }
 
+// Data a test reads without importing it: expected answers loaded with readFileSync, open(),
+// File.read and the like. A test that compares against data/golden.json is only as strong as
+// that file, so a path a test or helper names in a string is followed like an import when it
+// is a tracked file that isn't code: '../data/golden.json' (from the file's folder),
+// 'data/golden.json' (from the file's folder, then the repository root), and a path given in
+// pieces, as in path.join(dir, '..', 'data', 'golden.json'). Paths built any other way
+// (variables, template pieces, a folder that is listed) are not seen. Prose (Markdown and the
+// like) is left out: a test that names README.md is checking the document, and holding every
+// edit to the documents would cost far more than it catches.
+const PROSE_EXT = /\.(md|mdx|markdown|rst|adoc)$/i;
+const PATH_LITERAL = /(['"`])((?:\.{1,2}\/)*[\w@+-][\w@.+-]*(?:\/[\w@.+-]+)*\.[A-Za-z0-9]{1,10})\1/g;
+const PATH_PIECES = /(['"`])(?:\.{1,2}|[\w@.+-]+)\1(?:\s*,\s*(['"`])(?:\.{1,2}|[\w@.+-]+)\2)+/g;
+
+/** Tracked non-code files that `text` (the file `rel`) names by path. */
+function dataFilesNamed(rel, text, files) {
+  const out = new Set();
+  if (!text) return out;
+  const dir = path.posix.dirname(rel) === '.' ? '' : path.posix.dirname(rel);
+  const specs = new Set();
+  for (const m of text.matchAll(PATH_LITERAL)) specs.add(m[2]);
+  for (const m of text.matchAll(PATH_PIECES)) {
+    const pieces = m[0].split(',').map((x) => x.trim().slice(1, -1));
+    // Every tail of the list: join(root, 'data', 'golden.json') names data/golden.json.
+    for (let i = 0; i < pieces.length - 1; i++) specs.add(pieces.slice(i).join('/'));
+  }
+  for (const spec of specs) {
+    const cands = [path.posix.normalize(dir ? `${dir}/${spec}` : spec)];
+    if (!spec.startsWith('.')) cands.push(path.posix.normalize(spec));
+    for (const c of cands) {
+      if (c.startsWith('..') || c.startsWith('/') || CODE_EXT.test(c) || PROSE_EXT.test(c) || !files.has(c)) continue;
+      out.add(c);
+      break;
+    }
+  }
+  out.delete(rel);
+  return out;
+}
+
 /**
  * Test helpers at `rev` (null: the staged index): files reached from the test files (those
- * matching `testGlobs`, plus `seeds`) by following imports, up to HELPER_LIMITS. A reached file
+ * matching `testGlobs`, plus `seeds`) by following imports and the data files they name by
+ * path (dataFilesNamed), up to HELPER_LIMITS. A reached file
  * that `isCode(path)` says is the code under check, and that doesn't look like test support,
  * is not a helper and its own imports are not followed. Test files, package.json and the
  * like (their test settings are compared on their own) and `.proof/` are left out.
@@ -768,6 +807,10 @@ export function testHelperFiles(root, rev, { testGlobs = [], seeds = [], isCode 
         if (isTest(dep) || hasTestSettings(dep) || g.isProofPath(dep)) continue;
         if (CODE_EXT.test(dep)) next.push(dep);
         else if (!isCode(dep)) helpers.add(dep); // data a test reads: fixtures, expected output
+      }
+      for (const dep of dataFilesNamed(p, text, tracked)) {
+        if (isTest(dep) || hasTestSettings(dep) || g.isProofPath(dep) || isCode(dep)) continue;
+        helpers.add(dep); // data a test reads without importing it
       }
     }
     frontier = next;
