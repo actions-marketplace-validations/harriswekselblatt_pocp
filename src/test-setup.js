@@ -548,6 +548,9 @@ const TEST_FRAMEWORK = new RegExp([
 ].join('|'), 'm');
 const SUPPORT_PATH = /(^|\/)(test[-_]?utils?|test[-_]?helpers?|test[-_]?support|test[-_]?kit|testing|__mocks__|__fixtures__|mocks|fakes)(\/|\.|$)/i;
 
+/** A file that isn't code in a language the guard reads: data (expected answers, fixtures). */
+export const isDataFile = (rel) => !CODE_EXT.test(rel);
+
 /** Does a file look like test support (by its path or its imports)? */
 export function looksLikeTestSupport(rel, text) {
   return SUPPORT_PATH.test(rel) || TEST_FRAMEWORK.test(String(text || ''));
@@ -809,7 +812,9 @@ export function testHelperFiles(root, rev, { testGlobs = [], seeds = [], isCode 
         else if (!isCode(dep)) helpers.add(dep); // data a test reads: fixtures, expected output
       }
       for (const dep of dataFilesNamed(p, text, tracked)) {
-        if (isTest(dep) || hasTestSettings(dep) || g.isProofPath(dep) || isCode(dep)) continue;
+        if (isTest(dep) || hasTestSettings(dep) || g.isProofPath(dep)) continue;
+        // Also inside the globs a required check guards: data isn't where a bug in the code
+        // lives. Data the code under check itself names stays code (notImportedByCode).
         helpers.add(dep); // data a test reads without importing it
       }
     }
@@ -913,6 +918,7 @@ export function notImportedByCode(root, rev, candidates, { isCode, testGlobs = [
     const text = texts.get(tracked.get(p)) ?? null;
     if (looksLikeTestSupport(p, text)) continue;
     for (const dep of importsOf(p, text)) used.add(dep);
+    for (const dep of dataFilesNamed(p, text, tracked)) used.add(dep);
   }
   return new Set(list.filter((p) => !used.has(p)));
 }

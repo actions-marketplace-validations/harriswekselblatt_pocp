@@ -595,8 +595,13 @@ run git itself.
   repository root) or in pieces (`path.join(dir, '..', 'data', 'golden.json')`). It is not
   guarded when the path is built from a variable or a template, when the test lists a folder
   and reads what it finds, when the file is Markdown or other prose (`.md`, `.mdx`, `.rst`,
-  `.adoc`), or when it sits inside the globs a required check guards (there it counts as code).
+  `.adoc`), or when the code under check names or imports it too (there it counts as code).
   Keep expected answers in a test folder, or list their folder in `guard.extra_test_globs`.
+  A change to guarded data outside the test folders passes on its own when the old data, with
+  the old tests, passes on the new code. So data emptied or loosened in one pull request, with
+  the bug it would have caught added in a later one, is not held in fast mode (in deep mode
+  the planted-bug check catches it when there is source to plant in): deception across pull
+  requests, as above.
 - **Rust inline tests.** Only top-level `#[cfg(test)]` items count as test code. One nested
   inside another module, and `#[test]` functions outside a `#[cfg(test)]` item, are treated
   as source. Adding inline tests changes the file's test part, so it runs the mechanical

@@ -510,12 +510,17 @@ export async function runGuardCheck({
         const shown = reasons.slice(0, 3).map((r) => `${r.file}: ${r.why}`).join('; ') + (reasons.length > 3 ? `; and ${reasons.length - 3} more` : '');
         return finish('needs-review', `${oldPass}; a person must review the test change (${shown}): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)`);
       }
+      if (changes.length && changes.every((c) => c.data)) return finish('passed', `${oldPass}, with the old data they read, and only data the tests read changed`);
       return finish('passed', `${oldPass}, and the change only adds lines to existing tests, none of which matches the risky patterns (skips, exits, early returns, patched assertions, mocks, exit-code resets, test hooks, globals, empty catch); guard.mutants is 0: no planted bugs`);
     }
 
     // Part 2: the same seeded sample was planted on both sides (above).
     if (planError) throw planError;
     Object.assign(result.detection, { sites: plan.sites, focus_sites: plan.focusSites, files: plan.files.length });
+    if (!plan.picked.length && changes.length && changes.every((c) => c.data)) {
+      result.detection.result = 'off';
+      return finish('passed', 'the old tests, with the old data they read, pass on the new code, and only data the tests read changed');
+    }
     if (!plan.picked.length) {
       result.detection.result = 'inconclusive';
       return finish('inconclusive', 'no guarded source to plant mutants in, so a drop in detection can\'t be measured');

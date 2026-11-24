@@ -7,10 +7,10 @@ import assert from 'node:assert/strict';
 import { DEFAULT_EVAL_EXCLUDE } from '../src/mutants.js';
 import { matchGlob } from '../src/glob.js';
 import {
-  executedReferences, referencedFiles, restoreRustTests, restoreTestSettings, rustTestItems, rustTestParts, testHelperFiles, testSettings,
+  executedReferences, notImportedByCode, referencedFiles, restoreRustTests, restoreTestSettings, rustTestItems, rustTestParts, testHelperFiles, testSettings,
 } from '../src/test-setup.js';
 import { detectTestChanges } from '../src/guard.js';
-import { BREAK_ADD, commit } from './fixtures.js';
+import { BREAK_ADD, TWEAK_ADD, commit } from './fixtures.js';
 import { git, packetId, pocp, read, sampleRepo, sh, tmpRepo, write, writeRules } from './helpers.js';
 
 const isTest = (p) => DEFAULT_EVAL_EXCLUDE.some((gl) => matchGlob(p, gl));
@@ -277,6 +277,24 @@ for (const deep of [false, true]) {
   });
 }
 
+for (const deep of [false, true]) {
+  test(`an honest edit to data a test reads passes with no approval (${deep ? 'deep' : 'fast'} mode)`, () => {
+    const dir = goldenRepo({ deep });
+    const base = git(dir, 'rev-parse', 'HEAD');
+    // The code is unchanged (or changed without changing its answers): the old answers hold.
+    write(dir, 'data/golden.json', '{ "add_2_3": 5, "add_1_1": 2 }\n');
+    write(dir, 'src/math.js', TWEAK_ADD);
+    git(dir, 'add', '-A');
+    const f = pocp(dir, ['fix', '--intent', 'x']);
+    assert.doesNotMatch(f.stdout, /needs a person|approval/, f.stdout);
+    git(dir, 'add', '-A');
+    assert.equal(commit(dir, 'honest', { allowFail: true }).status, 0);
+    const v = pocp(dir, ['verify', `${base}..HEAD`, '--require-coverage', '--rerun']);
+    assert.equal(v.code, 0, `an honest data edit needs nobody:\n${v.stdout}`);
+    assert.match(v.stdout, /^verified/);
+  });
+}
+
 test('data files a test names by path are test setup; prose and the code under check are not', () => {
   const dir = tmpRepo();
   write(dir, 'test/a.test.js', [
@@ -296,6 +314,13 @@ test('data files a test names by path are test setup; prose and the code under c
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '-m', 'init');
   const { helpers } = testHelperFiles(dir, 'HEAD', { testGlobs: DEFAULT_EVAL_EXCLUDE, isCode: (p) => p.startsWith('src/') });
-  assert.deepEqual([...helpers].sort(), ['data/golden.json', 'data/pieces.csv', 'data/py.json', 'expected/out.txt'],
-    'a path from the test\'s folder, one given in pieces, and one from the repository root count; README.md (prose), src/schema.json (code under check) and files no test names do not');
+  assert.deepEqual([...helpers].sort(), ['data/golden.json', 'data/pieces.csv', 'data/py.json', 'expected/out.txt', 'src/schema.json'],
+    'a path from the test\'s folder, one given in pieces, and one from the repository root count, inside the guarded globs too; README.md (prose) and files no test names do not');
+  // Data the code under check reads itself is part of the code, whatever the tests do with it.
+  write(dir, 'src/load.js', "import fs from 'node:fs';\nexport const schema = fs.readFileSync(new URL('./schema.json', import.meta.url));\n");
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'the code reads it');
+  const kept = notImportedByCode(dir, 'HEAD', helpers, { isCode: (p) => p.startsWith('src/'), testGlobs: DEFAULT_EVAL_EXCLUDE });
+  assert.equal(kept.has('src/schema.json'), false, 'named by the code under check: code');
+  assert.equal(kept.has('data/golden.json'), true);
 });
