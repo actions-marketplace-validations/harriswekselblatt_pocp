@@ -89,6 +89,8 @@ A benchmark of POCP 1.2.3 on p-map (JS), boltons (Python) and gjson (Go): 180 ca
 
 Fast mode is close to that rule, with two differences. The reviewer gets evidence, not just a diff: POCP runs the old tests on the new code and names any that now fail. And what must pass is set by the base branch, so a pull request can't get green by changing its rules, its check command, its test script or its runner config. Deep mode goes further: its planted bugs let most honest test edits through with no person.
 
+Approving is cheap when nothing broke. If the old tests still pass on the new code, a maintainer's `pocp-approve-tests` label turns `pocp` green without running verify again. If they fail, the label still re-runs verify ([docs/STATUS.md](docs/STATUS.md)).
+
 ## Documentation
 
 - [How it works](docs/HOW-IT-WORKS.md): what it catches, fast and deep modes, and what it doesn't do.
