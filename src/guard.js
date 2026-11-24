@@ -3,7 +3,7 @@ import { matchGlob } from './glob.js';
 import { DEFAULT_EVAL_EXCLUDE } from './mutants.js';
 import { normalizeRequirement } from './rules.js';
 import {
-  hasTestSettings, isRust, looksLikeTestSupport, notImportedByCode, readBlobs, referencedFiles, requirementCommands, rustTestModuleFile, settingsKind, subjectsOfTests, supportByUse, testHelperFiles, testSettings, trackedBlobs,
+  hasTestSettings, isDataFile, isRust, looksLikeTestSupport, notImportedByCode, readBlobs, referencedFiles, requirementCommands, rustTestModuleFile, settingsKind, subjectsOfTests, supportByUse, testHelperFiles, testSettings, trackedBlobs,
 } from './test-setup.js';
 
 // Files that decide what a test run means. Changing them can hollow out a check
@@ -69,6 +69,10 @@ export function structuralReview(root, { base, rev = null, changes = [] }) {
   const reasons = [];
   for (const c of changes) {
     const file = c.status === 'R' ? `${c.oldPath} → ${c.path}` : c.path;
+    // Data the tests read can't skip, exit or patch anything: what it can do is accept a new
+    // answer. The review runs only once the old data, with the old tests, passed on the new
+    // code, so the code still gives the old answers and there is nothing for a person to decide.
+    if (c.data) continue;
     if (c.kind !== 'test') {
       reasons.push({ file, why: c.kind === 'runner-config' ? 'test setup or a test helper changed' : 'test settings changed' });
       continue;
@@ -217,7 +221,10 @@ export function detectTestChanges(root, { from, to = null, config = {}, commands
     // What the mechanical check restores (guard-check.js): a helper goes back whole, like
     // runner config; a Rust file gets only its #[cfg(test)] items back, like a config section.
     const restoreKind = kind === 'test-helper' ? 'runner-config' : kind === 'inline-tests' ? 'config-section' : kind;
-    detail.push({ status: c.status, path: c.path, ...(c.status === 'R' ? { oldPath: c.oldPath } : {}), kind: restoreKind });
+    // Data the tests read (expected answers, fixtures): restored like a helper, and when the
+    // old data with the old tests passes on the new code, nothing more is asked (below).
+    const data = isHelper && [old, c.path].every(isDataFile);
+    detail.push({ status: c.status, path: c.path, ...(c.status === 'R' ? { oldPath: c.oldPath } : {}), kind: restoreKind, ...(data ? { data: true } : {}) });
     // Test code and helpers are not where the mechanical check plants bugs.
     const plantable = isHelper && [old, c.path].every((p) => !helpers.has(p) || helpers.byUse?.has(p));
     if ((isHelper && !plantable) || rustTestFiles.has(old) || kind === 'inline-tests') for (const p of new Set([old, c.path])) named.add(p);
@@ -262,7 +269,7 @@ function findHelpers(root, { base, to, testGlobs, commands, named, candidates })
   // are restored like helpers, but stay where mutants are planted, since the heuristic can
   // take a module under test for one.
   const byUse = base ? supportByUse(root, base, guardedOnes.filter((p) => !looksLike(p)), { isCode, testGlobs, files: baseFiles }) : new Set();
-  candidates = candidates.filter((p) => !isCode(p) || looksLike(p));
+  candidates = candidates.filter((p) => !isCode(p) || looksLike(p) || isDataFile(p));
   if (!candidates.length) return Object.assign(byUse, { byUse });
   const seeds = [...named];
   const found = new Set();

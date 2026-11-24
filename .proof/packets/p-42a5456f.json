@@ -1,0 +1,243 @@
+{
+  "pocp": 1,
+  "id": "p-42a5456f",
+  "intent": "Test guard: data a test reads passes on its own when the old answers still hold on the new code",
+  "touches": [
+    "src/guard-check.js",
+    "src/guard.js",
+    "src/test-setup.js",
+    "test/guard-test-layout.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "src/test-setup.js",
+        "test/guard-test-layout.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (src/test-setup.js, test/guard-test-layout.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-24T09:04:28.940Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:8453d94d2de198a8a5aa2b510bc8ad20fbfb06c92188d8ad937e968f380bf80b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-24T09:04:29.274Z",
+      "duration_ms": 371317,
+      "stdout_sha256": "a3486901cc49348de1723cbbb9c3eef9a50f4c70117a10e12745155cdadea125",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-6dabc20b",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:18fff8fd7dd78fe794141d7386b8af247a109a52c184ff306b191ff21c7b108c",
+      "subject": "sha256:8453d94d2de198a8a5aa2b510bc8ad20fbfb06c92188d8ad937e968f380bf80b",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-24T09:10:40.821Z",
+      "duration_ms": 317321,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "behavior-changed",
+        "passed": false,
+        "summary": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; an existing repository adopting POCP verifies with the CI flags; a root commit that enrolls POCP verifies with the CI flags; adoption with a source change: the source is still judged by the new rules; adoption that also edits a CI workflow still needs approval for the workflow; deleting an enrolled policy is not adoption; replacing a corrupt policy is not adoption; a later commit that edits the just-adopted policy is a policy change; test/approval-friction.test.js; test/bench-tamper.test.js: behavior changed, so a person must approve it",
+        "base": "10707b619d919242c581efbedaf23f0517b7bbcb",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "fail",
+          "restored": [
+            "src/test-setup.js",
+            "test/guard-test-layout.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": false,
+              "exit": 1,
+              "duration_ms": 22802,
+              "failed_tests": [
+                "test/adopter-workflows.test.js",
+                "an existing repository adopting POCP verifies with the CI flags",
+                "a root commit that enrolls POCP verifies with the CI flags",
+                "adoption with a source change: the source is still judged by the new rules",
+                "adoption that also edits a CI workflow still needs approval for the workflow",
+                "deleting an enrolled policy is not adoption",
+                "replacing a corrupt policy is not adoption",
+                "a later commit that edits the just-adopted policy is a policy change",
+                "test/approval-friction.test.js",
+                "test/bench-tamper.test.js"
+              ]
+            }
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "src/test-setup.js is named in test/e2e-test-setup.test.js, so it may be test setup"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 292363
+            }
+          ]
+        },
+        "detection": {
+          "result": "not-run",
+          "budget": 0,
+          "seed": 1
+        },
+        "duration_ms": 317321,
+        "timings": {
+          "setup_ms": 973,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 23153,
+            "run_ms": 22802,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 292940,
+            "run_ms": 292363,
+            "runs": 1
+          },
+          "snapshot": {
+            "ms": 853,
+            "count": 2
+          },
+          "copy": {
+            "ms": 663,
+            "count": 3
+          },
+          "cleanup": {
+            "ms": 784,
+            "count": 5
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-24T09:04:28.940Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-24T09:04:28.940Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-24T09:15:58.491Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:8453d94d2de198a8a5aa2b510bc8ad20fbfb06c92188d8ad937e968f380bf80b"
+    },
+    {
+      "at": "2026-11-24T09:15:59.092Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:8453d94d2de198a8a5aa2b510bc8ad20fbfb06c92188d8ad937e968f380bf80b"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:18fff8fd7dd78fe794141d7386b8af247a109a52c184ff306b191ff21c7b108c",
+      "subject": "sha256:8453d94d2de198a8a5aa2b510bc8ad20fbfb06c92188d8ad937e968f380bf80b",
+      "by": "harriswekselblatt",
+      "at": "2026-11-24T09:15:59.092Z",
+      "to": "ci-approval",
+      "reason": "the old tests fail on the new code (\"node --test test/*.test.js\" exit 1); failing: test/adopter-workflows.test.js; an existing repository adopting POCP verifies with the CI flags; a root commit that enrolls POCP verifies with the CI flags; adoption with a source change: the source is still judged by the new rules; adoption that also edits a CI workflow still needs approval for the workflow; deleting an enrolled policy is not adoption; replacing a corrupt policy is not adoption; a later commit that edits the just-adopted policy is a policy change; test/approval-friction.test.js; test/bench-tamper.test.js: behavior changed, so a person must approve it"
+    }
+  ]
+}
