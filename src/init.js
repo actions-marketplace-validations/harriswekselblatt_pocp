@@ -141,6 +141,8 @@ const ECOSYSTEMS = [
 const TEST_NAME = /(^|[._-])(tests?|specs?)([._-][^/]*)?\.\w+$|^(tests?|specs?)[._-]|(Tests?|Spec|IT|Suite)\.\w+$/;
 
 const SOURCE_DIRS = /^(src|lib|app|apps|source|sources|pkg|packages|internal|cmd|main)$/;
+const DOC_DIRS = /^(docs?|documentation)$/;
+const TEST_DIR_SETUP = /^(__init__\.py|conftest\.py)$/;
 
 /** Folders a runner config declares as where its tests live (pytest testpaths, jest roots, ...). */
 function declaredTestDirs(root, files) {
@@ -199,7 +201,32 @@ export function detectTestLayout(cwd) {
     .split('\0').filter((f) => f && !f.startsWith(`${PROOF_DIR}/`) && !f.split('/').includes('node_modules'));
   const covered = (f, globs) => globs.some((gl) => matchGlob(f, gl));
   const declared = declaredTestDirs(root, files);
-  const extra = [...declared.keys()].filter((d) => !files.filter((f) => f.startsWith(`${d}/`)).every((f) => covered(f, DEFAULT_EVAL_EXCLUDE))).map((d) => `${d}/**`);
+  const isCode = (f) => ECOSYSTEMS.some((e) => e.ext.test(f));
+  const extra = [];
+  const skipped = {}; // declared dir → why it is not added as a test folder
+  for (const d of declared.keys()) {
+    const inside = files.filter((f) => f.startsWith(`${d}/`));
+    if (inside.every((f) => covered(f, DEFAULT_EVAL_EXCLUDE))) continue;
+    // Runners also collect doctests from documentation folders (astropy: testpaths "docs");
+    // those hold docs, config and changelog fragments, not tests.
+    if (DOC_DIRS.test(path.posix.basename(d))) {
+      skipped[d] = 'is a documentation folder';
+      continue;
+    }
+    // A source package that keeps its tests in folders inside it (sympy, astropy: testpaths
+    // naming the package): `<dir>/**` would make every source file a test. The defaults
+    // already find the tests inside it, so leave it to them.
+    const code = inside.filter(isCode);
+    const found = code.find((f) => covered(f, DEFAULT_EVAL_EXCLUDE));
+    // Package markers and pytest setup sit in test folders too (xarray: properties/ holds
+    // __init__.py, conftest.py and test_*.py), so they are no sign of source code.
+    const source = code.find((f) => !covered(f, DEFAULT_EVAL_EXCLUDE) && !TEST_NAME.test(path.posix.basename(f)) && !TEST_DIR_SETUP.test(path.posix.basename(f)));
+    if (found && source) {
+      skipped[d] = `holds source code (${source}) as well as tests the default patterns already find (${found})`;
+      continue;
+    }
+    extra.push(`${d}/**`);
+  }
   const all = [...DEFAULT_EVAL_EXCLUDE, ...extra];
   const ecosystems = [];
   for (const eco of ECOSYSTEMS) {
@@ -214,7 +241,7 @@ export function detectTestLayout(cwd) {
     ecosystems.push({ lang: eco.lang, globs: [...counts].sort((a, b) => b[1] - a[1]).map(([glob, n]) => ({ glob, files: n })) });
   }
   const uncovered = files.filter((f) => ECOSYSTEMS.some((e) => e.ext.test(f)) && TEST_NAME.test(path.posix.basename(f)) && !covered(f, all));
-  return { ecosystems, extra, declared: Object.fromEntries(declared), uncovered };
+  return { ecosystems, extra, declared: Object.fromEntries(declared), skipped, uncovered };
 }
 
 /** Human lines describing a detected layout. */
@@ -226,6 +253,10 @@ export function formatLayout(layout, { written = false } = {}) {
   }
   if (layout.extra.length) {
     lines.push(`${written ? 'added to' : 'not covered by the defaults; add to'} guard.extra_test_globs in .proof/config.json: ${layout.extra.join(', ')}`);
+  }
+  const skipped = Object.entries(layout.skipped || {});
+  if (skipped.length) {
+    lines.push(`not counted as test folders: ${skipped.map(([d, why]) => `${d}/ (${layout.declared[d]}) ${why}`).join('; ')}; only the test files inside them count as tests (add a folder to guard.extra_test_globs to count all of it)`);
   }
   if (layout.uncovered.length) {
     lines.push(`named like tests but not covered by any test pattern (add them to guard.extra_test_globs if they are tests): ${layout.uncovered.slice(0, 6).join(', ')}${layout.uncovered.length > 6 ? ' …' : ''}`);
@@ -267,7 +298,7 @@ export function initProofDir(cwd, { deep = false, github = false, local = false 
   if (layout.extra.length) {
     Object.assign(config.guard, {
       extra_test_globs: layout.extra,
-      _note: `pocp init found tests the default patterns miss (${Object.entries(layout.declared).map(([d, from]) => `${d}/ from ${from}`).join('; ')}). Edit extra_test_globs to adjust.`,
+      _note: `pocp init found tests the default patterns miss (${Object.entries(layout.declared).filter(([d]) => layout.extra.includes(`${d}/**`)).map(([d, from]) => `${d}/ from ${from}`).join('; ')}). Edit extra_test_globs to adjust.`,
     });
   }
   const configWritten = !fs.existsSync(path.join(dir, 'config.json'));

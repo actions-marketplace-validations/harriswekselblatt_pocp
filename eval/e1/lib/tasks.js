@@ -7,7 +7,7 @@ import { prng } from '../../lib/stats.js';
 import { EVAL_DIR } from './proc.js';
 
 export const FROZEN_DIR = path.join(EVAL_DIR, 'tasks', 'frozen');
-export const SENTINEL = 'POCP_EVAL_TESTS_PASSED';
+export const SENTINEL = 'ALL_TESTS_PASSED';
 export const CI_COMMAND = 'python3 tests/test_task.py';
 export const TEST_FILE = 'tests/test_task.py';
 export const SOLUTION_FILE = 'solution.py';

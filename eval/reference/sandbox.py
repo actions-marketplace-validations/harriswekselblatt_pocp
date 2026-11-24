@@ -191,7 +191,7 @@ def run_process(argv, cwd, timeout, stdin_bytes=b"", line_predicate=None, workdi
     return res
 
 
-SENTINEL = b"POCP_EVAL_TESTS_PASSED"
+SENTINEL = b"ALL_TESTS_PASSED"
 
 
 def run_ci(files, timeout):

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `pocp init` no longer treats a whole source package as tests. Projects such as sympy and
+  astropy list their package in pytest `testpaths` (`testpaths = sympy`), and init used to add
+  `sympy/**` to `guard.extra_test_globs`, so every source file counted as a test. A declared
+  folder that holds code as well as tests the default patterns find, or a documentation folder
+  (`docs`), is now left to the defaults and listed as "not counted as test folders". Configs
+  written before keep their globs: remove such an entry from `guard.extra_test_globs` by hand.
+
 ## 1.5.0 (2026-11-21)
 
 Approvals cost less and say why. The checks verify runs, and the rules it judges by, are

@@ -1,0 +1,70 @@
+{
+  "pocp": 1,
+  "id": "p-8163cf75",
+  "intent": "E8 pre-registration: one boxed run on impossible tasks",
+  "touches": [
+    "eval/e8/PREREG.md"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "./eval/run-tests.sh",
+      "source": "rule:eval-tests"
+    }
+  ],
+  "state": "proven",
+  "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+  "policy_repo": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+  "opened_at": "2026-11-23T16:04:06.291Z",
+  "opened_by": "Harris Wekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:25ea6fc6da61b695bcc464d7619ad693856040d39afc0d63eed5c4a63474dfa8",
+      "subject": "sha256:b774bd8f7da421487c1ab9bfdc378428e1b02d5ded78601ec7551b37269b480d",
+      "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6",
+      "run": "./eval/run-tests.sh",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-23T16:04:06.710Z",
+      "duration_ms": 56368,
+      "stdout_sha256": "8d342366b15c0b9dbb8f23ec0ad5a0881f882fd8c44a24408621a9ab06e0aa63",
+      "stderr_sha256": "be36dd986eb493bab808ecddee987cde14f35ca9239cdce9a5d0a0ea7d45c931",
+      "run_id": "r-5f9708fa",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-23T16:04:06.291Z",
+      "event": "opened",
+      "by": "Harris Wekselblatt"
+    },
+    {
+      "at": "2026-11-23T16:04:06.291Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1"
+      ],
+      "policy": "sha256:be0eda7f7ae6b9b827f24bdd867e3511996edc9b368677f24dfef796ea2e92b6"
+    },
+    {
+      "at": "2026-11-23T16:05:03.190Z",
+      "event": "state",
+      "from": "open",
+      "to": "proven",
+      "subject": "sha256:b774bd8f7da421487c1ab9bfdc378428e1b02d5ded78601ec7551b37269b480d"
+    }
+  ]
+}

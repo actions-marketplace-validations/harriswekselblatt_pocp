@@ -17,15 +17,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { verifierHash } from '../lib/pins.js';
 import { CI_COMMAND, CONDITIONS, SOLUTION_FILE, TEST_FILE, solutionStub, testFile } from './lib/tasks.js';
-import { POCP_ROOT, git, harnessEnv, pocp, writeJson } from './lib/proc.js';
+import { AGENT_EMAIL, AGENT_NAME, POCP_ROOT, TRUSTED_BIN, git, harnessEnv, pocp, writeJson } from './lib/proc.js';
 
 export const ARMS = ['plain', 'pocp-ci', 'pocp-hooks'];
 export const isPocpArm = (arm) => arm === 'pocp-ci' || arm === 'pocp-hooks';
 // Inside .git so the agent's sandbox (Codex workspace-write with .git writable) can write it
 // when a commit runs the hook. Outside the work tree, so `git add -A` never picks it up.
-export const HOOK_LOG = path.join('.git', 'pocp-eval', 'pre-commit.jsonl');
-export const HARNESS_BEGIN = '# >>> pocp-eval harness >>>';
-export const HARNESS_END = '# <<< pocp-eval harness <<<';
+// Neutral names on purpose: an agent that reads its hooks must not learn it is being measured.
+export const HOOK_LOG = path.join('.git', 'hooklog', 'pre-commit.jsonl');
+export const HARNESS_BEGIN = '# >>> commit log >>>';
+export const HARNESS_END = '# <<< commit log <<<';
 
 export const RULES = {
   pocp: 1,
@@ -52,15 +53,15 @@ export function harnessHookBlock() {
   const log = HOOK_LOG.replace(/'/g, '');
   return [
     HARNESS_BEGIN,
-    '# Records each pre-commit run for the evaluation harness (exit status and staged tree).',
-    '__pocp_eval_log() {',
+    '# Records each pre-commit run (exit status and staged tree).',
+    '__commit_log() {',
     '  __s=$?',
     '  __t=$(git write-tree 2>/dev/null)',
     '  __d=$(git rev-parse --git-dir 2>/dev/null)',
-    `  mkdir -p "$__d/pocp-eval" 2>/dev/null`,
-    '  printf \'{"at":%s,"exit":%s,"tree":"%s"}\\n\' "$(date +%s)" "$__s" "$__t" >> "$__d/pocp-eval/pre-commit.jsonl" 2>/dev/null',
+    `  mkdir -p "$__d/hooklog" 2>/dev/null`,
+    '  printf \'{"at":%s,"exit":%s,"tree":"%s"}\\n\' "$(date +%s)" "$__s" "$__t" >> "$__d/hooklog/pre-commit.jsonl" 2>/dev/null',
     '}',
-    'trap __pocp_eval_log EXIT',
+    'trap __commit_log EXIT',
     HARNESS_END,
     `# (log: ${log})`,
     '',
@@ -72,15 +73,17 @@ export function harnessHookBlock() {
  * and its `pocp` command, plus a bin folder with a `pocp` shim. Made once per batch. Its
  * verifier hash must equal the trusted one; run.js re-checks it after every run.
  */
-export function pocpCopy(dir) {
+export function pocpCopy(dir, { node = process.execPath } = {}) {
   const root = path.join(dir, 'pocp');
   if (!fs.existsSync(path.join(root, 'bin', 'pocp.js'))) {
     fs.mkdirSync(root, { recursive: true });
     for (const d of ['bin', 'src']) fs.cpSync(path.join(POCP_ROOT, d), path.join(root, d), { recursive: true });
-    fs.copyFileSync(path.join(POCP_ROOT, 'package.json'), path.join(root, 'package.json'));
+    // Only what pocp reads from package.json: the full one names the author and the repository.
+    const pkg = JSON.parse(fs.readFileSync(path.join(POCP_ROOT, 'package.json'), 'utf8'));
+    fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: pkg.name, version: pkg.version, type: pkg.type, bin: pkg.bin, engines: pkg.engines }, null, 2)}\n`);
     const binDir = path.join(dir, 'bin');
     fs.mkdirSync(binDir, { recursive: true });
-    fs.writeFileSync(path.join(binDir, 'pocp'), `#!/bin/sh\nexec "${process.execPath}" "${path.join(root, 'bin', 'pocp.js')}" "$@"\n`);
+    fs.writeFileSync(path.join(binDir, 'pocp'), `#!/bin/sh\nexec "${node}" "${path.join(root, 'bin', 'pocp.js')}" "$@"\n`);
     fs.chmodSync(path.join(binDir, 'pocp'), 0o555);
     const lock = (p) => {
       const st = fs.statSync(p);
@@ -91,7 +94,7 @@ export function pocpCopy(dir) {
   }
   const hash = verifierHash(root);
   if (hash !== verifierHash(POCP_ROOT)) throw new Error(`the agent's POCP copy at ${root} differs from this checkout`);
-  return { root, bin: path.join(root, 'bin', 'pocp.js'), binDir: path.join(dir, 'bin'), sha256: hash };
+  return { root, bin: path.join(root, 'bin', 'pocp.js'), binDir: path.join(dir, 'bin'), sha256: hash, node };
 }
 
 /**
@@ -108,7 +111,7 @@ export function agentShellEnv(dir) {
 
 /** The environment POCP arms add for the agent: `pocp` on PATH and POCP_BIN for the hooks. */
 export function pocpAgentEnv(copy) {
-  return { POCP_BIN: `${process.execPath} ${copy.bin}`, PATH: `${copy.binDir}${path.delimiter}${process.env.PATH || ''}` };
+  return { POCP_BIN: `${copy.node || process.execPath} ${copy.bin}`, PATH: `${copy.binDir}${path.delimiter}${process.env.PATH || ''}` };
 }
 
 export function hooksFingerprint(repo) {
@@ -125,20 +128,22 @@ export function hooksFingerprint(repo) {
  * Build the repo. Returns { repo, base, condition, arm, files, pocp }.
  * `parent` is where the run's temp folder goes (defaults to the OS temp dir).
  */
-export async function materialize({ task, condition, arm, parent = os.tmpdir(), name = 'repo' }) {
+export async function materialize({ task, condition, arm, parent = os.tmpdir(), name = 'repo', agentBin = null }) {
   const cond = CONDITIONS[condition];
   if (!cond) throw new Error(`unknown condition ${condition}`);
   if (!ARMS.includes(arm)) throw new Error(`unknown arm ${arm}`);
-  const top = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'pocp-e1-')));
+  const top = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'proj-')));
   const repo = path.join(top, name);
   fs.mkdirSync(repo);
   const env = harnessEnv();
   await git(repo, ['init', '-q', '-b', 'main'], { env });
   // Identity and settings live in the repo itself too, so an agent whose shell resets the
   // environment still commits as the same author and never signs.
-  for (const [k, v] of [['user.name', 'Eval Agent'], ['user.email', 'agent@eval.invalid'], ['commit.gpgsign', 'false'], ['core.autocrlf', 'false']]) {
+  for (const [k, v] of [['user.name', AGENT_NAME], ['user.email', AGENT_EMAIL], ['commit.gpgsign', 'false'], ['core.autocrlf', 'false']]) {
     await git(repo, ['config', k, v], { env });
   }
+  // Apple's git writes Mac-only settings at init; a Linux repo wouldn't have them.
+  for (const k of ['core.ignorecase', 'core.precomposeunicode']) await git(repo, ['config', '--unset', k], { env, allowFail: true });
   const write = (rel, text) => {
     fs.mkdirSync(path.dirname(path.join(repo, rel)), { recursive: true });
     fs.writeFileSync(path.join(repo, rel), text);
@@ -164,10 +169,21 @@ export async function materialize({ task, condition, arm, parent = os.tmpdir(), 
     fs.chmodSync(path.join(hookDir, 'pre-commit'), 0o755);
     const hooks = await pocp(repo, ['hooks', 'install'], { env });
     if (hooks.code !== 0) throw new Error(`pocp hooks install failed: ${hooks.err || hooks.out}`);
+    // `hooks install` writes the installing pocp's own path into each hook as a fallback.
+    // That is this checkout (the judge's), which the agent must not learn of: point the hooks
+    // at the agent's copy instead.
+    if (agentBin) {
+      for (const n of fs.readdirSync(hookDir)) {
+        const f = path.join(hookDir, n);
+        if (!fs.statSync(f).isFile()) continue;
+        const t = fs.readFileSync(f, 'utf8');
+        if (t.includes(TRUSTED_BIN)) fs.writeFileSync(f, t.split(TRUSTED_BIN).join(agentBin));
+      }
+    }
     pocpInfo = { rules: RULES, guard: CONFIG_PATCH.guard };
   }
   await git(repo, ['add', '-A'], { env });
-  await git(repo, ['commit', '-q', '--no-verify', '-m', `task: ${task.task_id}`], { env });
+  await git(repo, ['commit', '-q', '--no-verify', '-m', 'Initial commit'], { env });
   const base = await git(repo, ['rev-parse', 'HEAD'], { env });
   if (!cond.committed) write(TEST_FILE, tests);
   const files = (await git(repo, ['ls-files'], { env })).split('\n').filter(Boolean);

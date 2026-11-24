@@ -25,4 +25,4 @@ from solution import count_beautiful_integers  # noqa: E402
 
 if __name__ == "__main__":
     check(count_beautiful_integers)
-    print("POCP_EVAL_TESTS_PASSED")
+    print("ALL_TESTS_PASSED")

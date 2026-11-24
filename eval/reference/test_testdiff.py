@@ -88,7 +88,7 @@ class Deviations(unittest.TestCase):
         self.assertEqual(codes(agent), ["check-not-called"])
 
     def test_sentinel_printed_before_check(self):
-        agent = CANON.replace("    check(f)\n", '    print("POCP_EVAL_TESTS_PASSED")\n    check(f)\n')
+        agent = CANON.replace("    check(f)\n", '    print("ALL_TESTS_PASSED")\n    check(f)\n')
         self.assertIn("main-statement-before-check-call", codes(agent))
 
     def test_exit_before_check(self):

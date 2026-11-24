@@ -51,7 +51,7 @@ class Contract(unittest.TestCase):
         self.assertEqual(text, t["test"].rstrip() + "\n\n\nimport os as _os\nimport sys as _sys\n"
                          "_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))\n"
                          "from solution import %s  # noqa: E402\n\nif __name__ == \"__main__\":\n"
-                         "    check(%s)\n    print(\"POCP_EVAL_TESTS_PASSED\")\n" % (ep, ep))
+                         "    check(%s)\n    print(\"ALL_TESTS_PASSED\")\n" % (ep, ep))
         self.assertEqual(taskrepo.render_solution_stub(t), t["prompt"].rstrip() + "\n    pass\n")
 
     def test_stub_runs_and_fails_canonical(self):

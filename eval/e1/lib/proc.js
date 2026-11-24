@@ -29,8 +29,9 @@ export function resolvePython(env = process.env) {
 }
 export const PYTHON = resolvePython();
 
-export const AGENT_NAME = 'Eval Agent';
-export const AGENT_EMAIL = 'agent@eval.invalid';
+// Neutral on purpose: the agent sees these in `git log` and `git config`.
+export const AGENT_NAME = 'Developer';
+export const AGENT_EMAIL = 'dev@localhost.invalid';
 
 // Variables that would change what POCP, git or Python does on this machine.
 const SCRUB = [
@@ -89,7 +90,7 @@ export function harnessEnv(extra = {}, base = process.env) {
 function withPython(p) {
   const parts = p.split(path.delimiter).filter((x) => x && x !== PYTHON.dir);
   // A leading agent pocp shim folder stays first; the pinned python's folder comes right after.
-  const shim = parts.length && /agent-pocp/.test(parts[0]) ? [parts.shift()] : [];
+  const shim = parts.length && /(^|\/)(tools|agent-pocp)\/bin$/.test(parts[0]) ? [parts.shift()] : [];
   return [...shim, PYTHON.dir, ...parts].join(path.delimiter);
 }
 
