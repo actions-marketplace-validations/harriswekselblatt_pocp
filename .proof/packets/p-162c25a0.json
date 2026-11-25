@@ -1,0 +1,267 @@
+{
+  "pocp": 1,
+  "id": "p-162c25a0",
+  "intent": "Test guard: a data file a test names by path (expected answers read with readFileSync) counts as test setup, so overwriting it to match a bug is held",
+  "touches": [
+    "src/test-setup.js",
+    "test/guard-test-layout.test.js"
+  ],
+  "obligations": [
+    {
+      "id": "o1",
+      "kind": "test",
+      "run": "node --test test/*.test.js",
+      "changed_test_command": [
+        "node",
+        "--test",
+        "{tests}"
+      ],
+      "source": "rule:test-suite"
+    },
+    {
+      "id": "o2",
+      "kind": "guard",
+      "files": [
+        "src/test-setup.js",
+        "test/guard-test-layout.test.js"
+      ],
+      "mutants": 0,
+      "seed": 1,
+      "text": "Existing tests or test setup changed (src/test-setup.js, test/guard-test-layout.test.js): the old tests still pass on the new code, and a person reviews the change (fast mode: without planted bugs POCP can't show the tests still catch what they caught)",
+      "source": "guard:tests"
+    }
+  ],
+  "state": "open",
+  "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "policy_repo": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+  "opened_at": "2026-11-24T08:39:33.703Z",
+  "opened_by": "harriswekselblatt",
+  "proofs": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "run": "node --test test/*.test.js",
+      "mode": "clean",
+      "exit": 0,
+      "signal": null,
+      "timed_out": false,
+      "passed": true,
+      "started_at": "2026-11-24T08:42:18.138Z",
+      "duration_ms": 379039,
+      "stdout_sha256": "a5f19286e779e94adb3786828c4671759fd7535ccf5ec16c93d24134bb37e2c8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "run_id": "r-c2077be1",
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      }
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:18fff8fd7dd78fe794141d7386b8af247a109a52c184ff306b191ff21c7b108c",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496",
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3",
+      "kind": "guard",
+      "mode": "snapshot",
+      "passed": false,
+      "started_at": "2026-11-24T08:48:37.381Z",
+      "duration_ms": 304823,
+      "runner": {
+        "pocp": "1.5.0",
+        "node": "22.13.1",
+        "platform": "darwin-arm64",
+        "ci": false,
+        "lockfile_sha256": null
+      },
+      "guard": {
+        "pocp": 1,
+        "verdict": "needs-review",
+        "passed": false,
+        "summary": "the old tests pass on the new code; a person must review the test change (src/test-setup.js: existing test lines were changed or removed; test/guard-test-layout.test.js: an added line exits the process): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)",
+        "base": "7812761ce786560f1c2d7b1df1e35069440bc828",
+        "checks": [
+          {
+            "id": "test-suite",
+            "run": "node --test test/*.test.js"
+          }
+        ],
+        "old_tests": {
+          "result": "pass",
+          "restored": [
+            "src/test-setup.js",
+            "test/guard-test-layout.test.js"
+          ],
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "exit": 0,
+              "duration_ms": 303944
+            }
+          ],
+          "changed_tests": {
+            "result": "not-used",
+            "reason": "src/test-setup.js is named in test/e2e-test-setup.test.js, so it may be test setup"
+          }
+        },
+        "new_tests": {
+          "result": "pass",
+          "runs": [
+            {
+              "check": "test-suite",
+              "passed": true,
+              "reused": true,
+              "duration_ms": 0
+            }
+          ]
+        },
+        "baseline": {
+          "result": "not-run",
+          "runs": []
+        },
+        "detection": {
+          "result": "off",
+          "budget": 0,
+          "seed": 1
+        },
+        "structural": {
+          "result": "needs-review",
+          "reasons": [
+            {
+              "file": "src/test-setup.js",
+              "why": "existing test lines were changed or removed"
+            },
+            {
+              "file": "test/guard-test-layout.test.js",
+              "why": "an added line exits the process"
+            }
+          ]
+        },
+        "duration_ms": 304823,
+        "timings": {
+          "setup_ms": 534,
+          "new_baseline": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "old_baseline": {
+            "wall_ms": 304247,
+            "run_ms": 303944,
+            "runs": 1
+          },
+          "plan_ms": 0,
+          "mutants": {
+            "wall_ms": 0,
+            "old": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            },
+            "new": {
+              "run_ms": 0,
+              "runs": 0,
+              "retries": 0
+            }
+          },
+          "base_check": {
+            "wall_ms": 0,
+            "run_ms": 0,
+            "runs": 0
+          },
+          "snapshot": {
+            "ms": 313,
+            "count": 1
+          },
+          "copy": {
+            "ms": 355,
+            "count": 2
+          },
+          "cleanup": {
+            "ms": 290,
+            "count": 3
+          }
+        },
+        "checks_from": "rules"
+      }
+    }
+  ],
+  "attestations": [],
+  "history": [
+    {
+      "at": "2026-11-24T08:39:33.703Z",
+      "event": "opened",
+      "by": "harriswekselblatt"
+    },
+    {
+      "at": "2026-11-24T08:39:33.703Z",
+      "event": "requirements_synced",
+      "added": [
+        "o1",
+        "o2"
+      ],
+      "policy": "sha256:88811b303f226aae03f38fa54abda0992c94aee03b1cdfad7c209c6f698c29c3"
+    },
+    {
+      "at": "2026-11-24T08:39:34.569Z",
+      "event": "handed_to_ci",
+      "obligation": "o1",
+      "by": "harriswekselblatt",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496"
+    },
+    {
+      "at": "2026-11-24T08:39:34.590Z",
+      "event": "handed_to_ci",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496"
+    },
+    {
+      "at": "2026-11-24T08:53:42.433Z",
+      "event": "proof_failed",
+      "obligation": "o2",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496"
+    },
+    {
+      "at": "2026-11-24T08:53:42.779Z",
+      "event": "deferred",
+      "obligation": "o2",
+      "by": "harriswekselblatt",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496"
+    }
+  ],
+  "deferrals": [
+    {
+      "obligation": "o1",
+      "obligation_digest": "sha256:547149be10cab1d2faf6e5ca23fbf6d5a1fca312cbda302db9aa84f8c5645030",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496",
+      "by": "harriswekselblatt",
+      "at": "2026-11-24T08:39:34.569Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the rule marks this check \"defer\": \"ci\""
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:18fff8fd7dd78fe794141d7386b8af247a109a52c184ff306b191ff21c7b108c",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496",
+      "by": "harriswekselblatt",
+      "at": "2026-11-24T08:39:34.590Z",
+      "to": "ci-run",
+      "reason": "ci.defer_heavy: the test guard (block mode) runs in CI"
+    },
+    {
+      "obligation": "o2",
+      "obligation_digest": "sha256:18fff8fd7dd78fe794141d7386b8af247a109a52c184ff306b191ff21c7b108c",
+      "subject": "sha256:663691af6ade94474d90cdde5d0bc51e87870a9481f78248eb7a39414dba0496",
+      "by": "harriswekselblatt",
+      "at": "2026-11-24T08:53:42.779Z",
+      "to": "ci-approval",
+      "reason": "the old tests pass on the new code; a person must review the test change (src/test-setup.js: existing test lines were changed or removed; test/guard-test-layout.test.js: an added line exits the process): without planted bugs (guard.mutants is 0) POCP can't show the tests still catch what they caught. For an automatic check, use deep mode (pocp init --deep, guard.mutants above 0)"
+    }
+  ]
+}
